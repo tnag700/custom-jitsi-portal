@@ -1,0 +1,1 @@
+package com.acme.jitsi.config; public class FindClass { public static void main(String[] args) throws Exception { System.out.println(Class.forName("org.springframework.resilience.annotation.EnableResilientMethods").getProtectionDomain().getCodeSource().getLocation()); } }

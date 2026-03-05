@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset
+    name="Jitsi Backend PMD Full Rules"
+    xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.github.io/pmd-6.0.0/ruleset_xml_schema.xsd"
+>
+  <description>
+    Full PMD profile for backend Java code.
+    Covers broad quality dimensions: correctness, maintainability, readability,
+    performance, security, and API hygiene.
+  </description>
+
+  <!-- Core quality categories -->
+  <rule ref="category/java/bestpractices.xml" />
+  <rule ref="category/java/codestyle.xml" />
+  <rule ref="category/java/design.xml" />
+  <rule ref="category/java/documentation.xml" />
+  <rule ref="category/java/errorprone.xml" />
+  <rule ref="category/java/multithreading.xml" />
+  <rule ref="category/java/performance.xml" />
+  <rule ref="category/java/security.xml" />
+
+</ruleset>

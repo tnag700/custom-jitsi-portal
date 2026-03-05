@@ -1,0 +1,92 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+*.swp
+*.swo
+
+# Project Config
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.local
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Node
+node_modules/
+jspm_packages/
+.npm
+.eslintcache
+.node_repl_history
+.yarn-integrity
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+
+# Gradle / Java (Global)
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+gradle-*.zip
+gradle-*/
+*.lock
+
+# Build Output (Global)
+dist/
+build/
+out/
+bin/
+coverage/
+**/coverage/
+*.tsbuildinfo
+
+# Temporary / AI Context
+/_bmad/
+/_bmad-output/
+/.certs/
+/.clinerules/
+/.github/
+/.kilocode/
+/.qwen/
+/.windsurf/
+/agent_docs/
+/deprecated.frontend.1/
+/docs/
+/pilot/
+/frontend-qwik/tmp/
+.kilocodemodes
+changed_files.txt
+test_output.txt
+test_context7.js
+project_context.md
+CONTEXT7_SETUP.md
+
+# Local toolchains / archives
+/gradle-9.3.1/
+/gradle-9.3.1-bin.zip
+
+# Docker
+.dockerignore
+
+
+

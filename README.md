@@ -1,0 +1,81 @@
+# ВНИМАНИЕ: это эксперимент по работе ИИ-агентов, возможен "ИИ слоп"; ответственный за код человек не является профессиональным программистом.
+
+## Jitsi видеоконференция с веб-порталом (экспериментальный проект)
+
+Монорепозиторий для разработки приложения вокруг сценариев видеоконференций:
+- backend API на Spring Boot;
+- frontend на Qwik (SSR);
+- локальная инфраструктура и интеграции через Docker Compose.
+
+## Цель проекта
+
+Проект служит полигоном для:
+- разработки API и UI в домене видеоконференций;
+- проверки архитектурных и процессных решений;
+- практики разработки с поддержкой ИИ-агентов.
+
+## Технологический стек
+
+- Backend: Java 25, Spring Boot 4, Gradle.
+- Data: PostgreSQL, Redis, Flyway.
+- Security/SSO: Spring Security, OAuth2 client/resource server, Keycloak.
+- Frontend: Qwik, Vite, TypeScript, ESLint, Vitest.
+- Контракт API: `openapi.yaml`.
+- Локальная среда: Docker Compose.
+
+## Структура репозитория
+
+- `backend/` - серверная часть (REST API, безопасность, бизнес-логика, миграции, тесты).
+- `frontend-qwik/` - веб-клиент (маршруты, SSR, UI, фронтенд-тесты).
+- `openapi.yaml` - API-контракт.
+- `docker-compose.yml` - локальный запуск зависимостей и интеграционных сервисов.
+- `.env.example` - пример переменных окружения для локального запуска.
+
+## Что хранится в репозитории
+
+В репозитории оставлены только код и связанные с кодом файлы:
+- исходники;
+- сборочные/конфигурационные файлы;
+- пример ENV (`.env.example`);
+- контракт API.
+
+Служебные, временные, сгенерированные и локальные файлы исключаются через `/.gitignore`.
+
+## Локальный запуск
+
+1. Подготовьте окружение:
+   - скопируйте `.env.example` в `.env`;
+   - заполните секреты/пароли в `.env`.
+2. Backend (`backend/`):
+   - `./gradlew.bat build`
+   - `./gradlew.bat test`
+3. Frontend (`frontend-qwik/`):
+   - `npm install`
+   - `npm run dev`
+4. Полная локальная среда (из корня):
+   - `docker compose up --build`
+
+## Ключевые сервисы и порты (docker-compose)
+
+- Frontend: `http://localhost:3000`
+- Backend API: `http://localhost:8080`
+- Swagger UI: `http://localhost:8082`
+- Keycloak: `http://localhost:8081`
+- Jitsi Web: `https://localhost:8443`
+- Postgres: внутри docker-сети
+- Redis: внутри docker-сети
+
+## Проверка качества
+
+- Backend:
+  - unit/integration тесты через Gradle;
+  - JaCoCo coverage (`jacocoTestReport`);
+  - PMD и CPD проверки в `check`.
+- Frontend:
+  - `npm run lint`
+  - `npm run test`
+  - `npm run test:coverage`
+
+## Текущее состояние
+
+Проект находится в активной экспериментальной разработке и может меняться без обратной совместимости между коммитами.

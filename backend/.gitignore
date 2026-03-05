@@ -1,0 +1,10 @@
+/build/
+/.gradle/
+/out/
+/bin/
+*.class
+.classpath
+.project
+.settings/
+.factorypath
+test_output.txt

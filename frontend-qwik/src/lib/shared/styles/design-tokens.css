@@ -1,0 +1,98 @@
+:root {
+  /* Core palette — slate-indigo theme */
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --border: #e5e7eb;
+  --text: #0f172a;
+  --muted: #475569;
+
+  /* Primary — Indigo */
+  --primary: #4f46e5;
+  --primary-soft: #eef2ff;
+  --primary-contrast: #ffffff;
+
+  /* Semantic statuses */
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #0284c7;
+
+  /* Derived aliases */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary-foreground: var(--primary-contrast);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text);
+  --muted-foreground: var(--muted);
+  --accent: var(--surface-2);
+  --accent-foreground: var(--text);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--primary-contrast);
+  --input: var(--border);
+  --ring: var(--primary);
+
+  /* Focus */
+  --focus: rgba(79, 70, 229, 0.35);
+
+  /* Spacing (base unit 4px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* Shadows */
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.dark {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-2: #334155;
+  --border: #475569;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+
+  --primary: #4f46e5;
+  --primary-soft: #312e81;
+  --primary-contrast: #ffffff;
+
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --info: #38bdf8;
+
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary-foreground: var(--primary-contrast);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text);
+  --muted-foreground: var(--muted);
+  --accent: var(--surface-2);
+  --accent-foreground: var(--text);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--primary-contrast);
+  --input: var(--border);
+  --ring: var(--primary);
+
+  --focus: rgba(129, 140, 248, 0.4);
+
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.4);
+}

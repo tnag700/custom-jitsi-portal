@@ -1,0 +1,98 @@
+spring:
+  application:
+    name: jitsi-backend
+  mvc:
+    apiversion:
+      use:
+        path-segment: 1
+      supported:
+        - v1
+  security:
+    oauth2:
+      client:
+        provider:
+          keycloak:
+            authorization-uri: ${SSO_AUTHORIZATION_URI:http://localhost:8081/realms/jitsi-dev/protocol/openid-connect/auth}
+            token-uri: ${SSO_TOKEN_URI:http://localhost:8081/realms/jitsi-dev/protocol/openid-connect/token}
+            jwk-set-uri: ${SSO_JWK_SET_URI:http://localhost:8081/realms/jitsi-dev/protocol/openid-connect/certs}
+            user-info-uri: ${SSO_USER_INFO_URI:http://localhost:8081/realms/jitsi-dev/protocol/openid-connect/userinfo}
+            user-name-attribute: sub
+        registration:
+          keycloak:
+            provider: keycloak
+            client-id: ${SSO_CLIENT_ID:jitsi-backend}
+            client-secret: ${SSO_CLIENT_SECRET:change-me}
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid,profile,email
+
+app:
+  security:
+    sso:
+      expected-issuer: ${APP_SECURITY_SSO_EXPECTED_ISSUER:http://localhost:8081/realms/jitsi-dev}
+    jwt-contour:
+      issuer: ${APP_SECURITY_JWT_ISSUER:}
+      audience: ${APP_SECURITY_JWT_AUDIENCE:}
+      role-claim: ${APP_SECURITY_JWT_ROLE_CLAIM:}
+      algorithm: ${APP_SECURITY_JWT_ALGORITHM:}
+      access-ttl-minutes: ${APP_SECURITY_JWT_ACCESS_TTL_MINUTES:0}
+      refresh-ttl-minutes: ${APP_SECURITY_JWT_REFRESH_TTL_MINUTES:0}
+  idempotency:
+    ttl: ${APP_IDEMPOTENCY_TTL:24h}
+    max-key-length: ${APP_IDEMPOTENCY_MAX_KEY_LENGTH:128}
+  frontend:
+    origin: ${APP_FRONTEND_ORIGIN:http://localhost:3000}
+  features:
+    bulk-invites-enabled: false
+    advanced-monitoring: false
+    config-sets-from-db: false
+  rooms:
+    valid-config-sets: ${APP_ROOMS_VALID_CONFIG_SETS:config-1,config-2}
+    config-sets:
+      config-1:
+        issuer: ${APP_MEETINGS_TOKEN_ISSUER:jitsi-portal}
+        audience: ${APP_MEETINGS_TOKEN_AUDIENCE:jitsi-meet}
+        role-claim: ${APP_MEETINGS_TOKEN_ROLE_CLAIM_NAME:role}
+      config-2:
+        issuer: ${APP_MEETINGS_TOKEN_ISSUER:jitsi-portal}
+        audience: ${APP_MEETINGS_TOKEN_AUDIENCE:jitsi-meet}
+        role-claim: ${APP_MEETINGS_TOKEN_ROLE_CLAIM_NAME:role}
+  meetings:
+    token:
+      issuer: ${APP_MEETINGS_TOKEN_ISSUER:jitsi-portal}
+      audience: ${APP_MEETINGS_TOKEN_AUDIENCE:jitsi-meet}
+      algorithm: ${APP_MEETINGS_TOKEN_ALGORITHM:HS256}
+      ttl-minutes: ${APP_MEETINGS_TOKEN_TTL_MINUTES:20}
+      signing-secret: ${APP_MEETINGS_TOKEN_SIGNING_SECRET:}
+      jwks-uri: ${APP_MEETINGS_TOKEN_JWKS_URI:}
+      role-claim-name: ${APP_MEETINGS_TOKEN_ROLE_CLAIM_NAME:role}
+      unknown-role-policy: ${APP_MEETINGS_TOKEN_UNKNOWN_ROLE_POLICY:deny-access}
+      join-url-template: ${APP_MEETINGS_TOKEN_JOIN_URL_TEMPLATE:https://meet.example/%s#jwt=%s}
+      known-meeting-ids: ${APP_MEETINGS_TOKEN_KNOWN_MEETING_IDS:}
+      blocked-subjects: ${APP_MEETINGS_TOKEN_BLOCKED_SUBJECTS:}
+  auth:
+    refresh:
+      atomic-store: ${APP_AUTH_REFRESH_ATOMIC_STORE:in-memory}
+      idle-ttl-minutes: ${APP_AUTH_REFRESH_IDLE_TTL_MINUTES:60}
+      revoked-token-ids: ${APP_AUTH_REFRESH_REVOKED_TOKEN_IDS:}
+  resilience:
+    invites:
+      redis:
+        retry:
+          max-retries: ${APP_RESILIENCE_INVITES_REDIS_RETRY_MAX_RETRIES:2}
+          delay: ${APP_RESILIENCE_INVITES_REDIS_RETRY_DELAY:100ms}
+          max-delay: ${APP_RESILIENCE_INVITES_REDIS_RETRY_MAX_DELAY:1s}
+        concurrency-limit: ${APP_RESILIENCE_INVITES_REDIS_CONCURRENCY_LIMIT:32}
+    auth-refresh:
+      redis:
+        retry:
+          max-retries: ${APP_RESILIENCE_AUTH_REFRESH_REDIS_RETRY_MAX_RETRIES:2}
+          delay: ${APP_RESILIENCE_AUTH_REFRESH_REDIS_RETRY_DELAY:100ms}
+          max-delay: ${APP_RESILIENCE_AUTH_REFRESH_REDIS_RETRY_MAX_DELAY:1s}
+        concurrency-limit: ${APP_RESILIENCE_AUTH_REFRESH_REDIS_CONCURRENCY_LIMIT:32}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info"

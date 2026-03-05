@@ -1,0 +1,39 @@
+spring:
+  mvc:
+    apiversion:
+      use:
+        path-segment: 1
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/jitsi}
+    username: ${SPRING_DATASOURCE_USERNAME:jitsi}
+    password: ${SPRING_DATASOURCE_PASSWORD:jitsi}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+
+app:
+  resilience:
+    invites:
+      redis:
+        retry:
+          max-retries: ${APP_RESILIENCE_INVITES_REDIS_RETRY_MAX_RETRIES:2}
+          delay: ${APP_RESILIENCE_INVITES_REDIS_RETRY_DELAY:100ms}
+          max-delay: ${APP_RESILIENCE_INVITES_REDIS_RETRY_MAX_DELAY:1s}
+        concurrency-limit: ${APP_RESILIENCE_INVITES_REDIS_CONCURRENCY_LIMIT:32}
+    auth-refresh:
+      redis:
+        retry:
+          max-retries: ${APP_RESILIENCE_AUTH_REFRESH_REDIS_RETRY_MAX_RETRIES:2}
+          delay: ${APP_RESILIENCE_AUTH_REFRESH_REDIS_RETRY_DELAY:100ms}
+          max-delay: ${APP_RESILIENCE_AUTH_REFRESH_REDIS_RETRY_MAX_DELAY:1s}
+        concurrency-limit: ${APP_RESILIENCE_AUTH_REFRESH_REDIS_CONCURRENCY_LIMIT:32}

@@ -1,0 +1,30 @@
+* text=auto eol=lf
+
+# Explicitly declare text files you want to always be normalized and converted
+# to native line endings on checkout.
+*.c text
+*.h text
+*.java text
+*.js text
+*.ts text
+*.json text
+*.md text
+*.xml text
+*.yml text
+*.yaml text
+*.properties text
+*.gradle text
+*.bat text eol=crlf
+*.sh text eol=lf
+
+# Denote all files that are truly binary and should not be modified.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.jar binary
+*.zip binary
+*.tar binary
+*.gz binary

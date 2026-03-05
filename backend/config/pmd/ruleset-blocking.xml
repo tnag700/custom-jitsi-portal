@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset
+    name="Jitsi Backend PMD Blocking Rules"
+    xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.github.io/pmd-6.0.0/ruleset_xml_schema.xsd"
+>
+  <description>
+    High-signal PMD rules used as CI blockers.
+    These checks focus on likely defects and maintainability risks.
+  </description>
+
+  <rule ref="category/java/bestpractices.xml/PreserveStackTrace" />
+  <rule ref="category/java/errorprone.xml/CloseResource" />
+  <rule ref="category/java/errorprone.xml/EmptyCatchBlock" />
+  <rule ref="category/java/errorprone.xml/AssignmentInOperand" />
+  <rule ref="category/java/errorprone.xml/EqualsNull" />
+  <rule ref="category/java/design.xml/CyclomaticComplexity">
+    <priority>2</priority>
+    <properties>
+      <property name="methodReportLevel" value="15" />
+      <property name="classReportLevel" value="120" />
+    </properties>
+  </rule>
+  <rule ref="category/java/design.xml/NPathComplexity">
+    <priority>2</priority>
+    <properties>
+      <property name="reportLevel" value="300" />
+    </properties>
+  </rule>
+</ruleset>

@@ -1,0 +1,24 @@
+app:
+  features:
+    bulk-invites-enabled: false
+    advanced-monitoring: false
+  meetings:
+    token:
+      issuer: https://portal.test.local
+      audience: jitsi-meet
+      role-claim-name: role
+      algorithm: HS256
+      ttl-minutes: 20
+      signing-secret: 01234567890123456789012345678901
+      jwks-uri: ""
+  auth:
+    refresh:
+      idle-ttl-minutes: 60
+  security:
+    jwt-contour:
+      issuer: https://portal.test.local
+      audience: jitsi-meet
+      role-claim: role
+      algorithm: HS256
+      access-ttl-minutes: 20
+      refresh-ttl-minutes: 60

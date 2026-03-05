@@ -1,0 +1,2499 @@
+openapi: 3.1.0
+info:
+  title: Jitsi Portal API
+  version: 0.1.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/v1/health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /api/v1/invites/exchange:
+    post:
+      summary: Exchange guest invite token for short-lived meeting access token
+      operationId: exchangeInvite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteExchangeRequest'
+      responses:
+        '200':
+          description: Invite exchanged successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteExchangeResponse'
+        '400':
+          description: Invalid invite exchange request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Invite or meeting not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '409':
+          description: Invite exhausted or room closed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '410':
+          description: Invite expired
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '500':
+          description: Configuration incompatible
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/auth/me:
+    get:
+      summary: Get current authenticated user profile
+      operationId: getAuthMe
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafeUserProfileResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/auth/refresh:
+    post:
+      summary: Refresh access token
+      operationId: refreshAccessToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRefreshRequest'
+      responses:
+        '200':
+          description: Token pair refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthRefreshResponse'
+        '400':
+          description: Invalid request payload
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Token revoked
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '409':
+          description: Refresh token reuse detected
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/auth/refresh/revoke:
+    post:
+      summary: Revoke refresh token by token id
+      operationId: revokeRefreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRefreshRevokeRequest'
+      responses:
+        '204':
+          description: Token revoked
+        '400':
+          description: Invalid request payload
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/meetings/upcoming:
+    get:
+      summary: List upcoming meetings for authenticated user cabinet
+      operationId: listUpcomingMeetings
+      responses:
+        '200':
+          description: Upcoming meeting cards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UpcomingMeetingCard'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/rooms:
+    post:
+      summary: Create a new room
+      operationId: createRoom
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoomRequest'
+      responses:
+        '201':
+          description: Room created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+        '400':
+          description: Invalid request or config set
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '409':
+          description: Room name conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+    get:
+      summary: List rooms for a tenant
+      operationId: listRooms
+      parameters:
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paged list of rooms
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedRoomResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/rooms/{roomId}:
+    get:
+      summary: Get room by ID
+      operationId: getRoom
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Room details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Room not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+    put:
+      summary: Update room
+      operationId: updateRoom
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoomRequest'
+      responses:
+        '200':
+          description: Room updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+        '400':
+          description: Invalid request or config set
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Room not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '409':
+          description: Room name conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+    delete:
+      summary: Delete room
+      operationId: deleteRoom
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Room deleted successfully
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Room not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '409':
+          description: Room has active meetings
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/rooms/{roomId}/close:
+    post:
+      summary: Close room
+      operationId: closeRoom
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Room closed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+        '400':
+          description: Room already closed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Room not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '409':
+          description: Room has active meetings
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/rooms/{roomId}/meetings:
+    post:
+      summary: Create a meeting in room
+      operationId: createMeeting
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMeetingRequest'
+      responses:
+        '201':
+          description: Meeting created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingResponse'
+        '400':
+          description: Invalid request or schedule
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Room not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/config-sets:
+    post:
+      summary: Create config set
+      operationId: createConfigSet
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateConfigSetRequest'
+      responses:
+        '201':
+          description: Config set created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigSetResponse'
+        '400':
+          description: Invalid payload
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          description: Name conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+    get:
+      summary: List config sets by tenant
+      operationId: listConfigSets
+      parameters:
+        - in: query
+          name: tenantId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 0
+        - in: query
+          name: size
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paged config sets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedConfigSetResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+  /api/v1/config-sets/{configSetId}:
+    get:
+      summary: Get config set by id
+      operationId: getConfigSet
+      parameters:
+        - in: path
+          name: configSetId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Config set details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigSetResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Config set not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+    put:
+      summary: Update config set
+      operationId: updateConfigSet
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: configSetId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateConfigSetRequest'
+      responses:
+        '200':
+          description: Config set updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigSetResponse'
+        '400':
+          description: Invalid payload
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Config set not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '409':
+          description: Name conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/config-sets/{configSetId}/activate:
+    post:
+      summary: Activate config set
+      operationId: activateConfigSet
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: configSetId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: tenantId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Config set activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigSetResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Config set not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '422':
+          description: Activation is not allowed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/config-sets/{configSetId}/deactivate:
+    post:
+      summary: Deactivate config set
+      operationId: deactivateConfigSet
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: configSetId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: tenantId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Config set deactivated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigSetResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Config set not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/config-sets/{configSetId}/rollout:
+    post:
+      summary: Rollout config set with dry-run validation
+      operationId: rolloutConfigSet
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: configSetId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: tenantId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Rollout completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigSetRolloutResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Config set not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '422':
+          description: Rollout validation failed because config is incompatible
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/config-sets/{configSetId}/compatibility:
+    get:
+      summary: Get config set compatibility diagnostics
+      operationId: getConfigSetCompatibility
+      parameters:
+        - in: path
+          name: configSetId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: tenantId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Compatibility diagnostics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigSetCompatibilityResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Config set not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/config-sets/{configSetId}/rollback:
+    post:
+      summary: Rollback config set to previous valid one
+      operationId: rollbackConfigSet
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: configSetId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: tenantId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: environmentType
+          required: true
+          schema:
+            type: string
+            enum: [DEV, TEST, PROD]
+      responses:
+        '200':
+          description: Rollback completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigSetRolloutResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Rollout or config set not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '422':
+          description: Rollback not allowed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/config-sets/rollouts/latest:
+    get:
+      summary: Get latest rollout by tenant and environment
+      operationId: getLatestConfigSetRollout
+      parameters:
+        - in: query
+          name: tenantId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: environmentType
+          required: true
+          schema:
+            type: string
+            enum: [DEV, TEST, PROD]
+      responses:
+        '200':
+          description: Latest rollout details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigSetRolloutResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Rollout not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/config-sets/active:
+    get:
+      summary: Get active config set by tenant and environment
+      operationId: getActiveConfigSet
+      parameters:
+        - in: query
+          name: tenantId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: environmentType
+          required: true
+          schema:
+            type: string
+            enum: [DEV, TEST, PROD]
+      responses:
+        '200':
+          description: Active config set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigSetResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Active config set not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/rooms/{roomId}/meetings:
+    get:
+      summary: List meetings by room
+      operationId: listMeetings
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paged list of meetings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedMeetingResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Room not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/meetings/{meetingId}/access-token:
+    post:
+      summary: Issue a short-lived access token for a meeting
+      operationId: issueMeetingAccessToken
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Access token issued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingAccessTokenResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/meetings/{meetingId}:
+    get:
+      summary: Get meeting by ID
+      operationId: getMeeting
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Meeting details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Meeting not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+    put:
+      summary: Update meeting
+      operationId: updateMeeting
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMeetingRequest'
+      responses:
+        '200':
+          description: Meeting updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingResponse'
+        '400':
+          description: Invalid request or schedule
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Meeting not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '409':
+          description: Meeting finalized
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/meetings/{meetingId}/cancel:
+    post:
+      summary: Cancel meeting
+      operationId: cancelMeeting
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Meeting canceled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Meeting not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '409':
+          description: Meeting finalized
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/meetings/{meetingId}/participants:
+    get:
+      summary: List participants assigned to a meeting
+      operationId: listMeetingParticipants
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of participant assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParticipantAssignmentResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Meeting not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+    post:
+      summary: Assign a participant to a meeting
+      operationId: assignMeetingParticipant
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignParticipantRequest'
+      responses:
+        '201':
+          description: Participant assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantAssignmentResponse'
+        '400':
+          description: Invalid role
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Meeting not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '409':
+          description: Role conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/meetings/{meetingId}/participants/{subjectId}:
+    put:
+      summary: Update participant role in a meeting
+      operationId: updateMeetingParticipant
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: subjectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateParticipantRoleRequest'
+      responses:
+        '200':
+          description: Participant role updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantAssignmentResponse'
+        '400':
+          description: Invalid role
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Meeting or assignment not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '409':
+          description: Role conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+    delete:
+      summary: Remove participant from a meeting
+      operationId: unassignMeetingParticipant
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: subjectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Participant removed successfully
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Meeting or assignment not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/meetings/{meetingId}/participants/bulk:
+    post:
+      summary: Bulk assign participants to a meeting
+      operationId: bulkAssignMeetingParticipants
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkAssignParticipantsRequest'
+      responses:
+        '201':
+          description: Participants assigned successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParticipantAssignmentResponse'
+        '400':
+          description: Invalid request or role
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Meeting not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/meetings/{meetingId}/invites:
+    post:
+      summary: Create invite for a meeting
+      operationId: createMeetingInvite
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInviteRequest'
+      responses:
+        '201':
+          description: Invite created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteResponse'
+        '400':
+          description: Invalid request payload
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Meeting not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '409':
+          description: Invite conflict or already revoked
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '410':
+          description: Invite expired or revoked
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+    get:
+      summary: List invites by meeting
+      operationId: listMeetingInvites
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paged invites list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedInviteResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Meeting not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/meetings/{meetingId}/invites/bulk:
+    post:
+      summary: Create meeting invites in bulk
+      operationId: createMeetingInvitesBulk
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkCreateInviteRequest'
+      responses:
+        '201':
+          description: Bulk invite operation completed without validation errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkInviteResponse'
+        '400':
+          description: Invalid request payload
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Meeting not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '409':
+          description: Meeting state does not allow issuing invites
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '422':
+          description: Partial validation failure (some rows are invalid)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/meetings/{meetingId}/invites/{inviteId}:
+    delete:
+      summary: Revoke invite by ID
+      operationId: revokeMeetingInvite
+      parameters:
+        - name: meetingId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: inviteId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Invite revoked successfully
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Meeting or invite not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '409':
+          description: Invite already revoked
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/profile/me:
+    get:
+      summary: Get current user profile
+      operationId: getMyProfile
+      security:
+        - oauth2: []
+      responses:
+        '200':
+          description: Profile found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '404':
+          description: Profile not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+    put:
+      summary: Create or update current user profile
+      operationId: upsertMyProfile
+      security:
+        - oauth2: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertProfileRequest'
+      responses:
+        '200':
+          description: Profile saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/users/search:
+    get:
+      summary: Search users by name and organization within tenant
+      operationId: searchUsers
+      security:
+        - oauth2: []
+      parameters:
+        - name: tenant_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 2
+        - name: organization
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results (max 50)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserProfileSummary'
+        '403':
+          description: Tenant access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+components:
+  schemas:
+    InviteExchangeRequest:
+      type: object
+      properties:
+        inviteToken:
+          type: string
+        displayName:
+          type: string
+      required:
+        - inviteToken
+    InviteExchangeResponse:
+      type: object
+      properties:
+        joinUrl:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        role:
+          type: string
+          enum: [participant]
+        meetingId:
+          type: string
+      required:
+        - joinUrl
+        - expiresAt
+        - role
+        - meetingId
+    MeetingAccessTokenResponse:
+      type: object
+      properties:
+        joinUrl:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        role:
+          type: string
+      required:
+        - joinUrl
+        - expiresAt
+        - role
+    SafeUserProfileResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        email:
+          type: string
+        tenant:
+          type: string
+        claims:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+        - id
+        - displayName
+        - email
+        - tenant
+        - claims
+    AuthRefreshRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+      required:
+        - refreshToken
+    AuthRefreshResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        role:
+          type: string
+          enum: [participant, moderator, host]
+        tokenType:
+          type: string
+          enum: [Bearer]
+      required:
+        - accessToken
+        - refreshToken
+        - expiresAt
+        - role
+        - tokenType
+    AuthRefreshRevokeRequest:
+      type: object
+      properties:
+        tokenId:
+          type: string
+      required:
+        - tokenId
+    UpcomingMeetingCard:
+      type: object
+      properties:
+        meetingId:
+          type: string
+        title:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        roomName:
+          type: string
+        joinAvailability:
+          type: string
+          enum: [available, scheduled]
+      required:
+        - meetingId
+        - title
+        - startsAt
+        - roomName
+        - joinAvailability
+    ProblemDetailResponse:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        properties:
+          type: object
+          properties:
+            errorCode:
+              type: string
+            traceId:
+              type: string
+          required:
+            - errorCode
+            - traceId
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN]
+          example: UP
+        compatibilityStatus:
+          type: string
+          enum: [COMPATIBLE, INCOMPATIBLE]
+          nullable: true
+        configSetId:
+          type: string
+          nullable: true
+        details:
+          type: string
+          nullable: true
+        traceId:
+          type: string
+          nullable: true
+        checkedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - status
+    CreateRoomRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        tenantId:
+          type: string
+        configSetId:
+          type: string
+      required:
+        - name
+        - tenantId
+        - configSetId
+    UpdateRoomRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        configSetId:
+          type: string
+    RoomResponse:
+      type: object
+      properties:
+        roomId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        tenantId:
+          type: string
+        configSetId:
+          type: string
+        status:
+          type: string
+          enum: [active, closed]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - roomId
+        - name
+        - tenantId
+        - configSetId
+        - status
+        - createdAt
+        - updatedAt
+    PagedRoomResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomResponse'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - content
+        - page
+        - pageSize
+        - totalElements
+        - totalPages
+    CreateMeetingRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        meetingType:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        allowGuests:
+          type: boolean
+        recordingEnabled:
+          type: boolean
+      required:
+        - title
+        - meetingType
+        - startsAt
+        - endsAt
+    UpdateMeetingRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        meetingType:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        allowGuests:
+          type: boolean
+        recordingEnabled:
+          type: boolean
+    MeetingResponse:
+      type: object
+      properties:
+        meetingId:
+          type: string
+        roomId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        meetingType:
+          type: string
+        configSetId:
+          type: string
+        status:
+          type: string
+          enum: [scheduled, canceled, ended]
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        allowGuests:
+          type: boolean
+        recordingEnabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - meetingId
+        - roomId
+        - title
+        - meetingType
+        - configSetId
+        - status
+        - startsAt
+        - endsAt
+        - allowGuests
+        - recordingEnabled
+        - createdAt
+        - updatedAt
+    PagedMeetingResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeetingResponse'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - content
+        - page
+        - pageSize
+        - totalElements
+        - totalPages
+    CreateConfigSetRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        tenantId:
+          type: string
+        environmentType:
+          type: string
+          enum: [DEV, TEST, PROD]
+        issuer:
+          type: string
+        audience:
+          type: string
+        algorithm:
+          type: string
+          enum: [HS256, HS384, HS512, RS256, RS384, RS512]
+        roleClaim:
+          type: string
+        signingSecret:
+          type: string
+        jwksUri:
+          type: string
+        accessTtlMinutes:
+          type: integer
+        refreshTtlMinutes:
+          type: integer
+        meetingsServiceUrl:
+          type: string
+      required:
+        - name
+        - tenantId
+        - environmentType
+        - issuer
+        - audience
+        - algorithm
+        - accessTtlMinutes
+        - meetingsServiceUrl
+    UpdateConfigSetRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateConfigSetRequest'
+    ConfigSetResponse:
+      type: object
+      properties:
+        configSetId:
+          type: string
+        name:
+          type: string
+        tenantId:
+          type: string
+        environmentType:
+          type: string
+          enum: [dev, test, prod]
+        issuer:
+          type: string
+        audience:
+          type: string
+        algorithm:
+          type: string
+        roleClaim:
+          type: string
+        signingSecret:
+          type: string
+          description: Always masked value (***), never plain secret
+        jwksUri:
+          type: string
+        accessTtlMinutes:
+          type: integer
+        refreshTtlMinutes:
+          type: integer
+        meetingsServiceUrl:
+          type: string
+        status:
+          type: string
+          enum: [draft, active, inactive]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - configSetId
+        - name
+        - tenantId
+        - environmentType
+        - issuer
+        - audience
+        - algorithm
+        - accessTtlMinutes
+        - meetingsServiceUrl
+        - status
+        - createdAt
+        - updatedAt
+    PagedConfigSetResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigSetResponse'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - content
+        - page
+        - pageSize
+        - totalElements
+        - totalPages
+    ConfigSetRolloutResponse:
+      type: object
+      properties:
+        rolloutId:
+          type: string
+        configSetId:
+          type: string
+        previousConfigSetId:
+          type: string
+          nullable: true
+        tenantId:
+          type: string
+        environmentType:
+          type: string
+          enum: [DEV, TEST, PROD]
+        status:
+          type: string
+          enum: [PENDING, VALIDATING, APPLYING, SUCCEEDED, FAILED, ROLLED_BACK]
+        validationErrors:
+          type: string
+          nullable: true
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        actorId:
+          type: string
+      required:
+        - rolloutId
+        - configSetId
+        - tenantId
+        - environmentType
+        - status
+        - startedAt
+        - actorId
+    ConfigSetCompatibilityResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [COMPATIBLE, INCOMPATIBLE]
+        mismatches:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigSetCompatibilityMismatchResponse'
+        checkedAt:
+          type: string
+          format: date-time
+        traceId:
+          type: string
+      required:
+        - status
+        - mismatches
+        - checkedAt
+        - traceId
+    ConfigSetCompatibilityMismatchResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+            - ISSUER_MISMATCH
+            - AUDIENCE_MISMATCH
+            - ROLE_CLAIM_MISMATCH
+            - ALGORITHM_KEY_SOURCE_MISMATCH
+            - ENDPOINT_MISMATCH
+            - API_VERSION_MISMATCH
+        message:
+          type: string
+        expected:
+          type: string
+          nullable: true
+        actual:
+          type: string
+          nullable: true
+      required:
+        - code
+        - message
+    AssignParticipantRequest:
+      type: object
+      properties:
+        subjectId:
+          type: string
+        role:
+          type: string
+          enum: [host, moderator, participant]
+      required:
+        - subjectId
+        - role
+    UpdateParticipantRoleRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [host, moderator, participant]
+      required:
+        - role
+    BulkAssignParticipantsRequest:
+      type: object
+      properties:
+        participants:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            properties:
+              subjectId:
+                type: string
+              role:
+                type: string
+                enum: [host, moderator, participant]
+            required:
+              - subjectId
+        defaultRole:
+          type: string
+          enum: [host, moderator, participant]
+      required:
+        - participants
+    ParticipantAssignmentResponse:
+      type: object
+      properties:
+        assignmentId:
+          type: string
+        meetingId:
+          type: string
+        subjectId:
+          type: string
+        role:
+          type: string
+          enum: [host, moderator, participant]
+        assignedAt:
+          type: string
+          format: date-time
+        assignedBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        fullName:
+          type: string
+          nullable: true
+          description: ФИО из профиля пользователя (null если профиль не заполнен)
+        organization:
+          type: string
+          nullable: true
+          description: Организация из профиля пользователя
+        position:
+          type: string
+          nullable: true
+          description: Должность из профиля пользователя
+      required:
+        - assignmentId
+        - meetingId
+        - subjectId
+        - role
+        - assignedAt
+        - assignedBy
+        - createdAt
+        - updatedAt
+    CreateInviteRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [participant, moderator]
+        maxUses:
+          type: integer
+          minimum: 1
+        expiresInHours:
+          type: integer
+          minimum: 1
+          maximum: 168
+      required:
+        - role
+    BulkInviteRecipient:
+      type: object
+      properties:
+        email:
+          type: string
+        userId:
+          type: string
+        role:
+          type: string
+          enum: [participant, moderator]
+        rowIndex:
+          type: integer
+      description: Exactly one of email or userId should be provided.
+    BulkCreateInviteRequest:
+      type: object
+      properties:
+        recipients:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/BulkInviteRecipient'
+        defaultTtlMinutes:
+          type: integer
+          minimum: 1
+          maximum: 10080
+        defaultMaxUses:
+          type: integer
+          minimum: 1
+        defaultRole:
+          type: string
+          enum: [participant, moderator]
+        duplicatePolicy:
+          type: string
+          enum: [SKIP_EXISTING, REPLACE]
+      required:
+        - recipients
+    BulkInviteCreatedItem:
+      type: object
+      properties:
+        inviteId:
+          type: string
+        token:
+          type: string
+        recipient:
+          type: string
+        role:
+          type: string
+          enum: [participant, moderator]
+      required:
+        - inviteId
+        - token
+        - recipient
+        - role
+    BulkInviteSkippedItem:
+      type: object
+      properties:
+        recipient:
+          type: string
+        reason:
+          type: string
+      required:
+        - recipient
+        - reason
+    BulkInviteErrorItem:
+      type: object
+      properties:
+        rowIndex:
+          type: integer
+        recipient:
+          type: string
+        errorCode:
+          type: string
+        message:
+          type: string
+      required:
+        - rowIndex
+        - errorCode
+        - message
+    BulkInviteSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+        created:
+          type: integer
+        skipped:
+          type: integer
+        failed:
+          type: integer
+      required:
+        - total
+        - created
+        - skipped
+        - failed
+    BulkInviteResponse:
+      type: object
+      properties:
+        created:
+          type: array
+          items:
+            $ref: '#/components/schemas/BulkInviteCreatedItem'
+        skipped:
+          type: array
+          items:
+            $ref: '#/components/schemas/BulkInviteSkippedItem'
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/BulkInviteErrorItem'
+        summary:
+          $ref: '#/components/schemas/BulkInviteSummary'
+      required:
+        - created
+        - skipped
+        - errors
+        - summary
+    InviteResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        meetingId:
+          type: string
+        token:
+          type: string
+        role:
+          type: string
+          enum: [participant, moderator]
+        maxUses:
+          type: integer
+        usedCount:
+          type: integer
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        valid:
+          type: boolean
+      required:
+        - id
+        - meetingId
+        - token
+        - role
+        - maxUses
+        - usedCount
+        - createdAt
+        - createdBy
+        - valid
+    PagedInviteResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InviteResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - items
+        - page
+        - size
+        - totalElements
+        - totalPages
+    UserProfileResponse:
+      type: object
+      properties:
+        subjectId:
+          type: string
+        tenantId:
+          type: string
+        fullName:
+          type: string
+        organization:
+          type: string
+        position:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - subjectId
+        - tenantId
+        - fullName
+        - organization
+        - position
+        - createdAt
+        - updatedAt
+    UpsertProfileRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 500
+        organization:
+          type: string
+          minLength: 2
+          maxLength: 500
+        position:
+          type: string
+          minLength: 2
+          maxLength: 500
+      required:
+        - fullName
+        - organization
+        - position
+    UserProfileSummary:
+      type: object
+      properties:
+        subjectId:
+          type: string
+        fullName:
+          type: string
+        organization:
+          type: string
+        position:
+          type: string
+      required:
+        - subjectId
+        - fullName
+        - organization
+        - position

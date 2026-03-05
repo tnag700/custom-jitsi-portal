@@ -1,0 +1,137 @@
+plugins {
+  id 'java'
+  id 'org.springframework.boot' version '4.0.2'
+  id 'io.spring.dependency-management' version '1.1.6'
+  id 'pmd'
+  id 'jacoco'
+}
+
+group = 'com.acme'
+version = '0.1.0'
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(25)
+  }
+}
+
+repositories {
+  mavenCentral()
+}
+
+def pmdToolVersion = '6.55.0'
+
+dependencies {
+  implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+  implementation 'org.springframework.boot:spring-boot-starter-validation'
+  implementation 'org.springframework.boot:spring-boot-starter-security'
+  implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
+  implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-resource-server'
+  implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+  implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+  implementation 'org.springframework.boot:spring-boot-starter-flyway'
+  implementation 'org.springframework.boot:spring-boot-starter-actuator'
+  implementation 'org.springframework.retry:spring-retry:2.0.11'
+  // implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j:3.2.0'
+  implementation 'org.flywaydb:flyway-database-postgresql'
+  runtimeOnly 'org.postgresql:postgresql'
+
+  testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+  testImplementation 'org.springframework.boot:spring-boot-starter-test'
+  testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+  testImplementation 'org.testcontainers:junit-jupiter:1.20.4'
+  testImplementation 'com.h2database:h2'
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+  useJUnitPlatform()
+  finalizedBy tasks.named('jacocoTestReport')
+}
+
+jacoco {
+  toolVersion = '0.8.13'
+}
+
+tasks.named('jacocoTestReport') {
+  dependsOn tasks.named('test')
+
+  reports {
+    xml.required = true
+    html.required = true
+    csv.required = false
+  }
+}
+
+tasks.register('coverage') {
+  group = LifecycleBasePlugin.VERIFICATION_GROUP
+  description = 'Runs tests and generates JaCoCo coverage reports.'
+  dependsOn tasks.named('jacocoTestReport')
+}
+
+pmd {
+  toolVersion = pmdToolVersion
+  consoleOutput = true
+  ignoreFailures = false
+  // Blocking PMD profile for CI gate.
+  ruleSetFiles = files("$projectDir/config/pmd/ruleset-blocking.xml")
+  ruleSets = []
+}
+
+tasks.withType(Pmd).configureEach {
+  classpath = files()
+
+  reports {
+    xml.required = true
+    html.required = true
+  }
+}
+
+tasks.register('pmdFullAudit', Pmd) {
+  group = LifecycleBasePlugin.VERIFICATION_GROUP
+  description = 'Runs full PMD profile for audit reporting without failing the build.'
+
+  source = sourceSets.main.allJava
+  classpath = files()
+  ignoreFailures = true
+  ruleSetFiles = files(
+      "$projectDir/config/pmd/ruleset.xml",
+      "$projectDir/config/pmd/ruleset-project.xml"
+  )
+  ruleSets = []
+
+  reports {
+    xml.required = true
+    html.required = true
+    xml.outputLocation = layout.buildDirectory.file('reports/pmd/full-audit.xml').get().asFile
+    html.outputLocation = layout.buildDirectory.file('reports/pmd/full-audit.html').get().asFile
+  }
+}
+
+tasks.register('cpdCheck', JavaExec) {
+  group = LifecycleBasePlugin.VERIFICATION_GROUP
+  description = 'Runs PMD CPD duplicate code detection for Java sources.'
+
+  classpath = configurations.pmd
+  mainClass = 'net.sourceforge.pmd.cpd.CPD'
+
+  args(
+    '--language', 'java',
+    '--minimum-tokens', '120',
+    '--dir', file('src/main/java').absolutePath,
+    '--format', 'xml',
+    '--skip-lexical-errors'
+  )
+
+  def reportFile = layout.buildDirectory.file('reports/cpd/cpd.xml')
+
+  doFirst {
+    def report = reportFile.get().asFile
+    report.parentFile.mkdirs()
+    standardOutput = new FileOutputStream(report)
+  }
+}
+
+tasks.named('check') {
+  dependsOn tasks.named('cpdCheck')
+}

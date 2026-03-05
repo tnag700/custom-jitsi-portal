@@ -1,0 +1,215 @@
+services:
+  frontend:
+    build:
+      context: ./frontend-qwik
+      args:
+        VITE_API_URL: http://localhost:8080/api/v1
+    environment:
+      - API_URL=http://backend:8080/api/v1
+      - PUBLIC_API_URL=http://localhost:8080/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/jitsi
+      - SPRING_DATASOURCE_USERNAME=jitsi
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD?Set SPRING_DATASOURCE_PASSWORD}
+      - APP_MEETINGS_TOKEN_ISSUER=http://localhost:3000
+      - APP_MEETINGS_TOKEN_JOIN_URL_TEMPLATE=https://localhost:8443/%s#jwt=%s
+      - APP_MEETINGS_TOKEN_AUDIENCE=jitsi-meet
+      - APP_MEETINGS_TOKEN_ROLE_CLAIM_NAME=role
+      - APP_MEETINGS_TOKEN_ALGORITHM=HS256
+      - APP_MEETINGS_TOKEN_TTL_MINUTES=20
+      - APP_AUTH_REFRESH_IDLE_TTL_MINUTES=60
+      - APP_MEETINGS_TOKEN_SIGNING_SECRET=${APP_MEETINGS_TOKEN_SIGNING_SECRET:-01234567890123456789012345678901}
+      - APP_SECURITY_JWT_ISSUER=http://localhost:3000
+      - APP_SECURITY_JWT_AUDIENCE=jitsi-meet
+      - APP_SECURITY_JWT_ROLE_CLAIM=role
+      - APP_SECURITY_JWT_ALGORITHM=HS256
+      - APP_SECURITY_JWT_ACCESS_TTL_MINUTES=20
+      - APP_SECURITY_JWT_REFRESH_TTL_MINUTES=60
+      - SSO_AUTHORIZATION_URI=http://localhost:8081/realms/jitsi-dev/protocol/openid-connect/auth
+      - SSO_TOKEN_URI=http://keycloak:8080/realms/jitsi-dev/protocol/openid-connect/token
+      - SSO_JWK_SET_URI=http://keycloak:8080/realms/jitsi-dev/protocol/openid-connect/certs
+      - SSO_USER_INFO_URI=http://keycloak:8080/realms/jitsi-dev/protocol/openid-connect/userinfo
+      - APP_SECURITY_SSO_EXPECTED_ISSUER=http://localhost:8081/realms/jitsi-dev
+      - APP_FRONTEND_ORIGIN=http://localhost:3000
+      - SSO_CLIENT_ID=${SSO_CLIENT_ID:-jitsi-backend}
+      - SSO_CLIENT_SECRET=${SSO_CLIENT_SECRET:-jitsi-dev-client-secret}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  swagger-ui:
+    image: swaggerapi/swagger-ui:v5.17.14
+    environment:
+      - SWAGGER_JSON=/tmp/openapi.yaml
+    volumes:
+      - ./openapi.yaml:/tmp/openapi.yaml:ro
+    ports:
+      - "8082:8080"
+
+  db:
+    image: postgres:18.1
+    environment:
+      - POSTGRES_DB=jitsi
+      - POSTGRES_USER=jitsi
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Set POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jitsi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8.4
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1.2
+    command: ["start-dev", "--import-realm"]
+    environment:
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN?Set KEYCLOAK_ADMIN}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD?Set KEYCLOAK_ADMIN_PASSWORD}
+      - KC_HOSTNAME=http://localhost:8081
+      - KC_HOSTNAME_STRICT=false
+    volumes:
+      - ./pilot/keycloak/realm:/opt/keycloak/data/import:ro
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8080'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  jitsi-web:
+    image: jitsi/web:stable-10741
+    ports:
+      - "8000:80"
+      - "8443:443"
+    environment:
+      - ENABLE_LETSENCRYPT=0
+      - PUBLIC_URL=https://localhost:8443
+      - XMPP_DOMAIN=meet.jitsi
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_BOSH_URL_BASE=http://jitsi-prosody:5280
+      - XMPP_MUC_DOMAIN=muc.meet.jitsi
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
+      - XMPP_GUEST_DOMAIN=guest.meet.jitsi
+      - JVB_BREWERY_MUC=jvbbrewery
+      - JICOFO_AUTH_USER=focus
+      - JICOFO_AUTH_PASSWORD=focus
+      - JVB_AUTH_USER=jvb
+      - JVB_AUTH_PASSWORD=jvb
+      - TZ=UTC
+    volumes:
+      - ./pilot/jitsi/web/custom-config.js:/config/custom-config.js:ro
+    depends_on:
+      - jitsi-prosody
+      - jitsi-jicofo
+      - jitsi-jvb
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  jitsi-prosody:
+    image: jitsi/prosody:stable-10741
+    environment:
+      - XMPP_DOMAIN=meet.jitsi
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_MUC_DOMAIN=muc.meet.jitsi
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
+      - XMPP_GUEST_DOMAIN=guest.meet.jitsi
+      - JICOFO_AUTH_USER=focus
+      - JICOFO_AUTH_PASSWORD=focus
+      - JVB_AUTH_USER=jvb
+      - JVB_AUTH_PASSWORD=jvb
+      - TZ=UTC
+    healthcheck:
+      test: ["CMD", "prosodyctl", "--config", "/config/prosody.cfg.lua", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      default:
+        aliases:
+          - meet.jitsi
+          - auth.meet.jitsi
+          - xmpp.meet.jitsi
+          - muc.meet.jitsi
+          - internal-muc.meet.jitsi
+          - guest.meet.jitsi
+
+  jitsi-jicofo:
+    image: jitsi/jicofo:stable-10741
+    environment:
+      - JICOFO_AUTH_USER=focus
+      - JICOFO_AUTH_PASSWORD=focus
+      - XMPP_DOMAIN=meet.jitsi
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
+      - JICOFO_COMPONENT_SECRET=focussecret
+      - TZ=UTC
+    depends_on:
+      - jitsi-prosody
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8888'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  jitsi-jvb:
+    image: jitsi/jvb:stable-10741
+    environment:
+      - JVB_AUTH_USER=jvb
+      - JVB_AUTH_PASSWORD=jvb
+      - XMPP_DOMAIN=meet.jitsi
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
+      - JVB_BREWERY_MUC=jvbbrewery
+      - JVB_PORT=10000
+      - TZ=UTC
+    depends_on:
+      - jitsi-prosody
+    ports:
+      - "10000:10000/udp"
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "ss -lun | grep -q 10000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

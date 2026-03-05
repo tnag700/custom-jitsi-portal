@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@tanstack/svelte-query": "^6.0.18",
+    "@upstash/context7-mcp": "^2.1.2"
+  }
+}
