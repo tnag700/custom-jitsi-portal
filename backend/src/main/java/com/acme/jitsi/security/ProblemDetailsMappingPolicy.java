@@ -1,6 +1,5 @@
 package com.acme.jitsi.security;
 
-import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
 import org.springframework.http.HttpStatus;
 
 public interface ProblemDetailsMappingPolicy {
@@ -11,7 +10,7 @@ public interface ProblemDetailsMappingPolicy {
 
   ProblemDefinition mapSecurityAccessDenied();
 
-  ProblemDefinition mapMeetingTokenException(MeetingTokenException exception);
+  ProblemDefinition mapTokenException(HttpStatus status, String errorCode, String detail);
 
   String resolveValidationErrorCode(String requestUri);
 

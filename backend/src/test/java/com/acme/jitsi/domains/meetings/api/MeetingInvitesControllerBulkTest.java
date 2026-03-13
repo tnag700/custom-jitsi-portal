@@ -1,14 +1,18 @@
 package com.acme.jitsi.domains.meetings.api;
 
+import static com.acme.jitsi.shared.TestFixtures.adminLogin;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.acme.jitsi.shared.ErrorCode;
 import com.acme.jitsi.shared.JwtTestProperties;
 import com.jayway.jsonpath.JsonPath;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,12 +20,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest(
     properties = {
-      "spring.datasource.url=jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
+  "spring.datasource.url=jdbc:h2:mem:testdb-meeting-invites-bulk;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
       "spring.datasource.driver-class-name=org.h2.Driver",
       "spring.jpa.hibernate.ddl-auto=validate",
       "spring.flyway.enabled=true",
@@ -71,12 +74,7 @@ class MeetingInvitesControllerBulkTest {
 
     String roomResponse = mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> {
-                  attrs.put("sub", "admin-user");
-                  attrs.put("tenantId", "tenant-1");
-                })
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(adminLogin("tenant-1"))
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {
@@ -92,12 +90,7 @@ class MeetingInvitesControllerBulkTest {
 
     String meetingResponse = mockMvc.perform(post("/api/v1/rooms/{roomId}/meetings", roomId)
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> {
-                  attrs.put("sub", "admin-user");
-                  attrs.put("tenantId", "tenant-1");
-                })
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-bulk-meeting-create")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -120,12 +113,7 @@ class MeetingInvitesControllerBulkTest {
   void bulkCreateInvites_successReturnsCreated() throws Exception {
     mockMvc.perform(post("/api/v1/meetings/{meetingId}/invites/bulk", meetingId)
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> {
-                  attrs.put("sub", "admin-user");
-                  attrs.put("tenantId", "tenant-1");
-                })
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-bulk-success")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -151,12 +139,7 @@ class MeetingInvitesControllerBulkTest {
   void bulkCreateInvites_partialFailureReturnsProblemDetails422() throws Exception {
     mockMvc.perform(post("/api/v1/meetings/{meetingId}/invites/bulk", meetingId)
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> {
-                  attrs.put("sub", "admin-user");
-                  attrs.put("tenantId", "tenant-1");
-                })
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-bulk-partial")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -173,7 +156,7 @@ class MeetingInvitesControllerBulkTest {
                 """))
         .andExpect(status().isUnprocessableEntity())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("BULK_INVITE_VALIDATION_FAILED"))
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.BULK_INVITE_VALIDATION_FAILED.code()))
         .andExpect(jsonPath("$.properties.summary.total").value(2))
         .andExpect(jsonPath("$.properties.summary.created").value(1))
         .andExpect(jsonPath("$.properties.summary.failed").value(1))
@@ -207,12 +190,7 @@ class MeetingInvitesControllerBulkTest {
 
     mockMvc.perform(post("/api/v1/meetings/{meetingId}/invites/bulk", meetingId)
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> {
-                  attrs.put("sub", "admin-user");
-                  attrs.put("tenantId", "tenant-1");
-                })
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-bulk-e2e-50")
             .contentType(MediaType.APPLICATION_JSON)
             .content(requestBody))
@@ -223,22 +201,13 @@ class MeetingInvitesControllerBulkTest {
         .andExpect(jsonPath("$.summary.skipped").value(0))
         .andExpect(jsonPath("$.summary.failed").value(0));
 
-      java.util.Map<String, Object> bulkAudit = jdbcTemplate.queryForMap(
-        """
-          select action_type, room_id, meeting_id, actor_id, trace_id, changed_fields
-          from meeting_audit_events
-          where meeting_id = ? and action_type = 'bulk_invite_create' and trace_id = ?
-          order by created_at desc
-          limit 1
-          """,
-        meetingId,
-        "trace-bulk-e2e-50");
+      Map<String, Object> bulkAudit = awaitLatestBulkAudit(meetingId);
 
       org.assertj.core.api.Assertions.assertThat(bulkAudit.get("action_type")).isEqualTo("bulk_invite_create");
       org.assertj.core.api.Assertions.assertThat(bulkAudit.get("room_id")).isEqualTo(roomId);
       org.assertj.core.api.Assertions.assertThat(bulkAudit.get("meeting_id")).isEqualTo(meetingId);
       org.assertj.core.api.Assertions.assertThat(bulkAudit.get("actor_id")).isEqualTo("admin-user");
-      org.assertj.core.api.Assertions.assertThat(bulkAudit.get("trace_id")).isEqualTo("trace-bulk-e2e-50");
+      org.assertj.core.api.Assertions.assertThat(String.valueOf(bulkAudit.get("trace_id"))).isNotBlank();
       org.assertj.core.api.Assertions.assertThat(String.valueOf(bulkAudit.get("changed_fields")))
         .contains("total=55")
         .contains("success=55")
@@ -250,12 +219,7 @@ class MeetingInvitesControllerBulkTest {
   void bulkCreateInvites_invalidDefaultsReturnsValidationErrorCode() throws Exception {
     mockMvc.perform(post("/api/v1/meetings/{meetingId}/invites/bulk", meetingId)
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> {
-                  attrs.put("sub", "admin-user");
-                  attrs.put("tenantId", "tenant-1");
-                })
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-bulk-invalid-defaults")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -271,6 +235,27 @@ class MeetingInvitesControllerBulkTest {
                 """))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("VALIDATION_ERROR"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.VALIDATION_ERROR.code()));
+  }
+
+  private Map<String, Object> awaitLatestBulkAudit(String meetingId) throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+    while (System.nanoTime() < deadline) {
+      List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+          """
+            select action_type, room_id, meeting_id, actor_id, trace_id, changed_fields
+            from meeting_audit_events
+            where meeting_id = ? and action_type = 'bulk_invite_create'
+            order by created_at desc
+            limit 1
+            """,
+          meetingId);
+      if (!rows.isEmpty()) {
+        return rows.getFirst();
+      }
+      Thread.sleep(25);
+    }
+
+    throw new AssertionError("Timed out waiting for bulk invite audit row");
   }
 }

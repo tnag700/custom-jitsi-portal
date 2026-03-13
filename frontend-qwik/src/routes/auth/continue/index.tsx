@@ -1,21 +1,18 @@
 import { component$ } from "@qwik.dev/core";
 import { routeLoader$ } from "@qwik.dev/router";
 import { AuthServiceError, fetchAuthMe } from "~/lib/domains/auth";
-
-const DEFAULT_API_URL = "http://localhost:8080/api/v1";
+import { buildServerRequestContext } from "~/lib/shared/routes/server-handlers";
 
 export const useAuthContinue = routeLoader$(
-  async ({ cookie, env, sharedMap, redirect }) => {
-    const sessionCookie = cookie.get("JSESSIONID")?.value;
-    if (!sessionCookie) {
+  async ({ cookie, sharedMap, redirect }) => {
+    const requestContext = buildServerRequestContext({ sharedMap, cookie });
+    if (!requestContext.sessionCookie) {
       throw redirect(302, "/auth?error=AUTH_REQUIRED");
     }
 
-    const apiUrl = env.get("API_URL") || DEFAULT_API_URL;
-
     let profile;
     try {
-      profile = await fetchAuthMe(sessionCookie, apiUrl);
+      profile = await fetchAuthMe(requestContext);
     } catch (error) {
       if (error instanceof AuthServiceError) {
         const errorCode = encodeURIComponent(error.payload.errorCode);

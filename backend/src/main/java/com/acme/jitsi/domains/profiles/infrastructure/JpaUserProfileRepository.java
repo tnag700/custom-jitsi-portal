@@ -4,6 +4,8 @@ import com.acme.jitsi.domains.profiles.service.UserProfile;
 import com.acme.jitsi.domains.profiles.service.UserProfileRepository;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -36,7 +38,8 @@ class JpaUserProfileRepository implements UserProfileRepository {
 
   @Override
   public List<UserProfile> searchByTenantId(String tenantId, String query, String organization, int limit) {
-    return jpaRepository.searchByTenantId(tenantId, query, organization, limit).stream()
+    return jpaRepository.searchByTenantId(tenantId, query, organization,
+        PageRequest.of(0, limit, Sort.by("fullName").ascending())).stream()
         .map(UserProfileEntity::toDomain)
         .toList();
   }

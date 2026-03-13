@@ -58,12 +58,26 @@ class SearchUsersUseCaseTest {
     UserProfile p1 = new UserProfile(
         "id-1", "sub-1", "tenant-1", "Петров", "ФГБУ", "Инженер",
         Instant.now(), Instant.now());
-    when(repository.searchByTenantId("tenant-1", null, "ФГБУ", 50))
+    when(repository.searchByTenantId("tenant-1", "", "ФГБУ", 50))
         .thenReturn(List.of(p1));
 
     List<UserProfile> result = useCase.execute(new SearchUsersQuery("tenant-1", null, "ФГБУ"));
 
     assertThat(result).hasSize(1);
     assertThat(result.get(0).organization()).isEqualTo("ФГБУ");
+  }
+
+  @Test
+  void executeTreatsMissingQueryAsUnfilteredSearch() {
+    UserProfile p1 = new UserProfile(
+        "id-1", "sub-1", "tenant-1", "Петров", "ФГБУ", "Инженер",
+        Instant.now(), Instant.now());
+    when(repository.searchByTenantId("tenant-1", "", null, 50))
+        .thenReturn(List.of(p1));
+
+    List<UserProfile> result = useCase.execute(new SearchUsersQuery("tenant-1", null, null));
+
+    assertThat(result).hasSize(1);
+    assertThat(result.get(0).fullName()).isEqualTo("Петров");
   }
 }

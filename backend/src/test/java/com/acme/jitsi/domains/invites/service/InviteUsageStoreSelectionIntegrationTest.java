@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.acme.jitsi.domains.meetings.service.MeetingStateGuard;
 import com.acme.jitsi.domains.store.StoreSelectionStrategyFactory;
 import java.time.Instant;
 import java.util.List;
@@ -20,9 +19,9 @@ class InviteUsageStoreSelectionIntegrationTest {
   void consumesInviteInInMemoryMode() {
     InviteValidationService service = createService("in-memory", null);
 
-    InviteValidationService.InviteResolution resolution = service.validateAndConsume("invite-it");
+    InviteReservation reservation = service.reserve("invite-it");
 
-    assertThat(resolution.meetingId()).isEqualTo("meeting-a");
+    assertThat(reservation.meetingId()).isEqualTo("meeting-a");
   }
 
   @Test
@@ -39,9 +38,9 @@ class InviteUsageStoreSelectionIntegrationTest {
 
     InviteValidationService service = createService("redis", provider);
 
-    InviteValidationService.InviteResolution resolution = service.validateAndConsume("invite-it");
+    InviteReservation reservation = service.reserve("invite-it");
 
-    assertThat(resolution.meetingId()).isEqualTo("meeting-a");
+    assertThat(reservation.meetingId()).isEqualTo("meeting-a");
   }
 
   private InviteValidationService createService(
@@ -82,7 +81,7 @@ class InviteUsageStoreSelectionIntegrationTest {
         new InviteRevokedValidator(),
         new InviteExpirationValidator(),
         new InviteMeetingKnownValidator(),
-        new InviteMeetingStateValidator(mock(MeetingStateGuard.class)),
+        new InviteMeetingStateValidator(mock(InviteMeetingStatePort.class)),
         new InviteUsageLimitValidator()));
   }
 }

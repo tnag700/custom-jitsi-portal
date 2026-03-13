@@ -7,8 +7,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import com.acme.jitsi.domains.meetings.service.MeetingStateGuard;
-import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
+import com.acme.jitsi.shared.ErrorCode;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -16,10 +15,10 @@ import org.springframework.http.HttpStatus;
 
 class InviteMeetingStateValidatorTest {
 
-  private final MeetingStateGuard meetingStateGuard = mock(MeetingStateGuard.class);
+    private final InviteMeetingStatePort inviteMeetingStatePort = mock(InviteMeetingStatePort.class);
 
   private final InviteMeetingStateValidator validator =
-      new InviteMeetingStateValidator(meetingStateGuard);
+      new InviteMeetingStateValidator(inviteMeetingStatePort);
 
   @Test
   void rejectsClosedMeeting() {
@@ -33,19 +32,19 @@ class InviteMeetingStateValidatorTest {
     InviteValidationContext context = InviteValidationTestFixtures.context(invite.token(), properties);
     context.setInvite(invite);
 
-    doThrow(new MeetingTokenException(HttpStatus.CONFLICT, "MEETING_ENDED", "Встреча завершена."))
-      .when(meetingStateGuard)
+    doThrow(new InviteExchangeException(HttpStatus.CONFLICT, ErrorCode.MEETING_ENDED.code(), "Встреча завершена."))
+      .when(inviteMeetingStatePort)
       .assertJoinAllowed("meeting-closed");
 
     assertThatThrownBy(() -> validator.validate(context))
-        .isInstanceOf(MeetingTokenException.class)
+        .isInstanceOf(InviteExchangeException.class)
         .satisfies(error -> {
-          MeetingTokenException ex = (MeetingTokenException) error;
+          InviteExchangeException ex = (InviteExchangeException) error;
           assertThat(ex.status()).isEqualTo(HttpStatus.CONFLICT);
-          assertThat(ex.errorCode()).isEqualTo("MEETING_ENDED");
+          assertThat(ex.errorCode()).isEqualTo(ErrorCode.MEETING_ENDED.code());
         });
 
-    verify(meetingStateGuard).assertJoinAllowed("meeting-closed");
+    verify(inviteMeetingStatePort).assertJoinAllowed("meeting-closed");
   }
 
   @Test
@@ -60,19 +59,19 @@ class InviteMeetingStateValidatorTest {
     InviteValidationContext context = InviteValidationTestFixtures.context(invite.token(), properties);
     context.setInvite(invite);
 
-    doThrow(new MeetingTokenException(HttpStatus.CONFLICT, "MEETING_CANCELED", "Встреча отменена."))
-      .when(meetingStateGuard)
+    doThrow(new InviteExchangeException(HttpStatus.CONFLICT, ErrorCode.MEETING_CANCELED.code(), "Встреча отменена."))
+      .when(inviteMeetingStatePort)
       .assertJoinAllowed("meeting-canceled");
 
     assertThatThrownBy(() -> validator.validate(context))
-        .isInstanceOf(MeetingTokenException.class)
+        .isInstanceOf(InviteExchangeException.class)
         .satisfies(error -> {
-          MeetingTokenException ex = (MeetingTokenException) error;
+          InviteExchangeException ex = (InviteExchangeException) error;
           assertThat(ex.status()).isEqualTo(HttpStatus.CONFLICT);
-          assertThat(ex.errorCode()).isEqualTo("MEETING_CANCELED");
+          assertThat(ex.errorCode()).isEqualTo(ErrorCode.MEETING_CANCELED.code());
         });
 
-    verify(meetingStateGuard).assertJoinAllowed("meeting-canceled");
+    verify(inviteMeetingStatePort).assertJoinAllowed("meeting-canceled");
   }
 
   @Test
@@ -87,10 +86,10 @@ class InviteMeetingStateValidatorTest {
     InviteValidationContext context = InviteValidationTestFixtures.context(invite.token(), properties);
     context.setInvite(invite);
 
-    doNothing().when(meetingStateGuard).assertJoinAllowed("meeting-open");
+    doNothing().when(inviteMeetingStatePort).assertJoinAllowed("meeting-open");
 
     validator.validate(context);
 
-    verify(meetingStateGuard).assertJoinAllowed("meeting-open");
+    verify(inviteMeetingStatePort).assertJoinAllowed("meeting-open");
   }
 }

@@ -1,5 +1,7 @@
 package com.acme.jitsi.domains.meetings.api;
 
+import com.acme.jitsi.shared.ErrorCode;
+
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -49,7 +51,9 @@ class MeetingAccessTokenControllerDenyPolicyTest {
             .with(csrf())
             .with(oauth2Login().attributes(attrs -> attrs.put("sub", "u-no-assignment"))))
         .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$.properties.errorCode").value("ACCESS_DENIED"))
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ACCESS_DENIED.code()))
         .andExpect(jsonPath("$.properties.traceId").isNotEmpty());
   }
 }
+
+

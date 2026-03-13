@@ -22,6 +22,8 @@ export interface PagedInviteResponse {
 
 export interface CreateInviteRequest {
   role: "participant" | "moderator";
+  recipientEmail?: string;
+  recipientSubjectId?: string;
   maxUses?: number;
   expiresInHours?: number;
 }

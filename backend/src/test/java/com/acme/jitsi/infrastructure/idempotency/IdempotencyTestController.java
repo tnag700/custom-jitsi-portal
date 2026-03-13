@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Profile("test")
 @RestController
 @RequestMapping(value = "/api/v1/test")
-class IdempotencyTestController {
+public class IdempotencyTestController {
 
   @Idempotent
   @PostMapping("/idempotent")

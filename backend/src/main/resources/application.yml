@@ -1,6 +1,9 @@
 spring:
   application:
     name: jitsi-backend
+  doc:
+    api-docs:
+      version: openapi_3_1
   mvc:
     apiversion:
       use:
@@ -26,7 +29,16 @@ spring:
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             scope: openid,profile,email
 
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  paths-to-match:
+    - /api/**
+
 app:
+  openapi:
+    server-url: ${APP_OPENAPI_SERVER_URL:http://localhost:8080}
   security:
     sso:
       expected-issuer: ${APP_SECURITY_SSO_EXPECTED_ISSUER:http://localhost:8081/realms/jitsi-dev}
@@ -40,6 +52,10 @@ app:
   idempotency:
     ttl: ${APP_IDEMPOTENCY_TTL:24h}
     max-key-length: ${APP_IDEMPOTENCY_MAX_KEY_LENGTH:128}
+  async:
+    core-pool-size: ${APP_ASYNC_CORE_POOL_SIZE:2}
+    max-pool-size: ${APP_ASYNC_MAX_POOL_SIZE:10}
+    queue-capacity: ${APP_ASYNC_QUEUE_CAPACITY:500}
   frontend:
     origin: ${APP_FRONTEND_ORIGIN:http://localhost:3000}
   features:
@@ -76,6 +92,11 @@ app:
       idle-ttl-minutes: ${APP_AUTH_REFRESH_IDLE_TTL_MINUTES:60}
       revoked-token-ids: ${APP_AUTH_REFRESH_REVOKED_TOKEN_IDS:}
   resilience:
+    meetings:
+      consume-invite:
+        retry:
+          max-attempts: ${APP_RESILIENCE_MEETINGS_CONSUME_INVITE_RETRY_MAX_ATTEMPTS:3}
+          delay-ms: ${APP_RESILIENCE_MEETINGS_CONSUME_INVITE_RETRY_DELAY_MS:100}
     invites:
       redis:
         retry:
@@ -92,7 +113,31 @@ app:
         concurrency-limit: ${APP_RESILIENCE_AUTH_REFRESH_REDIS_CONCURRENCY_LIMIT:32}
 
 management:
+  otlp:
+    metrics:
+      export:
+        enabled: ${MANAGEMENT_OTLP_METRICS_EXPORT_ENABLED:false}
+  tracing:
+    sampling:
+      probability: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:1.0}
+    export:
+      otlp:
+        enabled: ${MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED:false}
+  opentelemetry:
+    tracing:
+      export:
+        schedule-delay: ${MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_SCHEDULE_DELAY:5s}
+        timeout: ${MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_TIMEOUT:30s}
+        otlp:
+          endpoint: "${MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT:http://localhost:4318/v1/traces}"
+          transport: "${MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_TRANSPORT:http}"
+          connect-timeout: ${MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_CONNECT_TIMEOUT:1s}
+          timeout: ${MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_TIMEOUT:10s}
   endpoints:
     web:
       exposure:
         include: "health,info"
+
+logging:
+  pattern:
+    correlation: "[traceId=%X{traceId:-}, spanId=%X{spanId:-}] "

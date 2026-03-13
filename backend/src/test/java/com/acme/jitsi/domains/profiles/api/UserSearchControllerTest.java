@@ -122,6 +122,23 @@ class UserSearchControllerTest {
         .andExpect(jsonPath("$[0].organization").value("ФГБУ"));
   }
 
+  @Test
+  void searchUsersReturnsAllTenantUsersWhenQueryIsOmitted() throws Exception {
+    createProfile("sub-1", "tenant-1", "Иванов Иван", "МВД", "Оперативник");
+    createProfile("sub-2", "tenant-1", "Петров Пётр", "ФГБУ", "Инженер");
+
+    mockMvc.perform(get("/api/v1/users/search")
+            .param("tenant_id", "tenant-1")
+            .with(oauth2Login()
+                .attributes(attrs -> {
+                  attrs.put("sub", "admin-user");
+                  attrs.put("tenantId", "tenant-1");
+                })
+                .authorities(new SimpleGrantedAuthority("ROLE_user"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(2));
+  }
+
   // Tenant isolation
   @Test
   void searchUsersDeniedForDifferentTenant() throws Exception {

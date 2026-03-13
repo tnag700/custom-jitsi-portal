@@ -1,5 +1,6 @@
 package com.acme.jitsi.security;
 
+import com.acme.jitsi.shared.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,33 +28,34 @@ public class ApiAccessExceptionHandler {
   public ProblemDetail handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
     String traceId = problemResponseFacade.resolveTraceId(request);
     String errorCode = resolveAccessDeniedCode(ex);
+    String detail = ex.getMessage() != null ? ex.getMessage() : "Доступ запрещён";
     if (log.isWarnEnabled()) {
       log.warn(
         "access_denied path={} traceId={} code={} message={}",
         request.getRequestURI(),
         traceId,
         errorCode,
-        ex.getMessage());
+        detail);
     }
 
     return problemResponseFacade.buildProblemDetail(
         request,
         HttpStatus.FORBIDDEN,
         "Доступ запрещён",
-        ex.getMessage(),
+        detail,
         errorCode);
   }
 
   private String resolveAccessDeniedCode(AccessDeniedException ex) {
-    if (ex == null || ex.getMessage() == null) {
-      return "ACCESS_DENIED";
+    if (ex.getMessage() == null) {
+      return ErrorCode.ACCESS_DENIED.code();
     }
     if ("Tenant claim is required".equals(ex.getMessage())) {
-      return "TENANT_CLAIM_REQUIRED";
+      return ErrorCode.TENANT_CLAIM_REQUIRED.code();
     }
     if ("Requested tenant is not accessible for current principal".equals(ex.getMessage())) {
-      return "TENANT_ACCESS_DENIED";
+      return ErrorCode.TENANT_ACCESS_DENIED.code();
     }
-    return "ACCESS_DENIED";
+    return ErrorCode.ACCESS_DENIED.code();
   }
 }

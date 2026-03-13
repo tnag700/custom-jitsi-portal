@@ -4,9 +4,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -16,6 +19,7 @@ import java.time.Duration;
 @Component
 public class IdempotencyAspect {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(IdempotencyAspect.class);
     private static final String IDEMPOTENCY_HEADER = "Idempotency-Key";
     private static final String REDIS_PREFIX = "idempotency:";
     private static final int DEFAULT_MAX_KEY_LENGTH = 128;
@@ -36,8 +40,14 @@ public class IdempotencyAspect {
 
     @Around("@annotation(com.acme.jitsi.infrastructure.idempotency.Idempotent)")
     public Object handleIdempotency(ProceedingJoinPoint joinPoint) throws Throwable {
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attributes == null) {
+        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
+        if (!(requestAttributes instanceof ServletRequestAttributes attributes)) {
+            String methodDescription = joinPoint.getSignature() != null
+                    ? joinPoint.getSignature().toShortString()
+                    : "unknown-method";
+            LOGGER.warn(
+                    "Skipping idempotency guard because no servlet request context is available for method {}",
+                    methodDescription);
             return joinPoint.proceed();
         }
 
@@ -58,7 +68,8 @@ public class IdempotencyAspect {
         Boolean isNewKey = redisTemplate.opsForValue().setIfAbsent(redisKey, "IN_PROGRESS", ttl);
 
         if (Boolean.FALSE.equals(isNewKey)) {
-            throw new IdempotencyConflictException("Request with Idempotency-Key " + normalizedKey + " is already being processed or has been processed.");
+            throw new IdempotencyConflictException(
+                    "Request with the same Idempotency-Key is already being processed or has already been processed.");
         }
 
         try {

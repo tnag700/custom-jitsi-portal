@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.acme.jitsi.domains.configsets.service.ConfigCompatibilityCheckResult;
@@ -37,17 +40,18 @@ class ActiveConfigSetStartupValidatorTest {
   @Test
   void afterPropertiesSetThrowsWhenActiveConfigSetIsIncompatible() {
     ConfigSet configSet = activeConfigSet();
+    ConfigCompatibilityCheckResult result = new ConfigCompatibilityCheckResult(
+      false,
+      List.of(new ConfigCompatibilityMismatch(
+        ConfigCompatibilityMismatchCode.ISSUER_MISMATCH,
+        "issuer mismatch",
+        "expected",
+        "actual")),
+      Instant.parse("2026-01-01T00:00:00Z"),
+      "trace-startup-1");
     when(configSetRepository.findByStatus(ConfigSetStatus.ACTIVE)).thenReturn(List.of(configSet));
     when(configSetDryRunValidator.validateCompatibility(eq(configSet), anyString()))
-        .thenReturn(new ConfigCompatibilityCheckResult(
-            false,
-            List.of(new ConfigCompatibilityMismatch(
-                ConfigCompatibilityMismatchCode.ISSUER_MISMATCH,
-                "issuer mismatch",
-                "expected",
-                "actual")),
-            Instant.parse("2026-01-01T00:00:00Z"),
-            "trace-startup-1"));
+      .thenReturn(result);
 
     ActiveConfigSetStartupValidator validator = new ActiveConfigSetStartupValidator(
         configSetRepository,
@@ -57,7 +61,8 @@ class ActiveConfigSetStartupValidatorTest {
     assertThatThrownBy(validator::afterPropertiesSet)
         .isInstanceOf(JwtStartupValidationException.class)
         .extracting(error -> ((JwtStartupValidationException) error).errorCode())
-        .isEqualTo("CONFIG_INCOMPATIBLE");
+      .isEqualTo(JwtStartupValidationErrorCode.CONFIG_INCOMPATIBLE.name());
+    verify(compatibilityStateService).record(configSet.configSetId(), result);
   }
 
   @Test
@@ -70,6 +75,31 @@ class ActiveConfigSetStartupValidatorTest {
       compatibilityStateService);
 
     assertThatCode(validator::afterPropertiesSet).doesNotThrowAnyException();
+    verifyNoInteractions(configSetDryRunValidator);
+    verifyNoInteractions(compatibilityStateService);
+  }
+
+  @Test
+  void afterPropertiesSetRecordsCompatibilitySnapshotWhenConfigSetIsCompatible() {
+    ConfigSet configSet = activeConfigSet();
+    ConfigCompatibilityCheckResult result = new ConfigCompatibilityCheckResult(
+        true,
+        List.of(),
+        Instant.parse("2026-01-01T00:00:00Z"),
+        "trace-startup-2");
+    when(configSetRepository.findByStatus(ConfigSetStatus.ACTIVE)).thenReturn(List.of(configSet));
+    when(configSetDryRunValidator.validateCompatibility(eq(configSet), anyString()))
+        .thenReturn(result);
+
+    ActiveConfigSetStartupValidator validator = new ActiveConfigSetStartupValidator(
+        configSetRepository,
+      configSetDryRunValidator,
+      compatibilityStateService);
+
+    assertThatCode(validator::afterPropertiesSet).doesNotThrowAnyException();
+    verify(compatibilityStateService).record(configSet.configSetId(), result);
+    verify(configSetDryRunValidator).validateCompatibility(eq(configSet), anyString());
+    verify(configSetRepository, never()).findByStatus(ConfigSetStatus.DRAFT);
   }
 
   private ConfigSet activeConfigSet() {

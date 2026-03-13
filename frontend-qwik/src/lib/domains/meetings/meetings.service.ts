@@ -5,6 +5,17 @@ import type {
   PagedMeetingResponse,
   UpdateMeetingRequest,
 } from "./types";
+import {
+  createApiClient,
+  adaptProblemDetails,
+  meetingResponseSchema,
+  pagedMeetingResponseSchema,
+} from "../../shared/api";
+import type {
+  MutationRequestContext,
+  ServerRequestContext,
+} from "../../shared/routes/server-handlers";
+import { asMutationRequestContext, asServerRequestContext } from "../../shared/routes/server-handlers";
 
 export class MeetingServiceError extends Error {
   payload: MeetingErrorPayload;
@@ -24,144 +35,206 @@ function fallbackErrorCode(status: number): string {
   return "MEETING_UNKNOWN";
 }
 
-interface ProblemDetailsLike {
-  title?: unknown;
-  detail?: unknown;
-  errorCode?: unknown;
-  traceId?: unknown;
-}
-
-async function readProblemDetails(response: Response): Promise<ProblemDetailsLike> {
+function parseOrThrow<T>(parseFn: (d: unknown) => T, data: unknown, endpoint: string): T {
   try {
-    return (await response.json()) as ProblemDetailsLike;
-  } catch {
-    return {};
+    return parseFn(data);
+  } catch (e) {
+    throw new MeetingServiceError({
+      title: "Неожиданный формат ответа",
+      detail: `${endpoint}: ${e instanceof Error ? e.message : "неверный формат ответа"}`,
+      errorCode: "MEETING_RESPONSE_INVALID",
+    });
   }
 }
 
 export async function adaptMeetingProblemDetails(response: Response): Promise<MeetingErrorPayload> {
-  const problem = await readProblemDetails(response);
-  const errorCode =
-    typeof problem.errorCode === "string" && problem.errorCode.length > 0
-      ? problem.errorCode
-      : fallbackErrorCode(response.status);
-
-  return {
-    title:
-      typeof problem.title === "string" && problem.title.length > 0
-        ? problem.title
-        : "Ошибка операции со встречей",
-    detail:
-      typeof problem.detail === "string" && problem.detail.length > 0
-        ? problem.detail
-        : "Не удалось выполнить операцию.",
-    errorCode,
-    traceId:
-      typeof problem.traceId === "string" && problem.traceId.length > 0
-        ? problem.traceId
-        : undefined,
-  };
+  return adaptProblemDetails(
+    response,
+    response.status,
+    fallbackErrorCode,
+    "Ошибка операции со встречей",
+    "Не удалось выполнить операцию.",
+  );
 }
 
-export function baseHeaders(sessionCookie: string): Record<string, string> {
-  return {
-    Cookie: `JSESSIONID=${sessionCookie}`,
-    "Content-Type": "application/json",
-  };
-}
-
-export function mutationHeaders(
-  sessionCookie: string,
-  csrfToken: string,
-  idempotencyKey?: string,
-): Record<string, string> {
-  const headers: Record<string, string> = {
-    ...baseHeaders(sessionCookie),
-    "X-XSRF-TOKEN": csrfToken,
-  };
-
-  if (idempotencyKey) {
-    headers["Idempotency-Key"] = idempotencyKey;
-  }
-
-  return { ...headers };
-}
-
-export async function fetchMeetings(
+export function fetchMeetings(
+  context: ServerRequestContext,
+  roomId: string,
+  page?: number,
+  size?: number,
+): Promise<PagedMeetingResponse>;
+export function fetchMeetings(
   sessionCookie: string,
   apiUrl: string,
   roomId: string,
-  page = 0,
-  size = 20,
+  page?: number,
+  size?: number,
+): Promise<PagedMeetingResponse>;
+export async function fetchMeetings(
+  contextOrSessionCookie: ServerRequestContext | string,
+  apiUrlOrRoomId: string,
+  roomIdOrPage?: string | number,
+  page?: number,
+  size?: number,
 ): Promise<PagedMeetingResponse> {
-  const url = `${apiUrl}/rooms/${encodeURIComponent(roomId)}/meetings?page=${page}&size=${size}`;
-  const response = await fetch(url, {
-    method: "GET",
-    headers: baseHeaders(sessionCookie),
+  const context = asServerRequestContext(
+    contextOrSessionCookie,
+    typeof contextOrSessionCookie === "string" ? apiUrlOrRoomId : undefined,
+  );
+  const resolvedRoomId = typeof contextOrSessionCookie === "string" ? (roomIdOrPage as string) : apiUrlOrRoomId;
+  const resolvedPage = typeof contextOrSessionCookie === "string" ? page ?? 0 : (roomIdOrPage as number | undefined) ?? 0;
+  const resolvedSize = typeof contextOrSessionCookie === "string" ? size ?? 20 : page ?? 20;
+  const client = createApiClient(context.apiUrl);
+  const { data, error, response } = await client.GET("/api/v1/rooms/{roomId}/meetings", {
+    headers: context.headers,
+    params: {
+      path: { roomId: resolvedRoomId },
+      query: { page: resolvedPage, size: resolvedSize },
+    },
   });
 
-  if (!response.ok) {
-    throw new MeetingServiceError(await adaptMeetingProblemDetails(response));
+  if (!response.ok || error) {
+    throw new MeetingServiceError(
+      await adaptProblemDetails(
+        error ?? response,
+        response.status,
+        fallbackErrorCode,
+        "Ошибка операции со встречей",
+        "Не удалось выполнить операцию.",
+      ),
+    );
   }
 
-  return (await response.json()) as PagedMeetingResponse;
+  return parseOrThrow((d) => pagedMeetingResponseSchema.parse(d), data, "GET /api/v1/rooms/{roomId}/meetings");
 }
 
-export async function createMeeting(
+export function createMeeting(context: MutationRequestContext, roomId: string, request: CreateMeetingRequest): Promise<Meeting>;
+export function createMeeting(
   sessionCookie: string,
   apiUrl: string,
   csrfToken: string,
   idempotencyKey: string,
   roomId: string,
   request: CreateMeetingRequest,
+): Promise<Meeting>;
+export async function createMeeting(
+  contextOrSessionCookie: MutationRequestContext | string,
+  apiUrlOrRoomId: string,
+  csrfTokenOrRequest?: string | CreateMeetingRequest,
+  idempotencyKey?: string,
+  roomId?: string,
+  request?: CreateMeetingRequest,
 ): Promise<Meeting> {
-  const response = await fetch(`${apiUrl}/rooms/${encodeURIComponent(roomId)}/meetings`, {
-    method: "POST",
-    headers: mutationHeaders(sessionCookie, csrfToken, idempotencyKey),
-    body: JSON.stringify(request),
+  const context = asMutationRequestContext(
+    contextOrSessionCookie,
+    typeof contextOrSessionCookie === "string" ? apiUrlOrRoomId : undefined,
+    typeof csrfTokenOrRequest === "string" ? csrfTokenOrRequest : undefined,
+    idempotencyKey,
+  );
+  const resolvedRoomId = typeof contextOrSessionCookie === "string" ? roomId! : apiUrlOrRoomId;
+  const resolvedRequest = typeof contextOrSessionCookie === "string" ? request! : (csrfTokenOrRequest as CreateMeetingRequest);
+  const client = createApiClient(context.apiUrl);
+  const { data, error, response } = await client.POST("/api/v1/rooms/{roomId}/meetings", {
+    headers: context.headers,
+    params: { path: { roomId: resolvedRoomId } },
+    body: resolvedRequest,
   });
 
-  if (!response.ok) {
-    throw new MeetingServiceError(await adaptMeetingProblemDetails(response));
+  if (!response.ok || error) {
+    throw new MeetingServiceError(
+      await adaptProblemDetails(
+        error ?? response,
+        response.status,
+        fallbackErrorCode,
+        "Ошибка операции со встречей",
+        "Не удалось выполнить операцию.",
+      ),
+    );
   }
 
-  return (await response.json()) as Meeting;
+  return parseOrThrow((d) => meetingResponseSchema.parse(d), data, "POST /api/v1/rooms/{roomId}/meetings");
 }
 
-export async function updateMeeting(
+export function updateMeeting(context: MutationRequestContext, meetingId: string, request: UpdateMeetingRequest): Promise<Meeting>;
+export function updateMeeting(
   sessionCookie: string,
   apiUrl: string,
   csrfToken: string,
   meetingId: string,
   request: UpdateMeetingRequest,
+): Promise<Meeting>;
+export async function updateMeeting(
+  contextOrSessionCookie: MutationRequestContext | string,
+  apiUrlOrMeetingId: string,
+  csrfTokenOrRequest?: string | UpdateMeetingRequest,
+  meetingId?: string,
+  request?: UpdateMeetingRequest,
 ): Promise<Meeting> {
-  const response = await fetch(`${apiUrl}/meetings/${encodeURIComponent(meetingId)}`, {
-    method: "PUT",
-    headers: mutationHeaders(sessionCookie, csrfToken),
-    body: JSON.stringify(request),
+  const context = asMutationRequestContext(
+    contextOrSessionCookie,
+    typeof contextOrSessionCookie === "string" ? apiUrlOrMeetingId : undefined,
+    typeof csrfTokenOrRequest === "string" ? csrfTokenOrRequest : undefined,
+  );
+  const resolvedMeetingId = typeof contextOrSessionCookie === "string" ? meetingId! : apiUrlOrMeetingId;
+  const resolvedRequest = typeof contextOrSessionCookie === "string" ? request! : (csrfTokenOrRequest as UpdateMeetingRequest);
+  const client = createApiClient(context.apiUrl);
+  const { data, error, response } = await client.PUT("/api/v1/meetings/{meetingId}", {
+    headers: context.headers,
+    params: { path: { meetingId: resolvedMeetingId } },
+    body: resolvedRequest,
   });
 
-  if (!response.ok) {
-    throw new MeetingServiceError(await adaptMeetingProblemDetails(response));
+  if (!response.ok || error) {
+    throw new MeetingServiceError(
+      await adaptProblemDetails(
+        error ?? response,
+        response.status,
+        fallbackErrorCode,
+        "Ошибка операции со встречей",
+        "Не удалось выполнить операцию.",
+      ),
+    );
   }
 
-  return (await response.json()) as Meeting;
+  return parseOrThrow((d) => meetingResponseSchema.parse(d), data, "PUT /api/v1/meetings/{meetingId}");
 }
 
-export async function cancelMeeting(
+export function cancelMeeting(context: MutationRequestContext, meetingId: string): Promise<Meeting>;
+export function cancelMeeting(
   sessionCookie: string,
   apiUrl: string,
   csrfToken: string,
   meetingId: string,
+): Promise<Meeting>;
+export async function cancelMeeting(
+  contextOrSessionCookie: MutationRequestContext | string,
+  apiUrlOrMeetingId: string,
+  csrfToken?: string,
+  meetingId?: string,
 ): Promise<Meeting> {
-  const response = await fetch(`${apiUrl}/meetings/${encodeURIComponent(meetingId)}/cancel`, {
-    method: "POST",
-    headers: mutationHeaders(sessionCookie, csrfToken),
+  const context = asMutationRequestContext(
+    contextOrSessionCookie,
+    typeof contextOrSessionCookie === "string" ? apiUrlOrMeetingId : undefined,
+    csrfToken,
+  );
+  const resolvedMeetingId = typeof contextOrSessionCookie === "string" ? meetingId! : apiUrlOrMeetingId;
+  const client = createApiClient(context.apiUrl);
+  const { data, error, response } = await client.POST("/api/v1/meetings/{meetingId}/cancel", {
+    headers: context.headers,
+    params: { path: { meetingId: resolvedMeetingId } },
   });
 
-  if (!response.ok) {
-    throw new MeetingServiceError(await adaptMeetingProblemDetails(response));
+  if (!response.ok || error) {
+    throw new MeetingServiceError(
+      await adaptProblemDetails(
+        error ?? response,
+        response.status,
+        fallbackErrorCode,
+        "Ошибка операции со встречей",
+        "Не удалось выполнить операцию.",
+      ),
+    );
   }
 
-  return (await response.json()) as Meeting;
+  return parseOrThrow((d) => meetingResponseSchema.parse(d), data, "POST /api/v1/meetings/{meetingId}/cancel");
 }

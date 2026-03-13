@@ -4,7 +4,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
+import com.acme.jitsi.shared.ErrorCode;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -45,13 +45,13 @@ class InviteUsageLimitValidatorTest {
     InviteValidationContext context = new InviteValidationContext(invite.token(), properties, router);
     context.setInvite(invite);
 
-    doThrow(new MeetingTokenException(HttpStatus.CONFLICT, "INVITE_EXHAUSTED", "Лимит использований инвайта исчерпан."))
+    doThrow(new InviteExchangeException(HttpStatus.CONFLICT, ErrorCode.INVITE_EXHAUSTED.code(), "Лимит использований инвайта исчерпан."))
       .when(router)
       .assertCanConsume(invite);
 
     org.assertj.core.api.Assertions.assertThatThrownBy(() -> validator.validate(context))
-        .isInstanceOf(MeetingTokenException.class)
-        .extracting(error -> ((MeetingTokenException) error).errorCode())
-        .isEqualTo("INVITE_EXHAUSTED");
+        .isInstanceOf(InviteExchangeException.class)
+        .extracting(error -> ((InviteExchangeException) error).errorCode())
+        .isEqualTo(ErrorCode.INVITE_EXHAUSTED.code());
   }
 }

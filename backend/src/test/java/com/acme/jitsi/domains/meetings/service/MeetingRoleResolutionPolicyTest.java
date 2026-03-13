@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.acme.jitsi.shared.ErrorCode;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -27,7 +29,7 @@ class MeetingRoleResolutionPolicyTest {
         .satisfies(ex -> {
           MeetingTokenException error = (MeetingTokenException) ex;
           assertThat(error.status()).isEqualTo(HttpStatus.FORBIDDEN);
-          assertThat(error.errorCode()).isEqualTo("ACCESS_DENIED");
+          assertThat(error.errorCode()).isEqualTo(ErrorCode.ACCESS_DENIED.code());
         });
   }
 
@@ -57,7 +59,7 @@ class MeetingRoleResolutionPolicyTest {
         .satisfies(ex -> {
           MeetingTokenException error = (MeetingTokenException) ex;
           assertThat(error.status()).isEqualTo(HttpStatus.NOT_FOUND);
-          assertThat(error.errorCode()).isEqualTo("MEETING_NOT_FOUND");
+          assertThat(error.errorCode()).isEqualTo(ErrorCode.MEETING_NOT_FOUND.code());
         });
   }
 
@@ -111,7 +113,7 @@ class MeetingRoleResolutionPolicyTest {
         .satisfies(ex -> {
           MeetingTokenException error = (MeetingTokenException) ex;
           assertThat(error.status()).isEqualTo(HttpStatus.CONFLICT);
-          assertThat(error.errorCode()).isEqualTo("ROLE_MISMATCH");
+          assertThat(error.errorCode()).isEqualTo(ErrorCode.ROLE_MISMATCH.code());
         });
   }
 
@@ -128,8 +130,41 @@ class MeetingRoleResolutionPolicyTest {
         .satisfies(ex -> {
           MeetingTokenException error = (MeetingTokenException) ex;
           assertThat(error.status()).isEqualTo(HttpStatus.CONFLICT);
-          assertThat(error.errorCode()).isEqualTo("ROLE_MISMATCH");
+          assertThat(error.errorCode()).isEqualTo(ErrorCode.ROLE_MISMATCH.code());
         });
+  }
+
+  @Test
+  void dbAssignmentPolicyReturnsPersistedRole() {
+    MeetingTokenProperties properties = new MeetingTokenProperties();
+    MeetingRoleResolutionContext context = new MeetingRoleResolutionContext("meeting-a", "u-host", properties);
+
+    MeetingParticipantAssignmentRepository assignmentRepository = mock(MeetingParticipantAssignmentRepository.class);
+    when(assignmentRepository.findByMeetingIdAndSubjectId("meeting-a", "u-host"))
+        .thenReturn(Optional.of(MeetingParticipantAssignment.builder()
+            .assignmentId("assignment-1")
+            .meetingId("meeting-a")
+            .subjectId("u-host")
+            .role(MeetingRole.HOST)
+            .assignedAt(Instant.parse("2026-03-11T00:00:00Z"))
+            .createdAt(Instant.parse("2026-03-11T00:00:00Z"))
+            .updatedAt(Instant.parse("2026-03-11T00:00:00Z"))
+            .build()));
+    MeetingRoleResolutionPolicy policy = new DbParticipantAssignmentMeetingRoleResolutionPolicy(assignmentRepository);
+
+    assertThat(policy.resolve(context)).contains(MeetingRole.HOST);
+  }
+
+  @Test
+  void dbAssignmentPolicyReturnsEmptyWhenPersistedAssignmentMissing() {
+    MeetingTokenProperties properties = new MeetingTokenProperties();
+    MeetingRoleResolutionContext context = new MeetingRoleResolutionContext("meeting-a", "u-host", properties);
+
+    MeetingParticipantAssignmentRepository assignmentRepository = mock(MeetingParticipantAssignmentRepository.class);
+    when(assignmentRepository.findByMeetingIdAndSubjectId("meeting-a", "u-host")).thenReturn(Optional.empty());
+    MeetingRoleResolutionPolicy policy = new DbParticipantAssignmentMeetingRoleResolutionPolicy(assignmentRepository);
+
+    assertThat(policy.resolve(context)).isEqualTo(Optional.empty());
   }
 
   @Test
@@ -156,7 +191,7 @@ class MeetingRoleResolutionPolicyTest {
         .satisfies(ex -> {
           MeetingTokenException error = (MeetingTokenException) ex;
           assertThat(error.status()).isEqualTo(HttpStatus.FORBIDDEN);
-          assertThat(error.errorCode()).isEqualTo("ACCESS_DENIED");
+          assertThat(error.errorCode()).isEqualTo(ErrorCode.ACCESS_DENIED.code());
         });
   }
 

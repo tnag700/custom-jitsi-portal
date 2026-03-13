@@ -6,21 +6,25 @@ import {
   $,
   Slot,
 } from "@qwik.dev/core";
-import { routeLoader$, type RequestHandler } from "@qwik.dev/router";
+import { routeAction$, routeLoader$, type RequestHandler } from "@qwik.dev/router";
 import { ThemeContext, type Theme } from "~/lib/shared/stores/theme-context";
 import { AppHeader, Sidebar } from "~/lib/shared/components";
 import {
   AuthContext,
   fetchAuthMe,
   isPublicAuthPath,
+  logoutFromAuthSession,
   resolveAuthRedirectPath,
   type AuthStore,
   type SafeUserProfile,
 } from "~/lib/domains/auth";
+import {
+  buildMutationRequestContext,
+  buildServerRequestContext,
+} from "~/lib/shared/routes/server-handlers";
 
 const THEME_COOKIE = "theme";
 const THEME_COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
-const SESSION_COOKIE = "JSESSIONID";
 const DEFAULT_SERVER_API_URL = "http://localhost:8080/api/v1";
 const DEFAULT_PUBLIC_API_URL = "http://localhost:8080/api/v1";
 
@@ -30,6 +34,7 @@ export const onRequest: RequestHandler = async ({
   sharedMap,
   env,
   url,
+  request,
   redirect,
 }) => {
   const raw = cookie.get(THEME_COOKIE)?.value;
@@ -46,19 +51,22 @@ export const onRequest: RequestHandler = async ({
   const publicApiUrl = env.get("PUBLIC_API_URL") || env.get("API_URL") || DEFAULT_PUBLIC_API_URL;
   sharedMap.set("apiUrl", apiUrl);
   sharedMap.set("publicApiUrl", publicApiUrl);
+  sharedMap.set("requestCookieHeader", request.headers.get("cookie") ?? "");
 
   if (isPublicAuthPath(url.pathname)) {
     sharedMap.set("user", null);
     return;
   }
 
-  const sessionCookie = cookie.get(SESSION_COOKIE)?.value;
-  if (!sessionCookie) {
+  const requestContext = buildServerRequestContext({ sharedMap, cookie });
+  if (!requestContext.sessionCookie) {
     throw redirect(302, "/auth");
   }
 
+  await buildMutationRequestContext({ sharedMap, cookie });
+
   try {
-    const profile = await fetchAuthMe(sessionCookie, apiUrl);
+    const profile = await fetchAuthMe(requestContext);
     sharedMap.set("user", profile);
   } catch (error) {
     throw redirect(302, resolveAuthRedirectPath(error));
@@ -73,14 +81,30 @@ export const useAuth = routeLoader$(({ sharedMap }) => {
   return (sharedMap.get("user") as SafeUserProfile | null) ?? null;
 });
 
-export const useApiUrl = routeLoader$(({ sharedMap }) => {
-  return (sharedMap.get("publicApiUrl") as string) || DEFAULT_PUBLIC_API_URL;
+export const useLogout = routeAction$(async (_, { sharedMap, cookie, redirect }) => {
+  const requestContext = await buildMutationRequestContext({ sharedMap, cookie });
+
+  try {
+    const location = await logoutFromAuthSession(requestContext);
+    throw redirect(302, location);
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "type" in error &&
+      (error as { type?: unknown }).type === "redirect"
+    ) {
+      throw error;
+    }
+
+    throw redirect(302, resolveAuthRedirectPath(error));
+  }
 });
 
 export default component$(() => {
   const themeData = useTheme();
   const authData = useAuth();
-  const apiUrlData = useApiUrl();
+  const logoutAction = useLogout();
   const theme = useSignal<Theme>(themeData.value);
   const expanded = useSignal(true);
   const authStore = useStore<AuthStore>({
@@ -102,8 +126,6 @@ export default component$(() => {
     expanded.value = !expanded.value;
   });
 
-  const authLogoutHref = `${apiUrlData.value}/auth/logout`;
-
   return (
     <div class="flex h-screen overflow-hidden bg-bg text-text">
       {authStore.isAuthenticated ? (
@@ -115,7 +137,7 @@ export default component$(() => {
               showSidebarToggle={true}
               isSidebarExpanded={expanded.value}
               userDisplayName={authStore.profile?.displayName ?? null}
-              authLogoutHref={authLogoutHref}
+              logoutAction={logoutAction}
               onToggleSidebar$={toggleSidebar$}
             />
             <main class="flex-1 overflow-y-auto p-6">
@@ -133,7 +155,7 @@ export default component$(() => {
               showSidebarToggle={false}
               isSidebarExpanded={expanded.value}
               userDisplayName={null}
-              authLogoutHref={authLogoutHref}
+              logoutAction={logoutAction}
               onToggleSidebar$={toggleSidebar$}
             />
             <main class="flex-1 overflow-y-auto p-6">

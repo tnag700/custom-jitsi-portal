@@ -35,8 +35,10 @@ import com.acme.jitsi.domains.configsets.usecase.UpdateConfigSetUseCase;
 import com.acme.jitsi.security.ProblemDetailsMappingPolicy;
 import com.acme.jitsi.security.ProblemResponseFacade;
 import com.acme.jitsi.security.TenantAccessGuard;
+import com.acme.jitsi.shared.ErrorCode;
 import java.time.Instant;
 import java.util.Optional;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -46,6 +48,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = ConfigSetsController.class)
+@Tag("slice")
 class ConfigSetsControllerRolloutWebMvcTest {
 
   @Autowired
@@ -185,7 +188,7 @@ class ConfigSetsControllerRolloutWebMvcTest {
             .param("tenantId", "tenant-1")
             .param("environmentType", "DEV"))
         .andExpect(status().isUnprocessableEntity())
-        .andExpect(jsonPath("$.errorCode").value("CONFIG_SET_ROLLBACK_NOT_ALLOWED"))
+      .andExpect(jsonPath("$.errorCode").value(ErrorCode.CONFIG_SET_ROLLBACK_NOT_ALLOWED.code()))
         .andExpect(jsonPath("$.traceId").value("trace-1"));
   }
 
@@ -213,7 +216,7 @@ class ConfigSetsControllerRolloutWebMvcTest {
             .header("Idempotency-Key", "idem-rollout-2")
             .param("tenantId", "tenant-1"))
         .andExpect(status().isUnprocessableEntity())
-        .andExpect(jsonPath("$.errorCode").value("CONFIG_INCOMPATIBLE"))
+        .andExpect(jsonPath("$.errorCode").value(ErrorCode.CONFIG_INCOMPATIBLE.code()))
         .andExpect(jsonPath("$.traceId").value("trace-1"));
   }
 

@@ -54,7 +54,7 @@ class JwtStartupConfigValidatorTest {
     assertThatThrownBy(validator::validateOrThrow)
         .isInstanceOf(JwtStartupValidationException.class)
         .extracting(error -> ((JwtStartupValidationException) error).errorCode())
-        .isEqualTo("CONFIG_MISSING_REQUIRED");
+        .isEqualTo(JwtStartupValidationErrorCode.CONFIG_MISSING_REQUIRED.name());
   }
 
   @Test
@@ -79,7 +79,7 @@ class JwtStartupConfigValidatorTest {
     assertThatThrownBy(validator::validateOrThrow)
         .isInstanceOf(JwtStartupValidationException.class)
         .extracting(error -> ((JwtStartupValidationException) error).errorCode())
-        .isEqualTo("JWT_CONFIG_MISMATCH");
+        .isEqualTo(JwtStartupValidationErrorCode.JWT_CONFIG_MISMATCH.name());
   }
 
   @Test
@@ -104,7 +104,7 @@ class JwtStartupConfigValidatorTest {
     assertThatThrownBy(validator::validateOrThrow)
         .isInstanceOf(JwtStartupValidationException.class)
         .extracting(error -> ((JwtStartupValidationException) error).errorCode())
-        .isEqualTo("CONFIG_INCOMPATIBLE");
+        .isEqualTo(JwtStartupValidationErrorCode.CONFIG_INCOMPATIBLE.name());
   }
 
   @Test
@@ -129,7 +129,7 @@ class JwtStartupConfigValidatorTest {
     assertThatThrownBy(validator::validateOrThrow)
         .isInstanceOf(JwtStartupValidationException.class)
         .extracting(error -> ((JwtStartupValidationException) error).errorCode())
-        .isEqualTo("CONFIG_INCOMPATIBLE");
+        .isEqualTo(JwtStartupValidationErrorCode.CONFIG_INCOMPATIBLE.name());
   }
 
   @Test
@@ -154,7 +154,7 @@ class JwtStartupConfigValidatorTest {
     assertThatThrownBy(validator::validateOrThrow)
         .isInstanceOf(JwtStartupValidationException.class)
         .extracting(error -> ((JwtStartupValidationException) error).errorCode())
-        .isEqualTo("CONFIG_INCOMPATIBLE");
+        .isEqualTo(JwtStartupValidationErrorCode.CONFIG_INCOMPATIBLE.name());
   }
 
   @Test
@@ -179,7 +179,7 @@ class JwtStartupConfigValidatorTest {
     assertThatThrownBy(validator::validateOrThrow)
         .isInstanceOf(JwtStartupValidationException.class)
         .extracting(error -> ((JwtStartupValidationException) error).errorCode())
-        .isEqualTo("CONFIG_INCOMPATIBLE");
+        .isEqualTo(JwtStartupValidationErrorCode.CONFIG_INCOMPATIBLE.name());
   }
 
   @Test
@@ -204,7 +204,7 @@ class JwtStartupConfigValidatorTest {
     assertThatThrownBy(validator::validateOrThrow)
         .isInstanceOf(JwtStartupValidationException.class)
         .extracting(error -> ((JwtStartupValidationException) error).errorCode())
-        .isEqualTo("CONFIG_INCOMPATIBLE");
+        .isEqualTo(JwtStartupValidationErrorCode.CONFIG_INCOMPATIBLE.name());
   }
 
     @Test
@@ -230,7 +230,7 @@ class JwtStartupConfigValidatorTest {
                 .isInstanceOf(JwtStartupValidationException.class)
                 .satisfies(error -> {
                     JwtStartupValidationException exception = (JwtStartupValidationException) error;
-                    assertThat(exception.errorCode()).isEqualTo("CONFIG_INCOMPATIBLE");
+                    assertThat(exception.errorCode()).isEqualTo(JwtStartupValidationErrorCode.CONFIG_INCOMPATIBLE.name());
                     assertThat(exception.getMessage()).contains("key source jwks is not supported");
                 });
     }
@@ -257,6 +257,6 @@ class JwtStartupConfigValidatorTest {
     assertThatThrownBy(validator::validateOrThrow)
         .isInstanceOf(JwtStartupValidationException.class)
         .extracting(error -> ((JwtStartupValidationException) error).errorCode())
-        .isEqualTo("JWT_CONFIG_MISMATCH");
+        .isEqualTo(JwtStartupValidationErrorCode.JWT_CONFIG_MISMATCH.name());
   }
 }

@@ -5,7 +5,10 @@ import static org.mockito.Mockito.when;
 
 import com.acme.jitsi.domains.configsets.service.ConfigSetCompatibilityCheck;
 import com.acme.jitsi.domains.configsets.service.ConfigSetCompatibilityStateService;
+import com.acme.jitsi.domains.meetings.service.MeetingJoinConfigurationReadiness;
+import com.acme.jitsi.domains.meetings.service.MeetingJoinConfigurationReadinessService;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +20,9 @@ class DefaultHealthServiceTest {
 
   @Mock
   private ConfigSetCompatibilityStateService compatibilityStateService;
+
+  @Mock
+  private MeetingJoinConfigurationReadinessService meetingJoinConfigurationReadinessService;
 
   @Test
   void getHealthReturnsDownWhenIncompatibleActiveConfigExists() {
@@ -30,7 +36,9 @@ class DefaultHealthServiceTest {
             Instant.parse("2026-01-01T00:00:00Z"),
             "trace-1")));
 
-    DefaultHealthService service = new DefaultHealthService(compatibilityStateService);
+    DefaultHealthService service = new DefaultHealthService(
+      compatibilityStateService,
+      meetingJoinConfigurationReadinessService);
 
     var response = service.getHealth();
 
@@ -43,11 +51,40 @@ class DefaultHealthServiceTest {
   void getHealthReturnsUpWhenNoIncompatibleActiveConfigExists() {
     when(compatibilityStateService.findLatestIncompatibleActive()).thenReturn(Optional.empty());
 
-    DefaultHealthService service = new DefaultHealthService(compatibilityStateService);
+    DefaultHealthService service = new DefaultHealthService(
+        compatibilityStateService,
+        meetingJoinConfigurationReadinessService);
 
     var response = service.getHealth();
 
     assertThat(response.status()).isEqualTo("UP");
     assertThat(response.compatibilityStatus()).isEqualTo("COMPATIBLE");
+  }
+
+  @Test
+  void getJoinReadinessReturnsBlockedWhenAnyBlockingCheckFails() {
+    when(compatibilityStateService.findLatestIncompatibleActive()).thenReturn(Optional.empty());
+    when(meetingJoinConfigurationReadinessService.inspect()).thenReturn(
+        new MeetingJoinConfigurationReadiness(
+            null,
+            List.of(
+                new MeetingJoinConfigurationReadiness.ConfigurationCheck(
+                    "token-config",
+                    "error",
+                    "JWT-конфиг входа не готов",
+                    "signingSecret missing",
+                    List.of("fix config"),
+                    "TOKEN_CONFIG_INVALID",
+                    true))));
+
+    DefaultHealthService service = new DefaultHealthService(
+        compatibilityStateService,
+        meetingJoinConfigurationReadinessService);
+
+    var response = service.getJoinReadiness("trace-join");
+
+    assertThat(response.status()).isEqualTo("blocked");
+    assertThat(response.traceId()).isEqualTo("trace-join");
+    assertThat(response.systemChecks()).hasSize(2);
   }
 }

@@ -4,11 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import com.acme.jitsi.domains.meetings.service.MeetingStateGuard;
 import com.acme.jitsi.domains.store.StoreSelectionStrategyFactory;
-import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
+import com.acme.jitsi.shared.ErrorCode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,9 +53,9 @@ class InviteValidationServiceTest {
           ready.countDown();
           start.await();
           try {
-            service.validateAndConsume("invite-race");
+            service.reserve("invite-race");
             return "ok";
-          } catch (MeetingTokenException ex) {
+          } catch (InviteExchangeException ex) {
             return ex.errorCode();
           }
         }));
@@ -69,7 +69,7 @@ class InviteValidationServiceTest {
         outcomes.add(future.get());
       }
 
-      assertThat(outcomes).containsExactlyInAnyOrder("ok", "INVITE_EXHAUSTED");
+      assertThat(outcomes).containsExactlyInAnyOrder("ok", ErrorCode.INVITE_EXHAUSTED.code());
     }
   }
 
@@ -96,21 +96,44 @@ class InviteValidationServiceTest {
     InviteUsageStoreRouter storeRouter = new InviteUsageStoreRouter(resolver);
     InviteValidationService service = new InviteValidationService(properties, storeRouter, createValidationChain());
 
-    assertThatThrownBy(() -> service.validateAndConsume("invite-redis"))
-        .isInstanceOf(MeetingTokenException.class)
-        .extracting(error -> ((MeetingTokenException) error).errorCode())
-        .isEqualTo("CONFIG_INCOMPATIBLE");
+    assertThatThrownBy(() -> service.reserve("invite-redis"))
+        .isInstanceOf(InviteExchangeException.class)
+        .extracting(error -> ((InviteExchangeException) error).errorCode())
+      .isEqualTo(ErrorCode.CONFIG_INCOMPATIBLE.code());
   }
 
   @Test
   void rollbackDelegatesToUsageStoreRouter() {
     InviteExchangeProperties properties = new InviteExchangeProperties();
+    InviteExchangeProperties.Invite invite = new InviteExchangeProperties.Invite();
+    invite.setToken("invite-rollback");
+    invite.setMeetingId("meeting-a");
+    invite.setExpiresAt(Instant.now().plusSeconds(3600));
+    invite.setUsageLimit(2);
+    properties.setInvites(List.of(invite));
+    properties.setKnownMeetingIds(Set.of("meeting-a"));
     InviteUsageStoreRouter storeRouter = mock(InviteUsageStoreRouter.class);
     InviteValidationService service = new InviteValidationService(properties, storeRouter, createValidationChain());
 
-    service.rollback(new InviteValidationService.InviteReservation("invite-rollback", "meeting-a"));
+    when(storeRouter).thenReturn(storeRouter);
 
+    InviteReservation reservation = service.reserve("invite-rollback");
+
+    service.rollback(reservation);
+
+    verify(storeRouter).consume(invite);
     verify(storeRouter).rollback("invite-rollback");
+  }
+
+  @Test
+  void rollbackIgnoresReservationThatWasNotIssuedByService() {
+    InviteExchangeProperties properties = new InviteExchangeProperties();
+    InviteUsageStoreRouter storeRouter = mock(InviteUsageStoreRouter.class);
+    InviteValidationService service = new InviteValidationService(properties, storeRouter, createValidationChain());
+
+    service.rollback(InviteReservation.issue("forged", "invite-rollback", "meeting-a"));
+
+    verifyNoMoreInteractions(storeRouter);
   }
 
   private InviteValidationChain createValidationChain() {
@@ -120,7 +143,7 @@ class InviteValidationServiceTest {
         new InviteRevokedValidator(),
         new InviteExpirationValidator(),
         new InviteMeetingKnownValidator(),
-        new InviteMeetingStateValidator(mock(MeetingStateGuard.class)),
+        new InviteMeetingStateValidator(mock(InviteMeetingStatePort.class)),
         new InviteUsageLimitValidator()));
   }
 }

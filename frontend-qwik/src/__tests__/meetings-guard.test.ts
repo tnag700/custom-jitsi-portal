@@ -82,6 +82,11 @@ describe("Meetings Guard: components (AC: 1-6)", () => {
     const tsx = readSrc("lib/domains/meetings/components/ParticipantPanel.tsx");
     expect(tsx).toContain("ApiErrorAlert");
   });
+
+  it("ParticipantPanel.tsx should submit bulk subject ids as an array field", () => {
+    const tsx = readSrc("lib/domains/meetings/components/ParticipantPanel.tsx");
+    expect(tsx).toContain('name="subjectIds[]"');
+  });
 });
 
 describe("Meetings Guard: barrel export (AC: all)", () => {
@@ -92,19 +97,27 @@ describe("Meetings Guard: barrel export (AC: all)", () => {
 });
 
 describe("Meetings Guard: route (AC: 1-7)", () => {
-  it("routes/meetings/index.tsx should contain routeLoader$ and routeAction$", () => {
+  it("routes/meetings/index.tsx should re-export extracted route handlers and page boundary", () => {
     const tsx = readSrc("routes/meetings/index.tsx");
-    expect(tsx).toContain("routeLoader$");
-    expect(tsx).toContain("routeAction$");
+    expect(tsx).toContain("useMeetings");
+    expect(tsx).toContain("useCreateInvite");
+    expect(tsx).toContain("./route-handlers");
+    expect(tsx).toContain("./meetings-page");
   });
 
-  it("routes/meetings/index.tsx should use Form for actions", () => {
-    const tsx = readSrc("routes/meetings/index.tsx");
+  it("routes/meetings/route-handlers.ts should contain routeLoader$ and routeAction$", () => {
+    const ts = readSrc("routes/meetings/route-handlers.ts");
+    expect(ts).toContain("routeLoader$");
+    expect(ts).toContain("routeAction$");
+  });
+
+  it("routes/meetings/meetings-page.tsx should use Form for actions", () => {
+    const tsx = readSrc("routes/meetings/meetings-page.tsx");
     expect(tsx).toContain("<Form");
   });
 
-  it("routes/meetings/index.tsx should use ApiErrorAlert for cancel/revoke confirmation errors", () => {
-    const tsx = readSrc("routes/meetings/index.tsx");
+  it("routes/meetings/meetings-page.tsx should use ApiErrorAlert for cancel/revoke confirmation errors", () => {
+    const tsx = readSrc("routes/meetings/meetings-page.tsx");
     expect(tsx).toContain("ApiErrorAlert");
     expect(tsx).toContain("Ошибка отмены встречи");
     expect(tsx).toContain("Ошибка отзыва инвайта");

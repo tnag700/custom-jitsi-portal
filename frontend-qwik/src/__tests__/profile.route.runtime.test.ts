@@ -1,7 +1,12 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+/* eslint-disable @typescript-eslint/await-thenable */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockFetchMyProfile = vi.fn();
 const mockUpsertMyProfile = vi.fn();
+const mockBuildServerRequestContext = vi.fn();
+const mockBuildMutationRequestContext = vi.fn();
 
 class MockProfileServiceError extends Error {
   payload: { title: string; detail: string; errorCode: string; traceId?: string };
@@ -14,7 +19,7 @@ class MockProfileServiceError extends Error {
 }
 
 vi.mock("@qwik.dev/core", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@qwik.dev/core")>();
+  const actual = await importOriginal();
   const identity = <T>(value: T): T => value;
   const noop = () => undefined;
   return {
@@ -30,7 +35,7 @@ vi.mock("@qwik.dev/core", async (importOriginal) => {
 });
 
 vi.mock("@qwik.dev/router", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@qwik.dev/router")>();
+  const actual = await importOriginal();
   const identity = <T>(value: T): T => value;
   return {
     ...actual,
@@ -48,6 +53,11 @@ vi.mock("~/lib/domains/profile", () => ({
   upsertMyProfile: mockUpsertMyProfile,
   ProfileServiceError: MockProfileServiceError,
   ProfileForm: () => null,
+}));
+
+vi.mock("~/lib/shared/routes/server-handlers", () => ({
+  buildServerRequestContext: mockBuildServerRequestContext,
+  buildMutationRequestContext: mockBuildMutationRequestContext,
 }));
 
 interface LoaderCtx {
@@ -80,6 +90,27 @@ describe("profile route runtime", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    mockBuildServerRequestContext.mockReturnValue({
+      apiUrl: "http://localhost:8080/api/v1",
+      sessionCookie: "sess-1",
+      csrfToken: "csrf-1",
+      headers: {
+        Cookie: "JSESSIONID=sess-1",
+      },
+    });
+    mockBuildMutationRequestContext.mockResolvedValue({
+      apiUrl: "http://localhost:8080/api/v1",
+      sessionCookie: "sess-1",
+      csrfToken: "csrf-request-1",
+      csrfCookieToken: "csrf-cookie-1",
+      idempotencyKey: "idem-1",
+      headers: {
+        Cookie: "JSESSIONID=sess-1; XSRF-TOKEN=csrf-cookie-1",
+        "Content-Type": "application/json",
+        "X-XSRF-TOKEN": "csrf-request-1",
+        "Idempotency-Key": "idem-1",
+      },
+    });
   });
 
   it("useMyProfile marks first run when backend returns null", async () => {
@@ -89,7 +120,14 @@ describe("profile route runtime", () => {
     const ctx = createCtx();
     const result = await mod.useMyProfile(ctx as never);
 
-    expect(mockFetchMyProfile).toHaveBeenCalledWith("sess-1", "http://localhost:8080/api/v1");
+    expect(mockFetchMyProfile).toHaveBeenCalledWith({
+      apiUrl: "http://localhost:8080/api/v1",
+      sessionCookie: "sess-1",
+      csrfToken: "csrf-1",
+      headers: {
+        Cookie: "JSESSIONID=sess-1",
+      },
+    });
     expect(result).toEqual({ profile: null, isFirstRun: true, loadError: null });
   });
 
@@ -190,9 +228,19 @@ describe("profile route runtime", () => {
     );
 
     expect(mockUpsertMyProfile).toHaveBeenCalledWith(
-      "sess-1",
-      "http://localhost:8080/api/v1",
-      "csrf-1",
+      {
+        apiUrl: "http://localhost:8080/api/v1",
+        sessionCookie: "sess-1",
+        csrfToken: "csrf-request-1",
+        csrfCookieToken: "csrf-cookie-1",
+        idempotencyKey: "idem-1",
+        headers: {
+          Cookie: "JSESSIONID=sess-1; XSRF-TOKEN=csrf-cookie-1",
+          "Content-Type": "application/json",
+          "X-XSRF-TOKEN": "csrf-request-1",
+          "Idempotency-Key": "idem-1",
+        },
+      },
       { fullName: "Jane Doe", organization: "Acme", position: "Lead" },
     );
     expect(result).toEqual({ success: true, profile });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const SRC_DIR = join(__dirname, "..");
@@ -51,13 +51,9 @@ describe("Migration Guard: Qwik patterns MUST be present", () => {
     expect(hasRouteLoaderOrAction).toBe(true);
   });
 
-  it("should contain server$ usage in at least one source file", () => {
-    const allFiles = collectFiles(SRC_DIR, [".tsx", ".ts"]);
-    const sourceFiles = allFiles.filter((f) => !f.endsWith(".test.ts"));
-    const hasServerDollar = sourceFiles.some((f) =>
-      readSrc(f).includes("server$"),
-    );
-    expect(hasServerDollar).toBe(true);
+  it("should keep server$ example outside of production route tree", () => {
+    const serverExample = readProject("src/dev-examples/server-function-example.tsx");
+    expect(serverExample).toContain("server$");
   });
 });
 
@@ -79,10 +75,8 @@ describe("Story 14.1 Guard: framework and infrastructure baseline", () => {
     }
   });
 
-  it("demo loader route should import domain logic via barrel API", () => {
-    const loaderRoute = readProject("src/routes/demo/loader/index.tsx");
-    expect(loaderRoute).toContain('from "~/lib/domains/example"');
-    expect(loaderRoute).not.toContain("greet-user");
+  it("demo routes should not exist in src/routes production tree", () => {
+    expect(existsSync(join(SRC_DIR, "routes", "demo"))).toBe(false);
   });
 
   it("tsconfig should keep strict mode enabled", () => {
@@ -180,5 +174,14 @@ describe("Architecture Guard: routeLoader$/routeAction$ only in routes/", () => 
         `File ${relative(SRC_DIR, f)} should import domains only via ~/lib/domains/<domain>`,
       ).toBe(false);
     }
+  });
+
+  it("production route graph should not include demo routes", () => {
+    const routeFiles = collectFiles(join(SRC_DIR, "routes"), [".tsx", ".ts"]);
+    const demoRouteFiles = routeFiles.filter((f) =>
+      relative(join(SRC_DIR, "routes"), f).startsWith("demo"),
+    );
+
+    expect(demoRouteFiles).toEqual([]);
   });
 });

@@ -61,8 +61,23 @@ export interface AssignParticipantRequest {
   role: "host" | "moderator" | "participant";
 }
 
+export interface BulkAssignParticipantsRequest {
+  participants: Array<{
+    subjectId: string;
+    role?: "host" | "moderator" | "participant";
+  }>;
+  defaultRole?: "host" | "moderator" | "participant";
+}
+
 export interface UpdateParticipantRoleRequest {
   role: "host" | "moderator" | "participant";
+}
+
+export interface UserProfileSummary {
+  subjectId: string;
+  fullName: string;
+  organization: string;
+  position: string;
 }
 
 export interface MeetingErrorPayload {

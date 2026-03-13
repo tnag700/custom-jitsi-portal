@@ -1,6 +1,6 @@
-import { $, component$, useSignal, useComputed$, type QRL } from "@qwik.dev/core";
+import { $, component$, useSignal, useTask$, type Signal } from "@qwik.dev/core";
 import { Form } from "@qwik.dev/router";
-import { ApiErrorAlert } from "~/lib/shared";
+import { ApiErrorAlert, AppDialog } from "~/lib/shared";
 import type { Meeting, MeetingErrorPayload } from "../types";
 import { createMeetingSchema, updateMeetingSchema } from "../meetings.zod";
 
@@ -9,7 +9,7 @@ interface MeetingFormProps {
   roomId: string;
   isLoading: boolean;
   error?: MeetingErrorPayload;
-  onCancel$: QRL<() => void>;
+  isOpen: Signal<boolean>;
   action: unknown;
 }
 
@@ -36,8 +36,9 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 export const MeetingForm = component$<MeetingFormProps>(
-  ({ meeting, roomId, isLoading, error, onCancel$, action }) => {
+  ({ meeting, roomId, isLoading, error, isOpen, action }) => {
     const isEdit = !!meeting;
+    const formId = isEdit ? "meeting-edit-form" : "meeting-create-form";
     const titleValue = useSignal(meeting?.title ?? "");
     const descriptionValue = useSignal(meeting?.description ?? "");
     const meetingTypeValue = useSignal(meeting?.meetingType ?? "standard");
@@ -47,13 +48,9 @@ export const MeetingForm = component$<MeetingFormProps>(
     const recordingEnabledValue = useSignal(meeting?.recordingEnabled ?? false);
     const validationErrors = useSignal<Record<string, string>>({});
 
-    const startsAtIso = useComputed$(() => toIso(startsAtLocal.value));
-    const endsAtIso = useComputed$(() => toIso(endsAtLocal.value));
-
     const handleSubmit$ = $((event: Event) => {
-      const startsAt = startsAtIso.value;
-      const endsAt = endsAtIso.value;
-      
+      const startsAt = toIso(startsAtLocal.value);
+      const endsAt = toIso(endsAtLocal.value);
       const nextValidationErrors: Record<string, string> = {};
       let hasError = false;
 
@@ -107,12 +104,35 @@ export const MeetingForm = component$<MeetingFormProps>(
 
     const errorMessage = error ? ERROR_MESSAGES[error.errorCode] ?? error.detail : null;
 
+    useTask$(({ track }) => {
+      const open = track(() => isOpen.value);
+      const meetingId = track(() => meeting?.meetingId ?? null);
+
+      if (!open) {
+        return;
+      }
+
+      titleValue.value = meeting?.title ?? "";
+      descriptionValue.value = meeting?.description ?? "";
+      meetingTypeValue.value = meeting?.meetingType ?? "standard";
+      startsAtLocal.value = toDateTimeLocal(meeting?.startsAt);
+      endsAtLocal.value = toDateTimeLocal(meeting?.endsAt);
+      allowGuestsValue.value = meeting?.allowGuests ?? true;
+      recordingEnabledValue.value = meeting?.recordingEnabled ?? false;
+      validationErrors.value = {};
+      void meetingId;
+    });
+
     return (
-      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div class="w-full max-w-xl rounded border border-border bg-surface p-6">
-          <h2 class="mb-4 text-lg font-semibold text-text">
-            {isEdit ? "Редактировать встречу" : "Создать встречу"}
-          </h2>
+      <AppDialog
+        title={isEdit ? "Редактировать встречу" : "Создать встречу"}
+        description={isEdit ? "Обновите параметры встречи и сохраните изменения." : "Заполните расписание и параметры новой встречи."}
+        maxWidth="max-w-xl"
+        showTrigger={false}
+        closeOnBackdropClick={false}
+        closeLabel="Отмена"
+        bind:show={isOpen}
+      >
 
           {errorMessage && (
             <div class="mb-4" role="alert">
@@ -125,7 +145,7 @@ export const MeetingForm = component$<MeetingFormProps>(
             </div>
           )}
 
-          <Form action={action as never} onSubmit$={handleSubmit$}>
+          <Form id={formId} action={action as never} onSubmit$={handleSubmit$}>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div class="md:col-span-2">
                 <label for="meeting-title" class="mb-1 block text-sm font-medium text-text">Название *</label>
@@ -228,33 +248,24 @@ export const MeetingForm = component$<MeetingFormProps>(
               </div>
             </div>
 
-            <input type="hidden" name="startsAt" value={startsAtIso.value} />
-            <input type="hidden" name="endsAt" value={endsAtIso.value} />
+            <input type="hidden" name="startsAt" value={toIso(startsAtLocal.value)} />
+            <input type="hidden" name="endsAt" value={toIso(endsAtLocal.value)} />
             <input type="hidden" name="allowGuests" value={allowGuestsValue.value ? "true" : "false"} />
             <input type="hidden" name="recordingEnabled" value={recordingEnabledValue.value ? "true" : "false"} />
             {!isEdit && <input type="hidden" name="roomId" value={roomId} />}
             {meeting?.meetingId && <input type="hidden" name="meetingId" value={meeting.meetingId} />}
-
-            <div class="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                class="rounded border border-border px-4 py-2 text-sm text-text hover:bg-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                onClick$={() => onCancel$()}
-                disabled={isLoading}
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                class="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
-                disabled={isLoading}
-              >
-                {isLoading ? "Сохранение..." : isEdit ? "Сохранить" : "Создать"}
-              </button>
-            </div>
           </Form>
-        </div>
-      </div>
+
+          <button
+            q:slot="actions"
+            form={formId}
+            type="submit"
+            class="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
+            disabled={isLoading}
+          >
+            {isLoading ? "Сохранение..." : isEdit ? "Сохранить" : "Создать"}
+          </button>
+      </AppDialog>
     );
   },
 );

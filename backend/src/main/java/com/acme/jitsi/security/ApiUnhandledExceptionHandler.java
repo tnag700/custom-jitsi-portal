@@ -1,5 +1,6 @@
 package com.acme.jitsi.security;
 
+import com.acme.jitsi.shared.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +49,7 @@ public class ApiUnhandledExceptionHandler {
         HttpStatus.INTERNAL_SERVER_ERROR,
         "Внутренняя ошибка данных",
         "Сервис обнаружил некорректные сохранённые данные. Обратитесь в поддержку с traceId.",
-        "INVALID_PERSISTED_STATE");
+        ErrorCode.INVALID_PERSISTED_STATE.code());
   }
 
   @ExceptionHandler(Exception.class)
@@ -74,7 +75,7 @@ public class ApiUnhandledExceptionHandler {
         HttpStatus.INTERNAL_SERVER_ERROR,
         "Внутренняя ошибка сервиса",
         "Сервис временно недоступен. Повторите попытку позже или обратитесь в поддержку с traceId.",
-        "INTERNAL_ERROR");
+        ErrorCode.INTERNAL_ERROR.code());
   }
 
   private Throwable resolveRootCause(Throwable throwable) {

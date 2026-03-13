@@ -50,9 +50,9 @@ export const MeetingList = component$<MeetingListProps>(
               }}
             >
               <option value="all">Все</option>
-              <option value="scheduled">scheduled</option>
-              <option value="canceled">canceled</option>
-              <option value="ended">ended</option>
+              <option value="scheduled">Запланированные</option>
+              <option value="canceled">Отменённые</option>
+              <option value="ended">Завершённые</option>
             </select>
           </div>
 

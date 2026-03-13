@@ -1,6 +1,6 @@
 package com.acme.jitsi.security;
 
-import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
+import com.acme.jitsi.shared.ErrorCode;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -13,44 +13,44 @@ public class DefaultProblemDetailsMappingPolicy implements ProblemDetailsMapping
           HttpStatus.UNAUTHORIZED,
           "Требуется вход",
           "Не удалось выполнить вход. Попробуйте снова или обратитесь в поддержку.",
-          "AUTH_REQUIRED");
+          ErrorCode.AUTH_REQUIRED.code());
 
   private static final ProblemDefinition ACCESS_DENIED_FOR_AUTH_ERROR =
       new ProblemDefinition(
           HttpStatus.FORBIDDEN,
           "Вход отклонен",
           "Провайдер входа отклонил запрос или аутентификация не завершена.",
-          "ACCESS_DENIED");
+          ErrorCode.ACCESS_DENIED.code());
 
   private static final ProblemDefinition SECURITY_AUTH_REQUIRED =
       new ProblemDefinition(
           HttpStatus.UNAUTHORIZED,
           "Требуется вход",
           "Сессия отсутствует или истекла. Выполните вход через SSO.",
-          "AUTH_REQUIRED");
+          ErrorCode.AUTH_REQUIRED.code());
 
   private static final ProblemDefinition SECURITY_ACCESS_DENIED =
       new ProblemDefinition(
           HttpStatus.FORBIDDEN,
           "Доступ запрещен",
           "Недостаточно прав для выполнения операции.",
-          "ACCESS_DENIED");
+          ErrorCode.ACCESS_DENIED.code());
 
   private static final Map<String, String> MEETING_TITLE_BY_ERROR_CODE =
       Map.of(
-          "INVITE_EXHAUSTED", "Инвайт исчерпан",
-          "INVITE_EXPIRED", "Инвайт просрочен",
-          "INVITE_REVOKED", "Инвайт отозван",
-          "ROOM_CLOSED", "Встреча недоступна",
-          "MEETING_NOT_FOUND", "Встреча не найдена",
-        "MEETING_CANCELED", "Встреча отменена",
-        "MEETING_ENDED", "Встреча завершена",
-        "MEETING_FINALIZED", "Встреча финализирована",
-          "INVALID_INVITE", "Инвайт недействителен");
+          ErrorCode.INVITE_EXHAUSTED.code(), "Инвайт исчерпан",
+          ErrorCode.INVITE_EXPIRED.code(), "Инвайт просрочен",
+          ErrorCode.INVITE_REVOKED.code(), "Инвайт отозван",
+          ErrorCode.ROOM_CLOSED.code(), "Встреча недоступна",
+          ErrorCode.MEETING_NOT_FOUND.code(), "Встреча не найдена",
+          ErrorCode.MEETING_CANCELED.code(), "Встреча отменена",
+          ErrorCode.MEETING_ENDED.code(), "Встреча завершена",
+          ErrorCode.MEETING_FINALIZED.code(), "Встреча финализирована",
+          ErrorCode.INVITE_NOT_FOUND.code(), "Инвайт не найден");
 
   @Override
   public ProblemDefinition mapAuthErrorCode(String code) {
-    if ("ACCESS_DENIED".equals(code)) {
+    if (ErrorCode.ACCESS_DENIED.code().equals(code)) {
       return ACCESS_DENIED_FOR_AUTH_ERROR;
     }
     return AUTH_REQUIRED_FOR_AUTH_ERROR;
@@ -67,32 +67,36 @@ public class DefaultProblemDetailsMappingPolicy implements ProblemDetailsMapping
   }
 
   @Override
-  public ProblemDefinition mapMeetingTokenException(MeetingTokenException exception) {
+    public ProblemDefinition mapTokenException(HttpStatus status, String errorCode, String detail) {
+    String sanitizedDetail = detail;
+    if (ErrorCode.CONFIG_INCOMPATIBLE.code().equals(errorCode)) {
+      sanitizedDetail = "Выпуск токена временно недоступен из-за несовместимой активной конфигурации.";
+    }
     return new ProblemDefinition(
-        exception.status(),
-        resolveMeetingTitle(exception),
-        exception.getMessage(),
-        exception.errorCode());
+      status,
+      resolveTokenTitle(status, errorCode),
+      sanitizedDetail,
+      errorCode);
   }
 
   @Override
   public String resolveValidationErrorCode(String requestUri) {
     if (requestUri != null && requestUri.startsWith("/api/v1/profile/")) {
-      return "PROFILE_VALIDATION_FAILED";
+      return ErrorCode.PROFILE_VALIDATION_FAILED.code();
     }
     if (requestUri != null && requestUri.startsWith("/api/v1/invites/")) {
-      return "INVALID_INVITE";
+      return ErrorCode.INVALID_INVITE.code();
     }
-    return "INVALID_REQUEST";
+    return ErrorCode.INVALID_REQUEST.code();
   }
 
-  private String resolveMeetingTitle(MeetingTokenException exception) {
-    String titleByCode = MEETING_TITLE_BY_ERROR_CODE.get(exception.errorCode());
+  private String resolveTokenTitle(HttpStatus status, String errorCode) {
+    String titleByCode = MEETING_TITLE_BY_ERROR_CODE.get(errorCode);
     if (titleByCode != null) {
       return titleByCode;
     }
 
-    return switch (exception.status()) {
+    return switch (status) {
       case FORBIDDEN -> "Доступ запрещен";
       case NOT_FOUND -> "Ресурс не найден";
       case CONFLICT -> "Конфликт запроса";

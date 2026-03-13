@@ -158,7 +158,7 @@ describe("join.service runtime: issueAccessToken", () => {
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({
-          Cookie: "JSESSIONID=sess-123",
+          Cookie: "JSESSIONID=sess-123; XSRF-TOKEN=csrf-456",
           "X-XSRF-TOKEN": "csrf-456",
         }),
       }),

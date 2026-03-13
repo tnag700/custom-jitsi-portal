@@ -22,3 +22,20 @@ app:
       algorithm: HS256
       access-ttl-minutes: 20
       refresh-ttl-minutes: 60
+
+management:
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  tracing:
+    sampling:
+      probability: 1.0
+    export:
+      otlp:
+        enabled: false
+  opentelemetry:
+    tracing:
+      export:
+        schedule-delay: 10ms
+        timeout: 5s

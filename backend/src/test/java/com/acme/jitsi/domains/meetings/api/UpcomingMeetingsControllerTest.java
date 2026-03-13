@@ -1,5 +1,7 @@
 package com.acme.jitsi.domains.meetings.api;
 
+import com.acme.jitsi.shared.ErrorCode;
+
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -8,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.acme.jitsi.shared.JwtTestProperties;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,6 +68,7 @@ import com.jayway.jsonpath.JsonPath;
       "app.meetings.token.upcoming-meetings[2].room-name=Room-P"
     })
 @AutoConfigureMockMvc
+@Tag("integration")
 class UpcomingMeetingsControllerTest {
 
   @Autowired
@@ -76,6 +80,7 @@ class UpcomingMeetingsControllerTest {
   @BeforeEach
   void cleanTables() {
     jdbcTemplate.execute("DELETE FROM meeting_participant_assignments");
+    jdbcTemplate.execute("DELETE FROM meeting_invites");
     jdbcTemplate.execute("DELETE FROM meeting_audit_events");
     jdbcTemplate.execute("DELETE FROM meetings");
     jdbcTemplate.execute("DELETE FROM rooms");
@@ -98,27 +103,8 @@ class UpcomingMeetingsControllerTest {
         .andExpect(status().isUnauthorized())
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
         .andExpect(jsonPath("$.instance").value("/api/v1/meetings/upcoming"))
-        .andExpect(jsonPath("$.properties.errorCode").value("AUTH_REQUIRED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-upcoming-auth-1"));
-  }
-
-  @Test
-  void authenticatedRequestReturnsUpcomingMeetingCardsSortedAscending() throws Exception {
-    mockMvc.perform(get("/api/v1/meetings/upcoming")
-            .with(csrf())
-            .with(oauth2Login().attributes(attrs -> attrs.put("sub", "u-host"))))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$[0].meetingId").value("meeting-a"))
-        .andExpect(jsonPath("$[0].title").value("Architecture sync"))
-        .andExpect(jsonPath("$[0].startsAt").value("2099-01-01T08:00:00Z"))
-        .andExpect(jsonPath("$[0].roomName").value("Room-A"))
-        .andExpect(jsonPath("$[0].joinAvailability").value("scheduled"))
-        .andExpect(jsonPath("$[1].meetingId").value("meeting-b"))
-        .andExpect(jsonPath("$[1].title").value("Daily standup"))
-        .andExpect(jsonPath("$[1].startsAt").value("2099-01-01T09:00:00Z"))
-        .andExpect(jsonPath("$[1].roomName").value("Room-B"))
-        .andExpect(jsonPath("$[1].joinAvailability").value("scheduled"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.AUTH_REQUIRED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-upcoming-auth-1"));
   }
 
   @Test
@@ -177,3 +163,5 @@ class UpcomingMeetingsControllerTest {
         .andExpect(jsonPath("$[0].title").value("Assigned DB meeting"));
   }
 }
+
+

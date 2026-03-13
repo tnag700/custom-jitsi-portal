@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.acme.jitsi.shared.ErrorCode;
 import com.acme.jitsi.shared.JwtTestProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,7 +59,7 @@ class InviteExchangeRedisModeControllerTest {
             .content("{" + "\"inviteToken\":\"invite-redis\"}"))
         .andExpect(status().isInternalServerError())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("CONFIG_INCOMPATIBLE"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-config-incompatible"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.CONFIG_INCOMPATIBLE.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-config-incompatible"));
   }
 }

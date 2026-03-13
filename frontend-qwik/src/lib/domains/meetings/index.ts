@@ -5,8 +5,10 @@ export type {
   UpdateMeetingRequest,
   ParticipantAssignment,
   AssignParticipantRequest,
+  BulkAssignParticipantsRequest,
   UpdateParticipantRoleRequest,
   MeetingErrorPayload,
+  UserProfileSummary,
 } from "./types";
 
 export {
@@ -16,13 +18,13 @@ export {
   cancelMeeting,
   MeetingServiceError,
   adaptMeetingProblemDetails,
-  baseHeaders,
-  mutationHeaders,
 } from "./meetings.service";
 
 export {
   fetchParticipants,
   assignParticipant,
+  bulkAssignParticipants,
+  searchUsers,
   updateParticipantRole,
   unassignParticipant,
 } from "./participants.service";
@@ -31,6 +33,7 @@ export {
   createMeetingSchema,
   updateMeetingSchema,
   assignParticipantSchema,
+  bulkAssignParticipantsSchema,
   updateParticipantRoleSchema,
 } from "./meetings.zod";
 

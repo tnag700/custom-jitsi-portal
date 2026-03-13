@@ -1,6 +1,6 @@
 package com.acme.jitsi.domains.invites.service;
 
-import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
+import com.acme.jitsi.shared.ErrorCode;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -10,10 +10,15 @@ import org.springframework.stereotype.Component;
 class InviteTokenBlankValidator implements InviteValidator {
 
   @Override
+  public boolean requiresResolvedInvite() {
+    return false;
+  }
+
+  @Override
   public void validate(InviteValidationContext context) {
     String inviteToken = context.inviteToken();
     if (inviteToken == null || inviteToken.isBlank()) {
-      throw new MeetingTokenException(HttpStatus.NOT_FOUND, "INVALID_INVITE", "Инвайт недействителен.");
+      throw new InviteExchangeException(HttpStatus.NOT_FOUND, ErrorCode.INVITE_NOT_FOUND.code(), "Инвайт не найден.");
     }
   }
 }

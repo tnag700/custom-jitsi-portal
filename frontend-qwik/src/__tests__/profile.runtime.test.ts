@@ -123,7 +123,7 @@ describe("profile.service runtime", () => {
       expect.objectContaining({
         method: "PUT",
         headers: expect.objectContaining({
-          Cookie: "JSESSIONID=sess-123",
+          Cookie: "JSESSIONID=sess-123; XSRF-TOKEN=csrf-456",
           "X-XSRF-TOKEN": "csrf-456",
         }),
       }),

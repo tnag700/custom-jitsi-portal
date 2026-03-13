@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.acme.jitsi.shared.ErrorCode;
 import com.acme.jitsi.shared.JwtTestProperties;
 import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
@@ -133,8 +134,8 @@ class ConfigSetsControllerTest {
                 """))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("CONFIG_SET_INVALID"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-configsets-invalid-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.CONFIG_SET_INVALID.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-configsets-invalid-1"));
   }
 
   @Test
@@ -150,7 +151,7 @@ class ConfigSetsControllerTest {
             .header("X-Trace-Id", "trace-configsets-get-1"))
         .andExpect(status().isNotFound())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("CONFIG_SET_NOT_FOUND"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.CONFIG_SET_NOT_FOUND.code()));
   }
 
   @Test
@@ -249,6 +250,6 @@ class ConfigSetsControllerTest {
             .param("environmentType", "DEV")
             .header("X-Trace-Id", "trace-configsets-latest-1"))
         .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.properties.errorCode").value("CONFIG_SET_NOT_FOUND"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.CONFIG_SET_NOT_FOUND.code()));
   }
 }

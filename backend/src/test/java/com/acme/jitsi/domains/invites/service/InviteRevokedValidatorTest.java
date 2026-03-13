@@ -3,7 +3,7 @@ package com.acme.jitsi.domains.invites.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
+import com.acme.jitsi.shared.ErrorCode;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -27,11 +27,11 @@ class InviteRevokedValidatorTest {
     context.setInvite(invite);
 
     assertThatThrownBy(() -> validator.validate(context))
-        .isInstanceOf(MeetingTokenException.class)
+        .isInstanceOf(InviteExchangeException.class)
         .satisfies(error -> {
-          MeetingTokenException ex = (MeetingTokenException) error;
+          InviteExchangeException ex = (InviteExchangeException) error;
           assertThat(ex.status()).isEqualTo(HttpStatus.GONE);
-          assertThat(ex.errorCode()).isEqualTo("INVITE_REVOKED");
+          assertThat(ex.errorCode()).isEqualTo(ErrorCode.INVITE_REVOKED.code());
         });
   }
 

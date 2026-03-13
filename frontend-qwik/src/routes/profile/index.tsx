@@ -1,4 +1,4 @@
-import { component$, useSignal, useTask$ } from "@qwik.dev/core";
+import { component$, useTask$ } from "@qwik.dev/core";
 import {
   routeAction$,
   routeLoader$,
@@ -14,6 +14,8 @@ import {
   type ProfileErrorPayload,
   type UserProfileResponse,
 } from "~/lib/domains/profile";
+import { AppToast, useAppToast } from "~/lib/shared/components";
+import { buildMutationRequestContext, buildServerRequestContext } from "~/lib/shared/routes/server-handlers";
 
 interface ProfileLoaderData {
   profile: UserProfileResponse | null;
@@ -22,10 +24,9 @@ interface ProfileLoaderData {
 }
 
 export const useMyProfile = routeLoader$(async ({ sharedMap, cookie, redirect }) => {
-  const apiUrl = sharedMap.get("apiUrl") as string;
-  const sessionCookie = cookie.get("JSESSIONID")?.value ?? "";
+  const requestContext = buildServerRequestContext({ sharedMap, cookie });
   try {
-    const profile = await fetchMyProfile(sessionCookie, apiUrl);
+    const profile = await fetchMyProfile(requestContext);
     if (profile === null) {
       return { profile: null, isFirstRun: true, loadError: null } satisfies ProfileLoaderData;
     }
@@ -55,11 +56,9 @@ export const useMyProfile = routeLoader$(async ({ sharedMap, cookie, redirect })
 
 export const useUpsertProfile = routeAction$(
   async (data, { sharedMap, cookie, redirect, fail }) => {
-    const apiUrl = sharedMap.get("apiUrl") as string;
-    const sessionCookie = cookie.get("JSESSIONID")?.value ?? "";
-    const csrfToken = cookie.get("XSRF-TOKEN")?.value ?? "";
+    const requestContext = await buildMutationRequestContext({ sharedMap, cookie });
     try {
-      const profile = await upsertMyProfile(sessionCookie, apiUrl, csrfToken, data);
+      const profile = await upsertMyProfile(requestContext, data);
       return { success: true as const, profile };
     } catch (error) {
       if (error instanceof ProfileServiceError) {
@@ -85,17 +84,13 @@ export const useUpsertProfile = routeAction$(
 export default component$(() => {
   const profileData = useMyProfile();
   const upsertAction = useUpsertProfile();
-  const successMessage = useSignal<string | null>(null);
+  const { toast, showToast$, clearToast$ } = useAppToast();
 
-  useTask$(({ track, cleanup }) => {
+  useTask$(async ({ track }) => {
     const result = track(() => upsertAction.value);
     if (!result) return;
     if ("success" in result && result.success) {
-      successMessage.value = "Профиль сохранён";
-      const timer = setTimeout(() => {
-        successMessage.value = null;
-      }, 3000);
-      cleanup(() => clearTimeout(timer));
+      await showToast$({ message: "Профиль сохранён", tone: "success" });
     }
   });
 
@@ -117,9 +112,10 @@ export default component$(() => {
         isFirstRun={loaderData.isFirstRun && !currentProfile}
         isSubmitting={upsertAction.isRunning}
         serverError={serverError}
-        successMessage={successMessage.value}
         action={upsertAction}
       />
+
+      <AppToast toast={toast.value} onDismiss$={clearToast$} />
     </div>
   );
 });

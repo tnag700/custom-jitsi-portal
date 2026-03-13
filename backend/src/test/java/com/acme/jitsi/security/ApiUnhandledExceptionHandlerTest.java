@@ -1,5 +1,7 @@
 package com.acme.jitsi.security;
 
+import com.acme.jitsi.shared.ErrorCode;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
@@ -24,7 +26,7 @@ class ApiUnhandledExceptionHandlerTest {
         request);
 
     assertThat(detail.getStatus()).isEqualTo(500);
-    assertThat(detail.getProperties()).containsEntry("errorCode", "INVALID_PERSISTED_STATE");
+    assertThat(detail.getProperties()).containsEntry("errorCode", ErrorCode.INVALID_PERSISTED_STATE.code());
     assertThat(detail.getProperties()).containsEntry("traceId", "trace-invalid-persisted-state");
   }
 
@@ -37,7 +39,9 @@ class ApiUnhandledExceptionHandlerTest {
     var detail = handler.handleUnhandledException(new IllegalStateException("boom"), request);
 
     assertThat(detail.getStatus()).isEqualTo(500);
-    assertThat(detail.getProperties()).containsEntry("errorCode", "INTERNAL_ERROR");
+    assertThat(detail.getProperties()).containsEntry("errorCode", ErrorCode.INTERNAL_ERROR.code());
     assertThat(detail.getProperties()).containsEntry("traceId", "trace-internal-error");
   }
 }
+
+

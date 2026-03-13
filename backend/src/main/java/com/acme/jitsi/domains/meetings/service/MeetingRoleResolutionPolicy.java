@@ -5,4 +5,8 @@ import java.util.Optional;
 interface MeetingRoleResolutionPolicy {
 
   Optional<MeetingRole> resolve(MeetingRoleResolutionContext context);
+
+  default boolean isTerminalPolicy() {
+    return false;
+  }
 }

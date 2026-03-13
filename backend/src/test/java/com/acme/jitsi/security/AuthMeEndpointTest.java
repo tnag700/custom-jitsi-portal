@@ -1,5 +1,7 @@
 package com.acme.jitsi.security;
 
+import com.acme.jitsi.shared.ErrorCode;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.acme.jitsi.shared.JwtTestProperties;
@@ -63,7 +65,7 @@ class AuthMeEndpointTest {
     assertThat(response.getBody()).isNotNull();
     Map<String, Object> properties = (Map<String, Object>) response.getBody().get("properties");
     assertThat(properties).isNotNull();
-    assertThat(properties.get("errorCode")).isEqualTo("AUTH_REQUIRED");
+    assertThat(properties.get("errorCode")).isEqualTo(ErrorCode.AUTH_REQUIRED.code());
     assertThat((String) properties.get("traceId")).isNotBlank();
     assertThat((String) response.getBody().get("title")).isNotBlank();
     assertThat((String) response.getBody().get("detail")).isNotBlank();
@@ -79,3 +81,5 @@ class AuthMeEndpointTest {
     assertThat(response.getStatusCode()).isNotEqualTo(HttpStatus.FORBIDDEN);
   }
 }
+
+

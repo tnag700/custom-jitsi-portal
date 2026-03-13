@@ -76,62 +76,139 @@ class ConfigSetEntity {
   protected ConfigSetEntity() {
   }
 
-  ConfigSetEntity(ConfigSet configSet, ConfigSetEncryptionService encryptionService) {
-    this.configSetId = configSet.configSetId();
-    applyState(configSet, encryptionService, true);
-    this.deleted = false;
-  }
-
-  void updateFrom(ConfigSet configSet, ConfigSetEncryptionService encryptionService) {
-    applyState(configSet, encryptionService, false);
-  }
-
-  private void applyState(
-      ConfigSet configSet,
-      ConfigSetEncryptionService encryptionService,
-      boolean includeCreatedAt) {
-    this.name = configSet.name();
-    this.tenantId = configSet.tenantId();
-    this.environmentType = configSet.environmentType();
-    this.issuer = configSet.issuer();
-    this.audience = configSet.audience();
-    this.algorithm = configSet.algorithm();
-    this.roleClaim = configSet.roleClaim();
-    this.signingSecretEncrypted = encryptionService.encrypt(configSet.signingSecret());
-    this.jwksUri = configSet.jwksUri();
-    this.accessTtlMinutes = configSet.accessTtlMinutes();
-    this.refreshTtlMinutes = configSet.refreshTtlMinutes();
-    this.meetingsServiceUrl = configSet.meetingsServiceUrl();
-    this.status = configSet.status();
-
-    if (includeCreatedAt) {
-      this.createdAt = configSet.createdAt();
-    }
-
-    this.updatedAt = configSet.updatedAt();
-  }
-
-  ConfigSet toDomain(ConfigSetEncryptionService encryptionService) {
-    return new ConfigSet(
-        configSetId,
-        name,
-        tenantId,
-        environmentType,
-        issuer,
-        audience,
-        algorithm,
-        roleClaim,
-        encryptionService.decrypt(signingSecretEncrypted),
-        jwksUri,
-        accessTtlMinutes,
-        refreshTtlMinutes,
-        meetingsServiceUrl,
-        status,
-        createdAt,
-        updatedAt);
-  }
-
   String getConfigSetId() {
     return configSetId;
+  }
+
+  void setConfigSetId(String configSetId) {
+    this.configSetId = configSetId;
+  }
+
+  String getName() {
+    return name;
+  }
+
+  void setName(String name) {
+    this.name = name;
+  }
+
+  String getTenantId() {
+    return tenantId;
+  }
+
+  void setTenantId(String tenantId) {
+    this.tenantId = tenantId;
+  }
+
+  ConfigSetEnvironmentType getEnvironmentType() {
+    return environmentType;
+  }
+
+  void setEnvironmentType(ConfigSetEnvironmentType environmentType) {
+    this.environmentType = environmentType;
+  }
+
+  String getIssuer() {
+    return issuer;
+  }
+
+  void setIssuer(String issuer) {
+    this.issuer = issuer;
+  }
+
+  String getAudience() {
+    return audience;
+  }
+
+  void setAudience(String audience) {
+    this.audience = audience;
+  }
+
+  String getAlgorithm() {
+    return algorithm;
+  }
+
+  void setAlgorithm(String algorithm) {
+    this.algorithm = algorithm;
+  }
+
+  String getRoleClaim() {
+    return roleClaim;
+  }
+
+  void setRoleClaim(String roleClaim) {
+    this.roleClaim = roleClaim;
+  }
+
+  String getSigningSecretEncrypted() {
+    return signingSecretEncrypted;
+  }
+
+  void setSigningSecretEncrypted(String signingSecretEncrypted) {
+    this.signingSecretEncrypted = signingSecretEncrypted;
+  }
+
+  String getJwksUri() {
+    return jwksUri;
+  }
+
+  void setJwksUri(String jwksUri) {
+    this.jwksUri = jwksUri;
+  }
+
+  int getAccessTtlMinutes() {
+    return accessTtlMinutes;
+  }
+
+  void setAccessTtlMinutes(int accessTtlMinutes) {
+    this.accessTtlMinutes = accessTtlMinutes;
+  }
+
+  Integer getRefreshTtlMinutes() {
+    return refreshTtlMinutes;
+  }
+
+  void setRefreshTtlMinutes(Integer refreshTtlMinutes) {
+    this.refreshTtlMinutes = refreshTtlMinutes;
+  }
+
+  String getMeetingsServiceUrl() {
+    return meetingsServiceUrl;
+  }
+
+  void setMeetingsServiceUrl(String meetingsServiceUrl) {
+    this.meetingsServiceUrl = meetingsServiceUrl;
+  }
+
+  ConfigSetStatus getStatus() {
+    return status;
+  }
+
+  void setStatus(ConfigSetStatus status) {
+    this.status = status;
+  }
+
+  Instant getCreatedAt() {
+    return createdAt;
+  }
+
+  void setCreatedAt(Instant createdAt) {
+    this.createdAt = createdAt;
+  }
+
+  Instant getUpdatedAt() {
+    return updatedAt;
+  }
+
+  void setUpdatedAt(Instant updatedAt) {
+    this.updatedAt = updatedAt;
+  }
+
+  boolean isDeleted() {
+    return deleted;
+  }
+
+  void setDeleted(boolean deleted) {
+    this.deleted = deleted;
   }
 }

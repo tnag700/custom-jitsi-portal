@@ -1,11 +1,17 @@
 package com.acme.jitsi.domains.auth.api;
 
+import com.acme.jitsi.shared.ErrorCode;
+
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.reset;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.acme.jitsi.security.TokenIssuanceCompatibilityPolicy;
+import com.acme.jitsi.security.TokenIssuancePolicyException;
 import com.acme.jitsi.shared.JwtTestProperties;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JOSEObjectType;
@@ -23,7 +29,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -64,6 +72,9 @@ class AuthRefreshControllerTest {
   @Autowired
   private MockMvc mockMvc;
 
+  @MockitoBean
+  private TokenIssuanceCompatibilityPolicy tokenIssuanceCompatibilityPolicy;
+
   @Test
   void successfulRefreshReturnsNewPairAndInvalidatesOldToken() throws Exception {
     String refreshToken = buildRefreshToken("u-host", "meeting-a", "refresh-jti-1", Instant.now(), Instant.now().plus(2, ChronoUnit.HOURS));
@@ -85,8 +96,9 @@ class AuthRefreshControllerTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content("{" + "\"refreshToken\":\"" + refreshToken + "\"}"))
         .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.properties.errorCode").value("REFRESH_REUSE_DETECTED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-reuse-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.REFRESH_REUSE_DETECTED.code()))
+        .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
+        .andExpect(jsonPath("$.properties.requestId").value("trace-reuse-1"));
 
     String newRefreshToken = com.jayway.jsonpath.JsonPath.parse(first.getResponse().getContentAsString())
         .read("$.refreshToken", String.class);
@@ -111,8 +123,9 @@ class AuthRefreshControllerTest {
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.status").value(403))
         .andExpect(jsonPath("$.instance").value("/api/v1/auth/refresh"))
-        .andExpect(jsonPath("$.properties.errorCode").value("TOKEN_REVOKED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-revoked-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TOKEN_REVOKED.code()))
+        .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
+        .andExpect(jsonPath("$.properties.requestId").value("trace-revoked-1"));
   }
 
   @Test
@@ -129,8 +142,9 @@ class AuthRefreshControllerTest {
         .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.status").value(401))
             .andExpect(jsonPath("$.instance").value("/api/v1/auth/refresh"))
-        .andExpect(jsonPath("$.properties.errorCode").value("AUTH_REQUIRED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-idle-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.AUTH_REQUIRED.code()))
+        .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
+        .andExpect(jsonPath("$.properties.requestId").value("trace-idle-1"));
   }
 
   @Test
@@ -147,8 +161,9 @@ class AuthRefreshControllerTest {
         .andExpect(status().isUnauthorized())
           .andExpect(jsonPath("$.status").value(401))
           .andExpect(jsonPath("$.instance").value("/api/v1/auth/refresh"))
-        .andExpect(jsonPath("$.properties.errorCode").value("AUTH_REQUIRED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-absolute-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.AUTH_REQUIRED.code()))
+        .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
+        .andExpect(jsonPath("$.properties.requestId").value("trace-absolute-1"));
   }
 
         @Test
@@ -161,8 +176,9 @@ class AuthRefreshControllerTest {
           .andExpect(status().isUnauthorized())
           .andExpect(jsonPath("$.status").value(401))
           .andExpect(jsonPath("$.instance").value("/api/v1/auth/refresh"))
-          .andExpect(jsonPath("$.properties.errorCode").value("TOKEN_INVALID"))
-          .andExpect(jsonPath("$.properties.traceId").value("trace-invalid-refresh-1"));
+          .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TOKEN_INVALID.code()))
+          .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
+          .andExpect(jsonPath("$.properties.requestId").value("trace-invalid-refresh-1"));
         }
 
   @Test
@@ -183,6 +199,42 @@ class AuthRefreshControllerTest {
         .andExpect(jsonPath("$.role").value("moderator"));
   }
 
+      @Test
+      void configIncompatibleRefreshKeepsProblemContractAndDoesNotConsumeToken() throws Exception {
+      String refreshToken = buildRefreshToken(
+        "u-host",
+        "meeting-a",
+        "config-incompatible-jti-1",
+        Instant.now(),
+        Instant.now().plus(2, ChronoUnit.HOURS));
+
+      doThrow(new TokenIssuancePolicyException(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        ErrorCode.CONFIG_INCOMPATIBLE.code(),
+        "Token issuance is blocked due to incompatible active config set: cs-1"))
+        .when(tokenIssuanceCompatibilityPolicy)
+        .assertTokenIssuanceAllowed();
+
+      mockMvc.perform(post("/api/v1/auth/refresh")
+          .with(csrf())
+          .header("X-Trace-Id", "trace-config-incompatible-1")
+          .contentType(MediaType.APPLICATION_JSON)
+          .content("{" + "\"refreshToken\":\"" + refreshToken + "\"}"))
+        .andExpect(status().isInternalServerError())
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.CONFIG_INCOMPATIBLE.code()))
+        .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
+        .andExpect(jsonPath("$.properties.requestId").value("trace-config-incompatible-1"));
+
+      reset(tokenIssuanceCompatibilityPolicy);
+
+      mockMvc.perform(post("/api/v1/auth/refresh")
+          .with(csrf())
+          .contentType(MediaType.APPLICATION_JSON)
+          .content("{" + "\"refreshToken\":\"" + refreshToken + "\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.tokenType").value("Bearer"));
+      }
+
   @Test
   void authenticatedRevokeEndpointBlocksFurtherRefreshByTokenId() throws Exception {
     String refreshToken = buildRefreshToken("u-host", "meeting-a", "runtime-revoke-jti-1", Instant.now(), Instant.now().plus(2, ChronoUnit.HOURS));
@@ -200,8 +252,9 @@ class AuthRefreshControllerTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content("{" + "\"refreshToken\":\"" + refreshToken + "\"}"))
         .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$.properties.errorCode").value("TOKEN_REVOKED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-runtime-revoke-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TOKEN_REVOKED.code()))
+        .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
+        .andExpect(jsonPath("$.properties.requestId").value("trace-runtime-revoke-1"));
   }
 
             @Test
@@ -213,8 +266,9 @@ class AuthRefreshControllerTest {
               .contentType(MediaType.APPLICATION_JSON)
               .content("{" + "\"tokenId\":\"\"}"))
               .andExpect(status().isBadRequest())
-              .andExpect(jsonPath("$.properties.errorCode").value("INVALID_REQUEST"))
-              .andExpect(jsonPath("$.properties.traceId").value("trace-revoke-bad-request-1"));
+              .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVALID_REQUEST.code()))
+              .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
+              .andExpect(jsonPath("$.properties.requestId").value("trace-revoke-bad-request-1"));
             }
 
             @Test
@@ -225,8 +279,9 @@ class AuthRefreshControllerTest {
               .contentType(MediaType.APPLICATION_JSON)
               .content("{" + "\"tokenId\":\"runtime-revoke-jti-2\"}"))
               .andExpect(status().isUnauthorized())
-              .andExpect(jsonPath("$.properties.errorCode").value("AUTH_REQUIRED"))
-              .andExpect(jsonPath("$.properties.traceId").value("trace-revoke-auth-required-1"));
+              .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.AUTH_REQUIRED.code()))
+              .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
+              .andExpect(jsonPath("$.properties.requestId").value("trace-revoke-auth-required-1"));
             }
 
             @Test
@@ -237,8 +292,9 @@ class AuthRefreshControllerTest {
               .contentType(MediaType.APPLICATION_JSON)
               .content("{" + "\"tokenId\":\"runtime-revoke-jti-3\"}"))
               .andExpect(status().isForbidden())
-              .andExpect(jsonPath("$.properties.errorCode").value("ACCESS_DENIED"))
-              .andExpect(jsonPath("$.properties.traceId").value("trace-revoke-access-denied-1"));
+              .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ACCESS_DENIED.code()))
+              .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
+              .andExpect(jsonPath("$.properties.requestId").value("trace-revoke-access-denied-1"));
             }
 
                 @Test
@@ -249,8 +305,9 @@ class AuthRefreshControllerTest {
                   .contentType(MediaType.APPLICATION_JSON)
                   .content("{" + "\"refreshToken\":\"abc\""))
                   .andExpect(status().isBadRequest())
-                  .andExpect(jsonPath("$.properties.errorCode").value("INVALID_REQUEST"))
-                  .andExpect(jsonPath("$.properties.traceId").value("trace-refresh-malformed-1"));
+                  .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVALID_REQUEST.code()))
+                  .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
+                  .andExpect(jsonPath("$.properties.requestId").value("trace-refresh-malformed-1"));
                 }
 
                 @Test
@@ -262,8 +319,9 @@ class AuthRefreshControllerTest {
                   .contentType(MediaType.APPLICATION_JSON)
                   .content("{" + "\"tokenId\":\"abc\""))
                   .andExpect(status().isBadRequest())
-                  .andExpect(jsonPath("$.properties.errorCode").value("INVALID_REQUEST"))
-                  .andExpect(jsonPath("$.properties.traceId").value("trace-revoke-malformed-1"));
+                  .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVALID_REQUEST.code()))
+                  .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
+                  .andExpect(jsonPath("$.properties.requestId").value("trace-revoke-malformed-1"));
                 }
 
   private String buildRefreshToken(String subject, String meetingId, String jti, Instant issuedAt, Instant expiresAt)
@@ -304,3 +362,5 @@ class AuthRefreshControllerTest {
     return jwt.serialize();
   }
 }
+
+

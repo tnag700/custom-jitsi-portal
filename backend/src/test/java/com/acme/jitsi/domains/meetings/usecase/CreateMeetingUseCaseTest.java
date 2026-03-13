@@ -9,13 +9,12 @@ import static org.mockito.Mockito.when;
 import com.acme.jitsi.domains.meetings.event.MeetingCreatedEvent;
 import com.acme.jitsi.domains.meetings.service.InvalidMeetingScheduleException;
 import com.acme.jitsi.domains.meetings.service.Meeting;
+import com.acme.jitsi.domains.meetings.service.MeetingConfigSetInvalidException;
 import com.acme.jitsi.domains.meetings.service.MeetingRepository;
+import com.acme.jitsi.domains.meetings.service.MeetingRoomSnapshot;
 import com.acme.jitsi.domains.meetings.service.MeetingRoomInactiveException;
+import com.acme.jitsi.domains.meetings.service.MeetingRoomsPort;
 import com.acme.jitsi.domains.meetings.service.MeetingStatus;
-import com.acme.jitsi.domains.rooms.service.ConfigSetInvalidException;
-import com.acme.jitsi.domains.rooms.service.ConfigSetValidator;
-import com.acme.jitsi.domains.rooms.service.Room;
-import com.acme.jitsi.domains.rooms.service.RoomStatus;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -32,7 +31,7 @@ class CreateMeetingUseCaseTest {
   @Mock
   private MeetingRepository meetingRepository;
   @Mock
-  private ConfigSetValidator configSetValidator;
+  private MeetingRoomsPort meetingRoomsPort;
   @Mock
   private ApplicationEventPublisher eventPublisher;
 
@@ -42,19 +41,18 @@ class CreateMeetingUseCaseTest {
   void setUp() {
     useCase = new CreateMeetingUseCase(
         meetingRepository,
-        configSetValidator,
+      meetingRoomsPort,
         eventPublisher,
         Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC));
   }
 
   @Test
   void executeCreatesMeetingAndPublishesEvent() {
-    Room room = new Room("room-1", "Room", null, "tenant-1", "config-1", RoomStatus.ACTIVE, Instant.now(), Instant.now());
-    when(configSetValidator.isValid("config-1")).thenReturn(true);
+    when(meetingRoomsPort.getRequiredRoom("room-1")).thenReturn(activeRoom("room-1", "config-1"));
     when(meetingRepository.save(any(Meeting.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     Meeting meeting = useCase.execute(new CreateMeetingCommand(
-        room,
+      "room-1",
         "Title",
         "Description",
         "scheduled",
@@ -72,10 +70,10 @@ class CreateMeetingUseCaseTest {
 
   @Test
   void executeThrowsWhenRoomIsInactive() {
-    Room inactiveRoom = new Room("room-1", "Room", null, "tenant-1", "config-1", RoomStatus.CLOSED, Instant.now(), Instant.now());
+    when(meetingRoomsPort.getRequiredRoom("room-1")).thenReturn(inactiveRoom("room-1", "config-1"));
 
     assertThatThrownBy(() -> useCase.execute(new CreateMeetingCommand(
-        inactiveRoom, "Title", "Desc", "scheduled",
+        "room-1", "Title", "Desc", "scheduled",
         Instant.parse("2026-02-17T10:00:00Z"), Instant.parse("2026-02-17T11:00:00Z"),
         true, false, "actor-1", "trace-1")))
         .isInstanceOf(MeetingRoomInactiveException.class);
@@ -83,26 +81,36 @@ class CreateMeetingUseCaseTest {
 
   @Test
   void executeThrowsWhenConfigSetIsInvalid() {
-    Room room = new Room("room-1", "Room", null, "tenant-1", "config-1", RoomStatus.ACTIVE, Instant.now(), Instant.now());
-    when(configSetValidator.isValid("config-1")).thenReturn(false);
+    when(meetingRoomsPort.getRequiredRoom("room-1")).thenReturn(invalidConfigRoom("room-1", "config-1"));
 
     assertThatThrownBy(() -> useCase.execute(new CreateMeetingCommand(
-        room, "Title", "Desc", "scheduled",
+        "room-1", "Title", "Desc", "scheduled",
         Instant.parse("2026-02-17T10:00:00Z"), Instant.parse("2026-02-17T11:00:00Z"),
         true, false, "actor-1", "trace-1")))
-        .isInstanceOf(ConfigSetInvalidException.class);
+        .isInstanceOf(MeetingConfigSetInvalidException.class);
   }
 
   @Test
   void executeThrowsWhenScheduleIsInvalid() {
-    Room room = new Room("room-1", "Room", null, "tenant-1", "config-1", RoomStatus.ACTIVE, Instant.now(), Instant.now());
-    when(configSetValidator.isValid("config-1")).thenReturn(true);
+    when(meetingRoomsPort.getRequiredRoom("room-1")).thenReturn(activeRoom("room-1", "config-1"));
 
     assertThatThrownBy(() -> useCase.execute(new CreateMeetingCommand(
-        room, "Title", "Desc", "scheduled",
+        "room-1", "Title", "Desc", "scheduled",
         Instant.parse("2026-02-17T11:00:00Z"),  // startsAt AFTER endsAt
         Instant.parse("2026-02-17T10:00:00Z"),
         true, false, "actor-1", "trace-1")))
         .isInstanceOf(InvalidMeetingScheduleException.class);
+  }
+
+  private MeetingRoomSnapshot activeRoom(String roomId, String configSetId) {
+    return new MeetingRoomSnapshot(roomId, "Room", "tenant-1", configSetId, true, true);
+  }
+
+  private MeetingRoomSnapshot inactiveRoom(String roomId, String configSetId) {
+    return new MeetingRoomSnapshot(roomId, "Room", "tenant-1", configSetId, false, true);
+  }
+
+  private MeetingRoomSnapshot invalidConfigRoom(String roomId, String configSetId) {
+    return new MeetingRoomSnapshot(roomId, "Room", "tenant-1", configSetId, true, false);
   }
 }

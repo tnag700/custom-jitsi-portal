@@ -1,3 +1,5 @@
+import type { ApiErrorPayload } from "../../shared/api";
+import { adaptProblemDetails } from "../../shared/api";
 import type { InviteErrorPayload, InviteExchangeResponse, InviteValidationResponse } from "./types";
 
 export class InviteExchangeError extends Error {
@@ -10,13 +12,6 @@ export class InviteExchangeError extends Error {
   }
 }
 
-interface ProblemDetailsLike {
-  title?: unknown;
-  detail?: unknown;
-  errorCode?: unknown;
-  traceId?: unknown;
-}
-
 function fallbackErrorCode(status: number): string {
   if (status === 404) return "INVITE_NOT_FOUND";
   if (status === 409) return "INVITE_EXHAUSTED";
@@ -25,45 +20,29 @@ function fallbackErrorCode(status: number): string {
   return "INVITE_UNKNOWN";
 }
 
-function resolveGoneErrorCode(problem: ProblemDetailsLike): "INVITE_EXPIRED" | "INVITE_REVOKED" {
-  const haystack = `${String(problem.title ?? "")} ${String(problem.detail ?? "")}`.toLowerCase();
+function resolveGoneErrorCode(problem: ApiErrorPayload): "INVITE_EXPIRED" | "INVITE_REVOKED" {
+  const haystack = `${problem.title} ${problem.detail}`.toLowerCase();
   if (haystack.includes("revoke") || haystack.includes("отоз")) {
     return "INVITE_REVOKED";
   }
   return "INVITE_EXPIRED";
 }
 
-async function readProblemDetails(response: Response): Promise<ProblemDetailsLike> {
-  try {
-    return (await response.json()) as ProblemDetailsLike;
-  } catch {
-    return {};
-  }
-}
-
 async function adaptExchangeProblemDetails(response: Response): Promise<InviteErrorPayload> {
-  const problem = await readProblemDetails(response);
-  const explicitCode = typeof problem.errorCode === "string" && problem.errorCode.length > 0
-    ? problem.errorCode
-    : undefined;
-  const errorCode = explicitCode
-    ?? (response.status === 410 ? resolveGoneErrorCode(problem) : fallbackErrorCode(response.status));
+  const payload = await adaptProblemDetails(
+    response,
+    response.status,
+    fallbackErrorCode,
+    "Ошибка гостевого входа",
+    "Не удалось обработать инвайт.",
+  );
 
-  return {
-    title:
-      typeof problem.title === "string" && problem.title.length > 0
-        ? problem.title
-        : "Ошибка гостевого входа",
-    detail:
-      typeof problem.detail === "string" && problem.detail.length > 0
-        ? problem.detail
-        : "Не удалось обработать инвайт.",
-    errorCode,
-    traceId:
-      typeof problem.traceId === "string" && problem.traceId.length > 0
-        ? problem.traceId
-        : undefined,
-  };
+  const errorCode =
+    response.status === 410 && payload.errorCode === "INVITE_EXPIRED"
+      ? resolveGoneErrorCode(payload)
+      : payload.errorCode;
+
+  return { title: payload.title, detail: payload.detail, errorCode, traceId: payload.traceId };
 }
 
 export async function exchangeInvite(

@@ -2,6 +2,7 @@ package com.acme.jitsi.domains.rooms.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.acme.jitsi.domains.rooms.service.Room;
 import com.acme.jitsi.shared.JwtTestProperties;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +42,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
       "app.rooms.config-sets.config-2.role-claim=role",
     })
 class RoomJpaRepositorySoftDeleteIntegrationTest {
+
+  @Autowired
+  private JpaRoomRepository repository;
 
   @Autowired
   private RoomJpaRepository roomJpaRepository;
@@ -84,6 +88,40 @@ class RoomJpaRepositorySoftDeleteIntegrationTest {
     assertThat(roomJpaRepository.countByTenantId("tenant-1")).isEqualTo(1);
     assertThat(roomJpaRepository.existsByNameAndTenantId("Active Room", "tenant-1")).isTrue();
     assertThat(roomJpaRepository.existsByNameAndTenantId("Deleted Room", "tenant-1")).isFalse();
+  }
+
+  @Test
+  void adapterSaveRoundTripKeepsSingleRowAndUpdateSemantics() {
+    Room original = new Room(
+        "room-roundtrip-1",
+        "Room Original",
+        "Initial",
+        "tenant-1",
+        "config-1",
+        com.acme.jitsi.domains.rooms.service.RoomStatus.ACTIVE,
+        Instant.parse("2026-02-23T10:00:00Z"),
+        Instant.parse("2026-02-23T10:00:00Z"));
+    Room updated = new Room(
+        "room-roundtrip-1",
+        "Room Updated",
+        "Updated",
+        "tenant-1",
+        "config-2",
+        com.acme.jitsi.domains.rooms.service.RoomStatus.CLOSED,
+        original.createdAt(),
+        Instant.parse("2026-02-23T10:45:00Z"));
+
+    assertThat(repository.save(original)).isEqualTo(original);
+    assertThat(repository.save(updated)).isEqualTo(updated);
+    assertThat(repository.findById(updated.roomId())).contains(updated);
+    assertThat(jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM rooms WHERE room_id = ?",
+        Integer.class,
+        updated.roomId())).isEqualTo(1);
+    assertThat(jdbcTemplate.queryForObject(
+        "SELECT created_at FROM rooms WHERE room_id = ?",
+        Instant.class,
+        updated.roomId())).isEqualTo(original.createdAt());
   }
 
   private void insertRoom(String roomId, String name, String tenantId, boolean deleted) {

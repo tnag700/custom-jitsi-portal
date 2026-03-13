@@ -11,12 +11,28 @@ import org.springframework.validation.annotation.Validated;
 
 @ConfigurationProperties("app.invites.exchange")
 @Validated
+/**
+ * Configuration for invite exchange in properties mode.
+ *
+ * <p>In properties mode, invite and meeting state are resolved from this configuration. In database
+ * mode, invite and meeting state are resolved from persistent storage and runtime guards.
+ */
 class InviteExchangeProperties {
 
   private String atomicStore = "redis";
   private List<Invite> invites = new ArrayList<>();
   private Set<String> knownMeetingIds = new HashSet<>();
+  /**
+   * Closed meetings list for properties mode only.
+   *
+   * <p>In database mode, meeting state is validated via MeetingStateGuard.
+   */
   private Set<String> closedMeetingIds = new HashSet<>();
+  /**
+   * Canceled meetings list for properties mode only.
+   *
+   * <p>In database mode, meeting state is validated via MeetingStateGuard.
+   */
   private Set<String> canceledMeetingIds = new HashSet<>();
 
   String atomicStore() {
@@ -65,6 +81,8 @@ class InviteExchangeProperties {
     private Instant expiresAt;
     @Min(1)
     private int usageLimit = 1;
+    @Min(0)
+    private int usedCount;
     private boolean revoked;
 
     String token() {
@@ -97,6 +115,14 @@ class InviteExchangeProperties {
 
     public void setUsageLimit(int usageLimit) {
       this.usageLimit = usageLimit;
+    }
+
+    int usedCount() {
+      return usedCount;
+    }
+
+    public void setUsedCount(int usedCount) {
+      this.usedCount = usedCount;
     }
 
     boolean revoked() {

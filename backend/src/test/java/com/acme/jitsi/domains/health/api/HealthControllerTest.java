@@ -1,91 +1,81 @@
 package com.acme.jitsi.domains.health.api;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static com.acme.jitsi.shared.JwtTestProperties.CONTOUR_ACCESS_TTL_MINUTES;
-import static com.acme.jitsi.shared.JwtTestProperties.CONTOUR_ALGORITHM;
-import static com.acme.jitsi.shared.JwtTestProperties.CONTOUR_AUDIENCE;
-import static com.acme.jitsi.shared.JwtTestProperties.CONTOUR_ISSUER;
-import static com.acme.jitsi.shared.JwtTestProperties.CONTOUR_REFRESH_TTL_MINUTES;
-import static com.acme.jitsi.shared.JwtTestProperties.CONTOUR_ROLE_CLAIM;
-import static com.acme.jitsi.shared.JwtTestProperties.TOKEN_ALGORITHM;
-import static com.acme.jitsi.shared.JwtTestProperties.TOKEN_AUDIENCE;
-import static com.acme.jitsi.shared.JwtTestProperties.TOKEN_ISSUER;
-import static com.acme.jitsi.shared.JwtTestProperties.TOKEN_ROLE_CLAIM_NAME;
-import static com.acme.jitsi.shared.JwtTestProperties.TOKEN_SIGNING_SECRET;
-import static com.acme.jitsi.shared.JwtTestProperties.TOKEN_TTL_MINUTES;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.Map;
+import com.acme.jitsi.domains.health.dto.HealthResponse;
+import com.acme.jitsi.domains.health.dto.JoinReadinessCheckResponse;
+import com.acme.jitsi.domains.health.dto.JoinReadinessResponse;
+import com.acme.jitsi.domains.health.service.HealthService;
+import com.acme.jitsi.security.ProblemDetailsMappingPolicy;
+import com.acme.jitsi.security.ProblemResponseFacade;
+import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.client.ClientHttpResponse;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.DefaultResponseErrorHandler;
-import org.springframework.web.client.RestTemplate;
+import org.junit.jupiter.api.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest(
-  webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-  properties = {
-    "spring.datasource.url=jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
-    "spring.datasource.driver-class-name=org.h2.Driver",
-    "spring.jpa.hibernate.ddl-auto=validate",
-    "spring.flyway.enabled=true",
-    "management.health.redis.enabled=false",
-    TOKEN_SIGNING_SECRET,
-    TOKEN_ISSUER,
-    TOKEN_AUDIENCE,
-    TOKEN_ALGORITHM,
-    TOKEN_TTL_MINUTES,
-    TOKEN_ROLE_CLAIM_NAME,
-    CONTOUR_ISSUER,
-    CONTOUR_AUDIENCE,
-    CONTOUR_ROLE_CLAIM,
-    CONTOUR_ALGORITHM,
-    CONTOUR_ACCESS_TTL_MINUTES,
-    CONTOUR_REFRESH_TTL_MINUTES
-  })
+@WebMvcTest(controllers = HealthController.class)
+@AutoConfigureMockMvc(addFilters = false)
+@Tag("slice")
 class HealthControllerTest {
 
-  @LocalServerPort
-  private int port;
+  @Autowired
+  private MockMvc mockMvc;
 
-  private final RestTemplate restTemplate = createRestTemplate();
+  @MockitoBean
+  private HealthService healthService;
 
-  private RestTemplate createRestTemplate() {
-    RestTemplate template = new RestTemplate();
-    template.setErrorHandler(new DefaultResponseErrorHandler() {
-      @Override
-      public boolean hasError(ClientHttpResponse response) {
-        return false;
-      }
-    });
-    return template;
-  }
+  @MockitoBean
+  private ProblemResponseFacade problemResponseFacade;
+
+  @MockitoBean
+  private ProblemDetailsMappingPolicy problemDetailsMappingPolicy;
 
   @Test
-  void healthEndpointReturnsUp() {
-    ResponseEntity<Map> response = restTemplate.getForEntity(
-      "http://localhost:" + port + "/api/v1/health",
-      Map.class);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().get("status")).isEqualTo("UP");
-  }
-
-  @Test
-  void healthEndpointRejectsPost() {
-    ResponseEntity<String> response = restTemplate.exchange(
-        "http://localhost:" + port + "/api/v1/health",
-        HttpMethod.POST,
+  void healthEndpointReturnsUp() throws Exception {
+    when(healthService.getHealth()).thenReturn(new HealthResponse(
+        "UP",
         null,
-        String.class);
+        null,
+        null,
+        null,
+        null));
 
-    assertThat(response.getStatusCode()).isIn(
-        HttpStatus.METHOD_NOT_ALLOWED,
-        HttpStatus.FORBIDDEN,
-        HttpStatus.UNAUTHORIZED);
+    mockMvc.perform(get("/api/v1/health"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("UP"));
   }
+
+  @Test
+  void joinReadinessEndpointReturnsStructuredSnapshot() throws Exception {
+    when(problemResponseFacade.resolveTraceId(any())).thenReturn("trace-health-1");
+    when(healthService.getJoinReadiness("trace-health-1")).thenReturn(new JoinReadinessResponse(
+        "ready",
+        "2026-03-12T12:00:00Z",
+        "trace-health-1",
+        "https://portal.example.test/join/demo",
+      List.of(new JoinReadinessCheckResponse(
+        "redis",
+        "up",
+        "OK",
+        null,
+        List.of(),
+        null,
+        false))));
+
+    mockMvc.perform(get("/api/v1/health/join-readiness"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("ready"))
+        .andExpect(jsonPath("$.traceId").value("trace-health-1"))
+        .andExpect(jsonPath("$.checkedAt").value("2026-03-12T12:00:00Z"))
+        .andExpect(jsonPath("$.systemChecks").isArray());
+  }
+
 }

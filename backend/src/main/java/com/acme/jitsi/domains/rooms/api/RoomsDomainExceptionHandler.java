@@ -7,6 +7,7 @@ import com.acme.jitsi.domains.rooms.service.RoomHasActiveMeetingsException;
 import com.acme.jitsi.domains.rooms.service.RoomNameConflictException;
 import com.acme.jitsi.domains.rooms.service.RoomNotFoundException;
 import com.acme.jitsi.security.ProblemResponseFacade;
+import com.acme.jitsi.shared.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,25 +33,25 @@ class RoomsDomainExceptionHandler {
   @ExceptionHandler(RoomNotFoundException.class)
   ProblemDetail handleRoomNotFound(RoomNotFoundException ex, HttpServletRequest request) {
     return buildAndLogProblemDetail(
-        request, HttpStatus.NOT_FOUND, "Комната не найдена", ex.getMessage(), "ROOM_NOT_FOUND", ex);
+      request, HttpStatus.NOT_FOUND, "Комната не найдена", ex.getMessage(), ErrorCode.ROOM_NOT_FOUND.code(), ex);
   }
 
   @ExceptionHandler(RoomNameConflictException.class)
   ProblemDetail handleRoomNameConflict(RoomNameConflictException ex, HttpServletRequest request) {
     return buildAndLogProblemDetail(
-        request, HttpStatus.CONFLICT, "Имя комнаты занято", ex.getMessage(), "ROOM_NAME_CONFLICT", ex);
+      request, HttpStatus.CONFLICT, "Имя комнаты занято", ex.getMessage(), ErrorCode.ROOM_NAME_CONFLICT.code(), ex);
   }
 
   @ExceptionHandler(ConfigSetInvalidException.class)
   ProblemDetail handleConfigSetInvalid(ConfigSetInvalidException ex, HttpServletRequest request) {
     return buildAndLogProblemDetail(
-        request, HttpStatus.BAD_REQUEST, "Неверная конфигурация", ex.getMessage(), "CONFIG_SET_INVALID", ex);
+      request, HttpStatus.BAD_REQUEST, "Неверная конфигурация", ex.getMessage(), ErrorCode.CONFIG_SET_INVALID.code(), ex);
   }
 
   @ExceptionHandler(InvalidRoomDataException.class)
   ProblemDetail handleInvalidRoomData(InvalidRoomDataException ex, HttpServletRequest request) {
     return buildAndLogProblemDetail(
-        request, HttpStatus.BAD_REQUEST, "Некорректные данные", ex.getMessage(), "VALIDATION_ERROR", ex);
+      request, HttpStatus.BAD_REQUEST, "Некорректные данные", ex.getMessage(), ErrorCode.VALIDATION_ERROR.code(), ex);
   }
 
   @ExceptionHandler(RoomHasActiveMeetingsException.class)
@@ -60,14 +61,14 @@ class RoomsDomainExceptionHandler {
         HttpStatus.CONFLICT,
         "Комната имеет активные встречи",
         ex.getMessage(),
-        "ROOM_HAS_ACTIVE_MEETINGS",
+        ErrorCode.ROOM_HAS_ACTIVE_MEETINGS.code(),
         ex);
   }
 
   @ExceptionHandler(RoomAlreadyClosedException.class)
   ProblemDetail handleRoomAlreadyClosed(RoomAlreadyClosedException ex, HttpServletRequest request) {
     return buildAndLogProblemDetail(
-        request, HttpStatus.BAD_REQUEST, "Комната уже закрыта", ex.getMessage(), "ROOM_ALREADY_CLOSED", ex);
+      request, HttpStatus.BAD_REQUEST, "Комната уже закрыта", ex.getMessage(), ErrorCode.ROOM_ALREADY_CLOSED.code(), ex);
   }
 
   private ProblemDetail buildAndLogProblemDetail(

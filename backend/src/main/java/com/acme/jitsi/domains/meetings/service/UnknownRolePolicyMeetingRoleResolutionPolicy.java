@@ -1,5 +1,6 @@
 package com.acme.jitsi.domains.meetings.service;
 
+import com.acme.jitsi.shared.ErrorCode;
 import java.util.Optional;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -10,11 +11,16 @@ import org.springframework.stereotype.Component;
 class UnknownRolePolicyMeetingRoleResolutionPolicy implements MeetingRoleResolutionPolicy {
 
   @Override
+  public boolean isTerminalPolicy() {
+    return true;
+  }
+
+  @Override
   public Optional<MeetingRole> resolve(MeetingRoleResolutionContext context) {
     if (context.properties().unknownRolePolicy() == MeetingTokenProperties.UnknownRolePolicy.DENY_ACCESS) {
       throw new MeetingTokenException(
           HttpStatus.FORBIDDEN,
-          "ACCESS_DENIED",
+          ErrorCode.ACCESS_DENIED.code(),
           "Доступ к встрече запрещен: отсутствует допустимый role-claim.");
     }
     return Optional.of(MeetingRole.PARTICIPANT);

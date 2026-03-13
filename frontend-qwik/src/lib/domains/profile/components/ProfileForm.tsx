@@ -9,12 +9,11 @@ interface ProfileFormProps {
   isFirstRun: boolean;
   isSubmitting: boolean;
   serverError: ProfileErrorPayload | null;
-  successMessage: string | null;
   action: unknown;
 }
 
 export const ProfileForm = component$<ProfileFormProps>(
-  ({ profile, isFirstRun, isSubmitting, serverError, successMessage, action }) => {
+  ({ profile, isFirstRun, isSubmitting, serverError, action }) => {
     const fullNameValue = useSignal(profile?.fullName ?? "");
     const organizationValue = useSignal(profile?.organization ?? "");
     const positionValue = useSignal(profile?.position ?? "");
@@ -69,12 +68,6 @@ export const ProfileForm = component$<ProfileFormProps>(
         {isFirstRun && (
           <div class="mb-4 rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-800" role="status">
             Заполните профиль для продолжения работы
-          </div>
-        )}
-
-        {successMessage && (
-          <div class="mb-4 rounded border border-green-300 bg-green-50 p-3 text-sm text-green-800" role="status" aria-live="polite">
-            {successMessage}
           </div>
         )}
 
@@ -165,12 +158,17 @@ export const ProfileForm = component$<ProfileFormProps>(
           </div>
 
           {profile && (
-            <div class="mt-6 space-y-1 text-xs text-muted">
-              <p>Subject ID: {profile.subjectId}</p>
-              <p>Tenant ID: {profile.tenantId}</p>
-              <p>Создан: {new Date(profile.createdAt).toLocaleString("ru-RU")}</p>
-              <p>Обновлён: {new Date(profile.updatedAt).toLocaleString("ru-RU")}</p>
-            </div>
+            <details class="mt-6 rounded-lg border border-border bg-bg/60 p-3 text-xs text-muted">
+              <summary class="cursor-pointer select-none text-sm font-medium text-text">
+                Техническая информация профиля
+              </summary>
+              <div class="mt-3 space-y-1">
+                <p>Subject ID: {profile.subjectId}</p>
+                <p>Tenant ID: {profile.tenantId}</p>
+                <p>Создан: {new Date(profile.createdAt).toLocaleString("ru-RU")}</p>
+                <p>Обновлён: {new Date(profile.updatedAt).toLocaleString("ru-RU")}</p>
+              </div>
+            </details>
           )}
 
           <div class="mt-6 flex justify-end">

@@ -1,5 +1,6 @@
 package com.acme.jitsi.domains.meetings.service;
 
+import com.acme.jitsi.shared.ErrorCode;
 import java.util.Optional;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -20,7 +21,7 @@ class UnknownMeetingMeetingRoleResolutionPolicy implements MeetingRoleResolution
     if (!context.properties().knownMeetingIds().isEmpty()
         && !context.properties().knownMeetingIds().contains(context.meetingId())
         && !meetingRepository.existsById(context.meetingId())) {
-      throw new MeetingTokenException(HttpStatus.NOT_FOUND, "MEETING_NOT_FOUND", "Встреча не найдена.");
+      throw new MeetingTokenException(HttpStatus.NOT_FOUND, ErrorCode.MEETING_NOT_FOUND.code(), "Встреча не найдена.");
     }
     return Optional.empty();
   }

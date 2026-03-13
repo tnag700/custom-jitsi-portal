@@ -1,30 +1,30 @@
-import { component$, Slot, type JSXOutput, type PropsOf } from "@qwik.dev/core";
+import { component$, Slot, type PropsOf } from "@qwik.dev/core";
 import { Popover } from "@qwik-ui/headless";
+import { popoverA11yDefaults, sharedFocusVisibleAttrs } from "./a11y";
+import { asHeadlessComponent } from "./headless-typing";
 
 type Placement = Exclude<PropsOf<typeof Popover.Root>["floating"], boolean | undefined>;
 
-type ShimComponent = (
-  props: Record<string, unknown>,
-  key: string | null,
-  flags: number,
-  dev?: unknown,
-) => JSXOutput;
+const PopoverRoot = asHeadlessComponent(Popover.Root);
+const PopoverTrigger = asHeadlessComponent(Popover.Trigger);
+const PopoverPanel = asHeadlessComponent(Popover.Panel);
 
-const PopoverRoot = Popover.Root as unknown as ShimComponent;
-const PopoverTrigger = Popover.Trigger as unknown as ShimComponent;
-const PopoverPanel = Popover.Panel as unknown as ShimComponent;
+interface PopoverRootProps {
+  [key: string]: unknown;
+}
 
-export interface AppPopoverProps {
+export interface AppPopoverProps extends PopoverRootProps {
+  id: string;
   floating?: Placement;
   gutter?: number;
-  id: string;
+  triggerLabel?: string;
 }
 
 export const AppPopover = component$<AppPopoverProps>(
-  ({ floating = "bottom", gutter = 8, id }) => {
+  ({ floating = "bottom", gutter = 8, id, triggerLabel = popoverA11yDefaults.triggerLabel, ...rootProps }) => {
     return (
-      <PopoverRoot id={id} floating={floating} gutter={gutter}>
-        <PopoverTrigger class="inline-flex">
+      <PopoverRoot {...rootProps} id={id} floating={floating} gutter={gutter}>
+        <PopoverTrigger {...sharedFocusVisibleAttrs} class="inline-flex" aria-label={triggerLabel}>
           <Slot name="trigger" />
         </PopoverTrigger>
         <PopoverPanel class="rounded-xl border border-border bg-surface p-4 shadow-2">

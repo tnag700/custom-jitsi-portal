@@ -3,6 +3,7 @@ package com.acme.jitsi.domains.profiles.api;
 import com.acme.jitsi.domains.profiles.service.ProfileNotFoundException;
 import com.acme.jitsi.domains.profiles.service.ProfileValidationException;
 import com.acme.jitsi.security.ProblemResponseFacade;
+import com.acme.jitsi.shared.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +29,7 @@ class ProfileDomainExceptionHandler {
   @ExceptionHandler(ProfileNotFoundException.class)
   ProblemDetail handleProfileNotFound(ProfileNotFoundException ex, HttpServletRequest request) {
     return buildAndLogProblemDetail(
-        request, HttpStatus.NOT_FOUND, "Профиль не найден", ex.getMessage(), "PROFILE_NOT_FOUND", ex);
+      request, HttpStatus.NOT_FOUND, "Профиль не найден", ex.getMessage(), ErrorCode.PROFILE_NOT_FOUND.code(), ex);
   }
 
   @ExceptionHandler(ProfileValidationException.class)
@@ -38,7 +39,7 @@ class ProfileDomainExceptionHandler {
         HttpStatus.BAD_REQUEST,
         "Ошибка валидации профиля",
         ex.getMessage(),
-        "PROFILE_VALIDATION_FAILED",
+          ErrorCode.PROFILE_VALIDATION_FAILED.code(),
         ex);
   }
 

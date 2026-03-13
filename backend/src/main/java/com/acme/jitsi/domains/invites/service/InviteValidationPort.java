@@ -1,12 +1,9 @@
 package com.acme.jitsi.domains.invites.service;
 
-interface InviteValidationPort {
-
-  InviteValidationService.InviteResolution validate(String inviteToken);
-
-  InviteValidationService.InviteResolution validateAndConsume(String inviteToken);
-
-  InviteValidationService.InviteReservation reserve(String inviteToken);
-
-  void rollback(InviteValidationService.InviteReservation reservation);
+/**
+ * Application-facing invite boundary.
+ * Shared responsibilities across runtime modes are explicit: validate, reserve/consume, rollback.
+ * Mode-specific consume mechanics remain an implementation detail behind reserve.
+ */
+public interface InviteValidationPort extends InviteValidationCapability, InviteReservationCapability {
 }

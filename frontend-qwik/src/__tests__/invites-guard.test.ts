@@ -73,11 +73,11 @@ describe("Invites Guard: barrel export (AC: all)", () => {
 });
 
 describe("Invites Guard: routes (AC: 1-6)", () => {
-  it("routes/meetings/index.tsx should contain invite actions/loaders", () => {
-    const tsx = readSrc("routes/meetings/index.tsx");
-    expect(tsx).toContain("fetchInvites");
-    expect(tsx).toContain("createInvite");
-    expect(tsx).toContain("revokeInvite");
+  it("routes/meetings/route-handlers.ts should contain invite actions/loaders", () => {
+    const ts = readSrc("routes/meetings/route-handlers.ts");
+    expect(ts).toContain("fetchInvites");
+    expect(ts).toContain("createInvite");
+    expect(ts).toContain("revokeInvite");
   });
 
   it("routes/invite/[inviteToken]/index.tsx should contain routeLoader$", () => {

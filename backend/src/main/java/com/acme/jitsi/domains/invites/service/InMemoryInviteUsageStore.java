@@ -1,6 +1,6 @@
 package com.acme.jitsi.domains.invites.service;
 
-import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
+import com.acme.jitsi.shared.ErrorCode;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -15,9 +15,10 @@ class InMemoryInviteUsageStore implements InviteUsageStore {
   @Override
   public void assertCanConsume(InviteExchangeProperties.Invite invite) {
     AtomicInteger counter = usageCounters.get(invite.token());
-    int current = counter == null ? 0 : counter.get();
+    int runtimeCount = counter == null ? 0 : counter.get();
+    int current = invite.usedCount() + runtimeCount;
     if (current >= invite.usageLimit()) {
-      throw new MeetingTokenException(HttpStatus.CONFLICT, "INVITE_EXHAUSTED", "Лимит использований инвайта исчерпан.");
+      throw new InviteExchangeException(HttpStatus.CONFLICT, ErrorCode.INVITE_EXHAUSTED.code(), "Лимит использований инвайта исчерпан.");
     }
   }
 
@@ -25,11 +26,12 @@ class InMemoryInviteUsageStore implements InviteUsageStore {
   public void consume(InviteExchangeProperties.Invite invite) {
     AtomicInteger counter = usageCounters.computeIfAbsent(invite.token(), key -> new AtomicInteger(0));
     while (true) {
-      int current = counter.get();
+      int runtimeCount = counter.get();
+      int current = invite.usedCount() + runtimeCount;
       if (current >= invite.usageLimit()) {
-        throw new MeetingTokenException(HttpStatus.CONFLICT, "INVITE_EXHAUSTED", "Лимит использований инвайта исчерпан.");
+        throw new InviteExchangeException(HttpStatus.CONFLICT, ErrorCode.INVITE_EXHAUSTED.code(), "Лимит использований инвайта исчерпан.");
       }
-      if (counter.compareAndSet(current, current + 1)) {
+      if (counter.compareAndSet(runtimeCount, runtimeCount + 1)) {
         return;
       }
     }

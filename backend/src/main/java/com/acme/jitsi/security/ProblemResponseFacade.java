@@ -33,6 +33,7 @@ public class ProblemResponseFacade {
       String detail,
       String errorCode) {
     String traceId = resolveTraceId(request);
+    String requestId = resolveRequestId(request);
     String requestUri = request.getRequestURI();
     ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(status, detail);
     URI instance = URI.create(requestUri);
@@ -41,6 +42,7 @@ public class ProblemResponseFacade {
     properties.put("instance", instance);
     properties.put("errorCode", errorCode);
     properties.put("traceId", traceId);
+    properties.put("requestId", requestId);
     applyProblemProperties(problemDetail, properties);
     return problemDetail;
   }
@@ -56,9 +58,14 @@ public class ProblemResponseFacade {
     }
     problemDetail.setProperty("errorCode", properties.get("errorCode"));
     problemDetail.setProperty("traceId", properties.get("traceId"));
+    problemDetail.setProperty("requestId", properties.get("requestId"));
   }
 
   public String resolveTraceId(HttpServletRequest request) {
     return problemDetailsFactory.resolveTraceId(request);
+  }
+
+  public String resolveRequestId(HttpServletRequest request) {
+    return problemDetailsFactory.resolveRequestId(request);
   }
 }

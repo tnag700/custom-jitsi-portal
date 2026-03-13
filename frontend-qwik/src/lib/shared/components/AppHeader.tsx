@@ -1,5 +1,5 @@
 import { component$, type QRL } from "@qwik.dev/core";
-import { Link } from "@qwik.dev/router";
+import { Form, Link, type ActionStore } from "@qwik.dev/router";
 import { ThemeToggle } from "./ThemeToggle";
 
 export interface AppHeaderProps {
@@ -7,7 +7,7 @@ export interface AppHeaderProps {
   showSidebarToggle: boolean;
   isSidebarExpanded: boolean;
   userDisplayName?: string | null;
-  authLogoutHref?: string;
+  logoutAction?: ActionStore<never, Record<string, unknown>, true>;
   onToggleSidebar$: QRL<() => void>;
 }
 
@@ -17,7 +17,7 @@ export const AppHeader = component$<AppHeaderProps>(
     showSidebarToggle,
     isSidebarExpanded,
     userDisplayName,
-    authLogoutHref = "#",
+    logoutAction,
     onToggleSidebar$,
   }) => {
     return (
@@ -60,12 +60,14 @@ export const AppHeader = component$<AppHeaderProps>(
                   {userDisplayName}
                 </span>
               )}
-              <a
-                href={authLogoutHref}
-                class="inline-flex items-center rounded-md border border-border px-3 py-1.5 text-sm font-medium text-text transition-colors hover:bg-surface-2 focus-visible:outline focus-visible:outline-3 focus-visible:outline-primary focus-visible:outline-offset-2"
-              >
-                Выйти
-              </a>
+              <Form action={logoutAction as never}>
+                <button
+                  type="submit"
+                  class="inline-flex items-center rounded-md border border-border px-3 py-1.5 text-sm font-medium text-text transition-colors hover:bg-surface-2 focus-visible:outline focus-visible:outline-3 focus-visible:outline-primary focus-visible:outline-offset-2"
+                >
+                  Выйти
+                </button>
+              </Form>
             </>
           ) : (
             <Link

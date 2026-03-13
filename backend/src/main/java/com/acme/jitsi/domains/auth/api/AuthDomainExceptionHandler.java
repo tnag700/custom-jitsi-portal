@@ -1,6 +1,6 @@
 package com.acme.jitsi.domains.auth.api;
 
-import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
+import com.acme.jitsi.domains.auth.service.AuthTokenException;
 import com.acme.jitsi.security.ProblemDetailsMappingPolicy;
 import com.acme.jitsi.security.ProblemResponseFacade;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,10 +27,10 @@ class AuthDomainExceptionHandler {
     this.problemResponseFacade = problemResponseFacade;
   }
 
-  @ExceptionHandler(MeetingTokenException.class)
-  ProblemDetail handleMeetingTokenException(MeetingTokenException ex, HttpServletRequest request) {
+  @ExceptionHandler(AuthTokenException.class)
+  ProblemDetail handleAuthTokenException(AuthTokenException ex, HttpServletRequest request) {
     ProblemDetailsMappingPolicy.ProblemDefinition definition =
-        problemDetailsMappingPolicy.mapMeetingTokenException(ex);
+        problemDetailsMappingPolicy.mapTokenException(ex.status(), ex.errorCode(), ex.getMessage());
     String traceId = problemResponseFacade.resolveTraceId(request);
     if (log.isWarnEnabled()) {
       log.warn(

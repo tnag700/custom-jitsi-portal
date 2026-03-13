@@ -19,10 +19,15 @@ public class SearchUsersUseCase implements UseCase<SearchUsersQuery, List<UserPr
 
   @Override
   public List<UserProfile> execute(SearchUsersQuery query) {
+    String normalizedQuery = query.query() == null ? "" : query.query().trim();
+    String normalizedOrganization = query.organization() == null || query.organization().isBlank()
+        ? null
+        : query.organization().trim();
+
     return repository.searchByTenantId(
         query.tenantId(),
-        query.query(),
-        query.organization(),
+        normalizedQuery,
+        normalizedOrganization,
         MAX_RESULTS);
   }
 }

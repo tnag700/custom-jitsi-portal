@@ -4,6 +4,7 @@ import com.acme.jitsi.domains.profiles.application.GetMyProfileUseCase;
 import com.acme.jitsi.domains.profiles.application.UpsertMyProfileUseCase;
 import com.acme.jitsi.domains.profiles.application.UpsertProfileCommand;
 import com.acme.jitsi.domains.profiles.service.UserProfile;
+import com.acme.jitsi.security.TenantAccessGuard;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -19,12 +20,15 @@ class ProfileController {
 
   private final GetMyProfileUseCase getMyProfileUseCase;
   private final UpsertMyProfileUseCase upsertMyProfileUseCase;
+  private final TenantAccessGuard tenantAccessGuard;
 
   ProfileController(
       GetMyProfileUseCase getMyProfileUseCase,
-      UpsertMyProfileUseCase upsertMyProfileUseCase) {
+      UpsertMyProfileUseCase upsertMyProfileUseCase,
+      TenantAccessGuard tenantAccessGuard) {
     this.getMyProfileUseCase = getMyProfileUseCase;
     this.upsertMyProfileUseCase = upsertMyProfileUseCase;
+    this.tenantAccessGuard = tenantAccessGuard;
   }
 
   @GetMapping("/me")
@@ -39,7 +43,7 @@ class ProfileController {
       @Valid @RequestBody UpsertProfileRequest request,
       @AuthenticationPrincipal OAuth2User principal) {
     String subjectId = principal.getName();
-    String tenantId = resolveTenantId(principal);
+    String tenantId = tenantAccessGuard.resolveTenantId(principal);
 
     UpsertProfileCommand command = new UpsertProfileCommand(
         subjectId,
@@ -63,17 +67,4 @@ class ProfileController {
         profile.updatedAt());
   }
 
-  private String resolveTenantId(OAuth2User principal) {
-    Object tenantIdClaim = principal.getAttribute("tenantId");
-    if (tenantIdClaim == null) {
-      tenantIdClaim = principal.getAttribute("tenant_id");
-    }
-    if (tenantIdClaim == null) {
-      throw new IllegalStateException("Tenant claim is required");
-    }
-    if (tenantIdClaim instanceof java.util.Collection<?> coll) {
-      return coll.isEmpty() ? "" : coll.iterator().next().toString();
-    }
-    return tenantIdClaim.toString();
-  }
 }

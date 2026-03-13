@@ -1,5 +1,6 @@
 package com.acme.jitsi.domains.meetings.service;
 
+import com.acme.jitsi.shared.ErrorCode;
 import java.time.Clock;
 import java.time.Instant;
 import org.springframework.http.HttpStatus;
@@ -26,7 +27,7 @@ public class MeetingStateGuard {
           }
           throw new MeetingTokenException(
               HttpStatus.NOT_FOUND,
-              "MEETING_NOT_FOUND",
+              ErrorCode.MEETING_NOT_FOUND.code(),
               "Встреча не найдена.");
         });
 
@@ -34,12 +35,16 @@ public class MeetingStateGuard {
       return;
     }
 
+    assertJoinAllowed(meeting);
+  }
+
+  public void assertJoinAllowed(Meeting meeting) {
     if (meeting.status() == MeetingStatus.CANCELED) {
-      throw new MeetingTokenException(HttpStatus.CONFLICT, "MEETING_CANCELED", "Встреча отменена.");
+      throw new MeetingTokenException(HttpStatus.CONFLICT, ErrorCode.MEETING_CANCELED.code(), "Встреча отменена.");
     }
 
     if (meeting.status() == MeetingStatus.ENDED || Instant.now(clock).isAfter(meeting.endsAt())) {
-      throw new MeetingTokenException(HttpStatus.CONFLICT, "MEETING_ENDED", "Встреча завершена.");
+      throw new MeetingTokenException(HttpStatus.CONFLICT, ErrorCode.MEETING_ENDED.code(), "Встреча завершена.");
     }
   }
 }

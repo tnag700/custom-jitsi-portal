@@ -1,5 +1,6 @@
 package com.acme.jitsi.domains.meetings.service;
 
+import com.acme.jitsi.shared.ErrorCode;
 import java.util.Optional;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -12,7 +13,7 @@ class BlockedSubjectMeetingRoleResolutionPolicy implements MeetingRoleResolution
   @Override
   public Optional<MeetingRole> resolve(MeetingRoleResolutionContext context) {
     if (context.properties().blockedSubjects().contains(context.subject())) {
-      throw new MeetingTokenException(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Доступ к встрече запрещен.");
+      throw new MeetingTokenException(HttpStatus.FORBIDDEN, ErrorCode.ACCESS_DENIED.code(), "Доступ к встрече запрещен.");
     }
     return Optional.empty();
   }

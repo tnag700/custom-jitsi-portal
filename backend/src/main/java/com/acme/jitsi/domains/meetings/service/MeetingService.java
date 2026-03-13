@@ -1,6 +1,5 @@
 package com.acme.jitsi.domains.meetings.service;
 
-import com.acme.jitsi.domains.rooms.service.RoomService;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -8,13 +7,9 @@ import org.springframework.stereotype.Service;
 public class MeetingService {
 
   private final MeetingRepository meetingRepository;
-  private final RoomService roomService;
 
-  public MeetingService(
-      MeetingRepository meetingRepository,
-      RoomService roomService) {
+  public MeetingService(MeetingRepository meetingRepository) {
     this.meetingRepository = meetingRepository;
-    this.roomService = roomService;
   }
 
   public Meeting getMeeting(String meetingId) {
@@ -30,12 +25,10 @@ public class MeetingService {
       throw new InvalidMeetingDataException("Size must be greater than 0");
     }
 
-    roomService.getRoom(roomId);
     return meetingRepository.findByRoomId(roomId, page, size);
   }
 
   public long countMeetings(String roomId) {
-    roomService.getRoom(roomId);
     return meetingRepository.countByRoomId(roomId);
   }
 }

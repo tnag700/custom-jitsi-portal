@@ -10,6 +10,11 @@ Thumbs.db
 *.ipr
 *.swp
 *.swo
+/.metadata/
+/.project
+/.classpath
+/.factorypath
+/.settings/
 
 # Project Config
 .env

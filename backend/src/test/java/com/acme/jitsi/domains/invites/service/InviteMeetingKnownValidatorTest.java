@@ -3,7 +3,7 @@ package com.acme.jitsi.domains.invites.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
+import com.acme.jitsi.shared.ErrorCode;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -28,11 +28,11 @@ class InviteMeetingKnownValidatorTest {
     context.setInvite(invite);
 
     assertThatThrownBy(() -> validator.validate(context))
-        .isInstanceOf(MeetingTokenException.class)
+        .isInstanceOf(InviteExchangeException.class)
         .satisfies(error -> {
-          MeetingTokenException ex = (MeetingTokenException) error;
+          InviteExchangeException ex = (InviteExchangeException) error;
           assertThat(ex.status()).isEqualTo(HttpStatus.NOT_FOUND);
-          assertThat(ex.errorCode()).isEqualTo("MEETING_NOT_FOUND");
+          assertThat(ex.errorCode()).isEqualTo(ErrorCode.MEETING_NOT_FOUND.code());
         });
   }
 

@@ -27,25 +27,18 @@ export default defineConfig(({ command, mode }): UserConfig => {
     optimizeDeps: {
       // Put problematic deps that break bundling here, mostly those with binaries.
       // For example ['better-sqlite3'] if you use that in server functions.
-      exclude: [],
+      exclude: ["@qwik-ui/headless"],
     },
 
     /**
      * This is an advanced setting. It improves the bundling of your server code. To use it, make sure you understand when your consumed packages are dependencies or dev dependencies. (otherwise things will break in production)
      */
-    // ssr:
-    //   command === "build" && mode === "production"
-    //     ? {
-    //         // All dev dependencies should be bundled in the server build
-    //         noExternal: Object.keys(devDependencies),
-    //         // Anything marked as a dependency will not be bundled
-    //         // These should only be production binary deps (including deps of deps), CLI deps, and their module graph
-    //         // If a dep-of-dep needs to be external, add it here
-    //         // For example, if something uses `bcrypt` but you don't have it as a dep, you can write
-    //         // external: [...Object.keys(dependencies), 'bcrypt']
-    //         external: Object.keys(dependencies),
-    //       }
-    //     : undefined,
+    ssr:
+      command === "build" && mode === "production"
+        ? {
+            noExternal: ["@qwik-ui/headless"],
+          }
+        : undefined,
 
     server: {
       headers: {
@@ -80,16 +73,17 @@ function errorOnDuplicatesPkgDeps(
     (dep) => dependencies[dep],
   );
 
-  // include any known qwik packages
-  const qwikPkg = Object.keys(dependencies).filter((value) =>
-    /qwik/i.test(value),
+  // Build-time Qwik framework packages should stay in devDependencies.
+  // Runtime UI libraries such as @qwik-ui/headless are valid production deps.
+  const buildTimeQwikPkgs = Object.keys(dependencies).filter((value) =>
+    /^@qwik\.dev\//i.test(value),
   );
 
   // any errors for missing "qwik-router-config"
   // [PLUGIN_ERROR]: Invalid module "@qwik-router-config" is not a valid package
-  msg = `Move qwik packages ${qwikPkg.join(", ")} to devDependencies`;
+  msg = `Move build-time Qwik packages ${buildTimeQwikPkgs.join(", ")} to devDependencies`;
 
-  if (qwikPkg.length > 0) {
+  if (buildTimeQwikPkgs.length > 0) {
     throw new Error(msg);
   }
 

@@ -41,7 +41,6 @@ describe("rooms.service runtime: fetchRooms", () => {
         method: "GET",
         headers: {
           Cookie: "JSESSIONID=sess-1",
-          "Content-Type": "application/json",
         },
       },
     );
@@ -92,7 +91,7 @@ describe("rooms.service runtime: mutations", () => {
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({
-          Cookie: "JSESSIONID=sess-1",
+          Cookie: "JSESSIONID=sess-1; XSRF-TOKEN=csrf-1",
           "X-XSRF-TOKEN": "csrf-1",
           "Idempotency-Key": "idem-1",
         }),
@@ -166,6 +165,7 @@ describe("rooms.service runtime: mutations", () => {
       expect.objectContaining({
         method: "DELETE",
         headers: expect.objectContaining({
+          Cookie: "JSESSIONID=sess-1; XSRF-TOKEN=csrf-1",
           "X-XSRF-TOKEN": "csrf-1",
           "Idempotency-Key": "idem-4",
         }),

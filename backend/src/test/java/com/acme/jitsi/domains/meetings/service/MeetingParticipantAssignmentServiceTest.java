@@ -42,9 +42,21 @@ class MeetingParticipantAssignmentServiceTest {
 
   @BeforeEach
   void setUp() {
+    Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
+    MeetingParticipantAssignmentFactory assignmentFactory =
+        new MeetingParticipantAssignmentFactory(clock);
+    MeetingParticipantAssignmentSaveHelper saveHelper =
+        new MeetingParticipantAssignmentSaveHelper(assignmentRepository, assignmentFactory);
+    MeetingParticipantBulkAssignmentValidator bulkAssignmentValidator =
+        new MeetingParticipantBulkAssignmentValidator(assignmentRepository);
+
     service = new MeetingParticipantAssignmentService(
-        assignmentRepository, meetingService, eventPublisher,
-        Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC));
+        assignmentRepository,
+        meetingService,
+        eventPublisher,
+        assignmentFactory,
+        saveHelper,
+        bulkAssignmentValidator);
   }
 
   @Test
@@ -324,6 +336,24 @@ class MeetingParticipantAssignmentServiceTest {
         
     verify(assignmentRepository, never()).save(any());
   }
+
+    @Test
+    void bulkAssignParticipants_duplicateSubjectIds_throwsException() {
+        String meetingId = "meeting-1";
+        Meeting meeting = Meeting.builder().meetingId(meetingId).roomId("room-1").build();
+        when(meetingService.getMeeting(meetingId)).thenReturn(meeting);
+
+        List<MeetingParticipantAssignmentService.BulkParticipantEntry> entries = List.of(
+                new MeetingParticipantAssignmentService.BulkParticipantEntry("user-1", "participant"),
+                new MeetingParticipantAssignmentService.BulkParticipantEntry("user-1", "moderator")
+        );
+
+        assertThatThrownBy(() -> service.bulkAssignParticipants(meetingId, entries, "admin-1", "trace-1"))
+                .isInstanceOf(BulkAssignmentValidationException.class)
+                .hasMessageContaining("Duplicate subjectId 'user-1'");
+
+        verify(assignmentRepository, never()).save(any());
+    }
 
   @Test
   void assignParticipant_concurrentAssignment_recoversFromDataIntegrityViolation() {

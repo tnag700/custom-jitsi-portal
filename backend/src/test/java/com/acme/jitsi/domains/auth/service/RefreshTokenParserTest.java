@@ -1,9 +1,10 @@
 package com.acme.jitsi.domains.auth.service;
 
+import com.acme.jitsi.shared.ErrorCode;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -82,11 +83,11 @@ class RefreshTokenParserTest {
     RefreshTokenParser parser = new RefreshTokenParser(meetingJwtDecoder(), "https://portal.example.test", "jitsi-meet");
 
     assertThatThrownBy(() -> parser.parse(" "))
-        .isInstanceOf(MeetingTokenException.class)
+        .isInstanceOf(AuthTokenException.class)
         .satisfies(error -> {
-          MeetingTokenException exception = (MeetingTokenException) error;
+          AuthTokenException exception = (AuthTokenException) error;
           assertThat(exception.status()).isEqualTo(HttpStatus.UNAUTHORIZED);
-          assertThat(exception.errorCode()).isEqualTo("AUTH_REQUIRED");
+          assertThat(exception.errorCode()).isEqualTo(ErrorCode.AUTH_REQUIRED.code());
           assertThat(exception.getMessage()).isEqualTo("Сессия отсутствует. Выполните вход через SSO.");
         });
   }
@@ -105,9 +106,9 @@ class RefreshTokenParserTest {
         "refresh");
 
     assertThatThrownBy(() -> parser.parse(token))
-        .isInstanceOf(MeetingTokenException.class)
-        .extracting(error -> ((MeetingTokenException) error).errorCode())
-      .isEqualTo("TOKEN_INVALID");
+        .isInstanceOf(AuthTokenException.class)
+        .extracting(error -> ((AuthTokenException) error).errorCode())
+      .isEqualTo(ErrorCode.TOKEN_INVALID.code());
   }
 
   @Test
@@ -124,9 +125,9 @@ class RefreshTokenParserTest {
         "access");
 
     assertThatThrownBy(() -> parser.parse(token))
-        .isInstanceOf(MeetingTokenException.class)
-        .extracting(error -> ((MeetingTokenException) error).errorCode())
-      .isEqualTo("TOKEN_INVALID");
+        .isInstanceOf(AuthTokenException.class)
+        .extracting(error -> ((AuthTokenException) error).errorCode())
+      .isEqualTo(ErrorCode.TOKEN_INVALID.code());
   }
 
   @Test
@@ -143,9 +144,9 @@ class RefreshTokenParserTest {
         "refresh");
 
     assertThatThrownBy(() -> parser.parse(token))
-        .isInstanceOf(MeetingTokenException.class)
-        .extracting(error -> ((MeetingTokenException) error).errorCode())
-      .isEqualTo("TOKEN_INVALID");
+        .isInstanceOf(AuthTokenException.class)
+        .extracting(error -> ((AuthTokenException) error).errorCode())
+      .isEqualTo(ErrorCode.TOKEN_INVALID.code());
   }
 
   @Test
@@ -158,11 +159,11 @@ class RefreshTokenParserTest {
         Instant.now().plus(2, ChronoUnit.HOURS));
 
     assertThatThrownBy(() -> parser.parse(token))
-        .isInstanceOf(MeetingTokenException.class)
+        .isInstanceOf(AuthTokenException.class)
         .satisfies(error -> {
-          MeetingTokenException exception = (MeetingTokenException) error;
+          AuthTokenException exception = (AuthTokenException) error;
           assertThat(exception.status()).isEqualTo(HttpStatus.UNAUTHORIZED);
-          assertThat(exception.errorCode()).isEqualTo("TOKEN_INVALID");
+          assertThat(exception.errorCode()).isEqualTo(ErrorCode.TOKEN_INVALID.code());
           assertThat(exception.getMessage()).isEqualTo("Refresh-токен не содержит обязательные claims.");
         });
   }
@@ -184,11 +185,11 @@ class RefreshTokenParserTest {
       now.minus(1, ChronoUnit.MINUTES));
 
     assertThatThrownBy(() -> parser.parse(token))
-        .isInstanceOf(MeetingTokenException.class)
+        .isInstanceOf(AuthTokenException.class)
         .satisfies(error -> {
-          MeetingTokenException exception = (MeetingTokenException) error;
+          AuthTokenException exception = (AuthTokenException) error;
           assertThat(exception.status()).isEqualTo(HttpStatus.UNAUTHORIZED);
-          assertThat(exception.errorCode()).isEqualTo("AUTH_REQUIRED");
+          assertThat(exception.errorCode()).isEqualTo(ErrorCode.AUTH_REQUIRED.code());
         });
   }
 
@@ -207,11 +208,11 @@ class RefreshTokenParserTest {
         "u-host");
 
     assertThatThrownBy(() -> parser.parse(token))
-        .isInstanceOf(MeetingTokenException.class)
+        .isInstanceOf(AuthTokenException.class)
         .satisfies(error -> {
-          MeetingTokenException exception = (MeetingTokenException) error;
+          AuthTokenException exception = (AuthTokenException) error;
           assertThat(exception.status()).isEqualTo(HttpStatus.UNAUTHORIZED);
-          assertThat(exception.errorCode()).isEqualTo("TOKEN_INVALID");
+          assertThat(exception.errorCode()).isEqualTo(ErrorCode.TOKEN_INVALID.code());
           assertThat(exception.getMessage()).isEqualTo("Refresh-токен не содержит обязательные claims.");
         });
   }
@@ -231,11 +232,11 @@ class RefreshTokenParserTest {
         "u-host");
 
     assertThatThrownBy(() -> parser.parse(token))
-        .isInstanceOf(MeetingTokenException.class)
+        .isInstanceOf(AuthTokenException.class)
         .satisfies(error -> {
-          MeetingTokenException exception = (MeetingTokenException) error;
+          AuthTokenException exception = (AuthTokenException) error;
           assertThat(exception.status()).isEqualTo(HttpStatus.UNAUTHORIZED);
-          assertThat(exception.errorCode()).isEqualTo("TOKEN_INVALID");
+          assertThat(exception.errorCode()).isEqualTo(ErrorCode.TOKEN_INVALID.code());
           assertThat(exception.getMessage()).isEqualTo("Refresh-токен не содержит обязательные claims.");
         });
   }
@@ -334,3 +335,4 @@ class RefreshTokenParserTest {
     return jwt.serialize();
   }
 }
+

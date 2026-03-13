@@ -1,6 +1,6 @@
 package com.acme.jitsi.domains.auth.service;
 
-import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
+import com.acme.jitsi.shared.ErrorCode;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Locale;
@@ -42,7 +42,7 @@ class RefreshTokenParser {
 
   RefreshTokenPayload parse(String serializedRefreshToken) {
     if (serializedRefreshToken == null || serializedRefreshToken.isBlank()) {
-      throw new MeetingTokenException(HttpStatus.UNAUTHORIZED, "AUTH_REQUIRED", "Сессия отсутствует. Выполните вход через SSO.");
+      throw new AuthTokenException(HttpStatus.UNAUTHORIZED, ErrorCode.AUTH_REQUIRED.code(), "Сессия отсутствует. Выполните вход через SSO.");
     }
 
     Jwt jwt = decodeJwt(serializedRefreshToken);
@@ -74,15 +74,15 @@ class RefreshTokenParser {
       return jwtDecoder.decode(serializedRefreshToken);
     } catch (JwtException ex) {
       if (isExpiredJwt(ex)) {
-        throw new MeetingTokenException(
+        throw new AuthTokenException(
             HttpStatus.UNAUTHORIZED,
-            "AUTH_REQUIRED",
+            ErrorCode.AUTH_REQUIRED.code(),
             "Сессия истекла. Выполните вход через SSO.",
             ex);
       }
-      throw new MeetingTokenException(
+      throw new AuthTokenException(
           HttpStatus.UNAUTHORIZED,
-          "TOKEN_INVALID",
+          ErrorCode.TOKEN_INVALID.code(),
           "Некорректный refresh-токен.",
           ex);
     }
@@ -90,10 +90,10 @@ class RefreshTokenParser {
 
   private void validateIssuerAndAudience(Jwt jwt) {
     if (!Objects.equals(issuer, jwt.getClaimAsString("iss"))) {
-      throw new MeetingTokenException(HttpStatus.UNAUTHORIZED, "TOKEN_INVALID", "Issuer refresh-токена не поддерживается.");
+      throw new AuthTokenException(HttpStatus.UNAUTHORIZED, ErrorCode.TOKEN_INVALID.code(), "Issuer refresh-токена не поддерживается.");
     }
     if (jwt.getAudience() == null || !jwt.getAudience().contains(audience)) {
-      throw new MeetingTokenException(HttpStatus.UNAUTHORIZED, "TOKEN_INVALID", "Audience refresh-токена не поддерживается.");
+      throw new AuthTokenException(HttpStatus.UNAUTHORIZED, ErrorCode.TOKEN_INVALID.code(), "Audience refresh-токена не поддерживается.");
     }
   }
 
@@ -101,10 +101,10 @@ class RefreshTokenParser {
     String tokenType = requiredStringClaim(jwt, "tokenType");
     String meetingId = requiredStringClaim(jwt, "meetingId");
     if (tokenType == null || meetingId == null) {
-      throw new MeetingTokenException(HttpStatus.UNAUTHORIZED, "TOKEN_INVALID", "Refresh-токен не содержит обязательные claims.");
+      throw new AuthTokenException(HttpStatus.UNAUTHORIZED, ErrorCode.TOKEN_INVALID.code(), "Refresh-токен не содержит обязательные claims.");
     }
     if (!"refresh".equals(tokenType.toLowerCase(Locale.ROOT))) {
-      throw new MeetingTokenException(HttpStatus.UNAUTHORIZED, "TOKEN_INVALID", "Требуется refresh-токен.");
+      throw new AuthTokenException(HttpStatus.UNAUTHORIZED, ErrorCode.TOKEN_INVALID.code(), "Требуется refresh-токен.");
     }
     return meetingId;
   }
@@ -116,10 +116,10 @@ class RefreshTokenParser {
     Instant expiresAt = jwt.getExpiresAt();
 
     if (isBlank(tokenId) || isBlank(subject) || isBlank(meetingId) || issuedAt == null || expiresAt == null) {
-      throw new MeetingTokenException(HttpStatus.UNAUTHORIZED, "TOKEN_INVALID", "Refresh-токен не содержит обязательные claims.");
+      throw new AuthTokenException(HttpStatus.UNAUTHORIZED, ErrorCode.TOKEN_INVALID.code(), "Refresh-токен не содержит обязательные claims.");
     }
     if (clock.instant().isAfter(expiresAt)) {
-      throw new MeetingTokenException(HttpStatus.UNAUTHORIZED, "AUTH_REQUIRED", "Сессия истекла. Выполните вход через SSO.");
+      throw new AuthTokenException(HttpStatus.UNAUTHORIZED, ErrorCode.AUTH_REQUIRED.code(), "Сессия истекла. Выполните вход через SSO.");
     }
     return new RefreshTokenPayload(tokenId, subject, meetingId, issuedAt, expiresAt);
   }

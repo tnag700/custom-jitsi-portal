@@ -22,15 +22,58 @@ function readProject(relativePath: string): string {
 }
 
 describe("Shared UI Guard: dependency (AC: 1-4)", () => {
-  it("package.json should contain @qwik-ui/headless in dependencies", () => {
+  it("package.json should keep @qwik-ui/headless in dependencies without duplicate declaration", () => {
     const pkgRaw = readProject("package.json");
     const pkg = JSON.parse(pkgRaw) as {
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
     };
-    expect(pkg.dependencies).toBeDefined();
     expect(pkg.dependencies?.["@qwik-ui/headless"]).toBeTruthy();
     expect(pkg.devDependencies?.["@qwik-ui/headless"]).toBeUndefined();
+  });
+
+  it("installed @qwik-ui/headless package metadata should expose a root export map", () => {
+    const pkgRaw = readProject("node_modules/@qwik-ui/headless/package.json");
+    const pkg = JSON.parse(pkgRaw) as {
+      name?: string;
+      exports?: Record<string, unknown>;
+    };
+
+    expect(pkg.name).toBe("@qwik-ui/headless");
+    expect(pkg.exports).toBeTruthy();
+    expect(pkg.exports).toHaveProperty(".");
+  });
+});
+
+describe("Shared UI Guard: centralized typing and a11y contracts (AC: 1, 3)", () => {
+  it("wrapper files should not declare local ShimComponent or duplicate unknown casts", () => {
+    const dialog = readSrc("lib/shared/ui/AppDialog.tsx");
+    const popover = readSrc("lib/shared/ui/AppPopover.tsx");
+    const combobox = readSrc("lib/shared/ui/AppCombobox.tsx");
+
+    expect(dialog).not.toContain("type ShimComponent");
+    expect(popover).not.toContain("type ShimComponent");
+    expect(combobox).not.toContain("type ShimComponent");
+    expect(dialog).not.toContain("as unknown as ShimComponent");
+    expect(popover).not.toContain("as unknown as ShimComponent");
+    expect(combobox).not.toContain("as unknown as ShimComponent");
+  });
+
+  it("headless-typing.ts should define a documented centralized assertion boundary", () => {
+    const ts = readSrc("lib/shared/ui/headless-typing.ts");
+    expect(ts).toContain("asHeadlessComponent");
+    expect(ts).toContain("PropsOf");
+    expect(ts).toContain("assertion boundary");
+  });
+
+  it("a11y.ts should define shared defaults and focus-visible contract", () => {
+    const ts = readSrc("lib/shared/ui/a11y.ts");
+    expect(ts).toContain("dialogA11yDefaults");
+    expect(ts).toContain("popoverA11yDefaults");
+    expect(ts).toContain("comboboxA11yDefaults");
+    expect(ts).toContain("sharedFocusVisibleContract");
+    expect(ts).toContain("sharedFocusVisibleAttrs");
+    expect(ts).toContain("global.css");
   });
 });
 
@@ -47,7 +90,7 @@ describe("Shared UI Guard: AppDialog (AC: 1, 4)", () => {
     expect(tsx).toContain("bg-surface");
     expect(tsx).toContain("rounded-xl");
     expect(tsx).toContain("shadow-xl");
-    expect(tsx).toContain("Modal.Title");
+    expect(tsx).toContain("ModalTitle");
   });
 
   it("AppDialog.tsx should include trigger and close labels for accessibility and i18n flexibility", () => {
@@ -55,9 +98,11 @@ describe("Shared UI Guard: AppDialog (AC: 1, 4)", () => {
     expect(tsx).toContain("showTrigger = true");
     expect(tsx).toContain("triggerLabel");
     expect(tsx).toContain("closeLabel");
+    expect(tsx).toContain("dialogA11yDefaults");
+    expect(tsx).toContain("sharedFocusVisibleAttrs");
     expect(tsx).toContain("aria-label={triggerLabel}");
     expect(tsx).toContain("showTrigger");
-    expect(tsx).toContain("Modal.Close");
+    expect(tsx).toContain("ModalClose");
     expect(tsx).toContain("bind:show");
   });
 });
@@ -72,9 +117,9 @@ describe("Shared UI Guard: AppCombobox (AC: 2, 4)", () => {
 
   it("AppCombobox.tsx should contain Input/Item/ItemLabel and design tokens", () => {
     const tsx = readSrc("lib/shared/ui/AppCombobox.tsx");
-    expect(tsx).toContain("Combobox.Input");
-    expect(tsx).toContain("Combobox.Item");
-    expect(tsx).toContain("Combobox.ItemLabel");
+    expect(tsx).toContain("ComboboxInput");
+    expect(tsx).toContain("ComboboxItem");
+    expect(tsx).toContain("ComboboxItemLabel");
     expect(tsx).toContain("bg-surface");
     expect(tsx).toContain("border-border");
     expect(tsx).toContain("text-text");
@@ -84,6 +129,9 @@ describe("Shared UI Guard: AppCombobox (AC: 2, 4)", () => {
     const tsx = readSrc("lib/shared/ui/AppCombobox.tsx");
     expect(tsx).toContain("export interface AppComboboxProps<TValue extends string = string>");
     expect(tsx).toContain("onChange$?: QRL<(value: TValue) => void>");
+    expect(tsx).toContain("comboboxA11yDefaults");
+    expect(tsx).toContain("sharedFocusVisibleAttrs");
+    expect(tsx).toContain("forwardComboboxValue");
     expect(tsx).toContain("filter");
     expect(tsx).toContain("onChange$={async (nextValue: unknown)");
   });
@@ -99,8 +147,8 @@ describe("Shared UI Guard: AppPopover (AC: 3, 4)", () => {
 
   it("AppPopover.tsx should contain Trigger/Panel and design tokens", () => {
     const tsx = readSrc("lib/shared/ui/AppPopover.tsx");
-    expect(tsx).toContain("Popover.Trigger");
-    expect(tsx).toContain("Popover.Panel");
+    expect(tsx).toContain("PopoverTrigger");
+    expect(tsx).toContain("PopoverPanel");
     expect(tsx).toContain("bg-surface");
     expect(tsx).toContain("border-border");
     expect(tsx).toContain("shadow-2");
@@ -111,6 +159,8 @@ describe("Shared UI Guard: AppPopover (AC: 3, 4)", () => {
     const tsx = readSrc("lib/shared/ui/AppPopover.tsx");
     expect(tsx).toContain("type Placement = Exclude<PropsOf<typeof Popover.Root>[\"floating\"], boolean | undefined>");
     expect(tsx).toContain("floating?: Placement");
+    expect(tsx).toContain("popoverA11yDefaults");
+    expect(tsx).toContain("sharedFocusVisibleAttrs");
     expect(tsx).toContain("gutter = 8");
   });
 });

@@ -30,7 +30,7 @@ class MeetingTokenExceptionHandler {
   @ExceptionHandler(MeetingTokenException.class)
   ProblemDetail handleMeetingTokenException(MeetingTokenException ex, HttpServletRequest request) {
     ProblemDetailsMappingPolicy.ProblemDefinition definition =
-        problemDetailsMappingPolicy.mapMeetingTokenException(ex);
+        problemDetailsMappingPolicy.mapTokenException(ex.status(), ex.errorCode(), ex.getMessage());
     String traceId = resolveTraceId(request);
     if (log.isWarnEnabled()) {
       log.warn(

@@ -1,5 +1,7 @@
 package com.acme.jitsi.security;
 
+import com.acme.jitsi.shared.ErrorCode;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
@@ -22,7 +24,7 @@ class ApiAccessExceptionHandlerTest {
     var detail = handler.handleAccessDenied(new AccessDeniedException("Tenant claim is required"), request);
 
     assertThat(detail.getStatus()).isEqualTo(403);
-    assertThat(detail.getProperties()).containsEntry("errorCode", "TENANT_CLAIM_REQUIRED");
+    assertThat(detail.getProperties()).containsEntry("errorCode", ErrorCode.TENANT_CLAIM_REQUIRED.code());
     assertThat(detail.getProperties()).containsEntry("traceId", "trace-tenant-missing");
   }
 
@@ -37,7 +39,24 @@ class ApiAccessExceptionHandlerTest {
         request);
 
     assertThat(detail.getStatus()).isEqualTo(403);
-    assertThat(detail.getProperties()).containsEntry("errorCode", "TENANT_ACCESS_DENIED");
+    assertThat(detail.getProperties()).containsEntry("errorCode", ErrorCode.TENANT_ACCESS_DENIED.code());
     assertThat(detail.getProperties()).containsEntry("traceId", "trace-tenant-mismatch");
   }
+
+  @Test
+  void genericAccessDeniedMapsToAccessDeniedCode() {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setRequestURI("/api/v1/rooms");
+    request.addHeader("X-Trace-Id", "trace-generic-denied");
+
+    var detail = handler.handleAccessDenied(new AccessDeniedException("some other message"), request);
+
+    assertThat(detail.getStatus()).isEqualTo(403);
+    assertThat(detail.getProperties()).containsEntry("errorCode", ErrorCode.ACCESS_DENIED.code());
+    assertThat(detail.getProperties()).containsEntry("traceId", "trace-generic-denied");
+  }
+
 }
+
+
+

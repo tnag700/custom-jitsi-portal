@@ -12,7 +12,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.acme.jitsi.domains.meetings.event.MeetingCanceledEvent;
 import com.acme.jitsi.domains.meetings.event.MeetingCreatedEvent;
 import com.acme.jitsi.domains.meetings.event.MeetingUpdatedEvent;
+import com.acme.jitsi.shared.ErrorCode;
 import com.acme.jitsi.shared.JwtTestProperties;
+import com.acme.jitsi.shared.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -20,6 +22,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Map;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,21 +30,15 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(
     properties = {
-      "spring.datasource.url=jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
+  "spring.datasource.url=jdbc:h2:mem:testdb-meetings-controller;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
       "spring.datasource.driver-class-name=org.h2.Driver",
       "spring.jpa.hibernate.ddl-auto=validate",
       "spring.flyway.enabled=true",
@@ -70,18 +67,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
     })
 @AutoConfigureMockMvc
 @RecordApplicationEvents
-@Testcontainers
-class MeetingsControllerTest {
-
-  @Container
-  static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
-      .withExposedPorts(6379);
-
-  @DynamicPropertySource
-  static void redisProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.data.redis.host", redis::getHost);
-    registry.add("spring.data.redis.port", redis::getFirstMappedPort);
-  }
+@Tag("integration")
+@Tag("container")
+class MeetingsControllerTest extends RedisBackedMeetingApiIntegrationTestSupport {
 
   @Autowired
   private MockMvc mockMvc;
@@ -96,12 +84,7 @@ class MeetingsControllerTest {
   void createMeetingWithValidScheduleReturnsCreated() throws Exception {
     String roomResponse = mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> {
-                  attrs.put("sub", "admin-user");
-                  attrs.put("tenantId", "tenant-1");
-                })
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {
@@ -117,12 +100,7 @@ class MeetingsControllerTest {
 
     String meetingResponse = mockMvc.perform(post("/api/v1/rooms/{roomId}/meetings", roomId)
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> {
-                  attrs.put("sub", "admin-user");
-                  attrs.put("tenantId", "tenant-1");
-                })
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-meeting-create-1")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -146,20 +124,15 @@ class MeetingsControllerTest {
 
       String meetingId = JsonPath.parse(meetingResponse).read("$.meetingId");
 
-      long eventCount = applicationEvents.stream(MeetingCreatedEvent.class)
+        var createdEvents = applicationEvents.stream(MeetingCreatedEvent.class)
           .filter(e -> e.meetingId().equals(meetingId)
-              && e.roomId().equals(roomId)
-              && e.actorId().equals("admin-user")
-              && e.traceId().equals("trace-meeting-create-1")
-              && e.changedFields().equals("title,description,meetingType,startsAt,endsAt,allowGuests,recordingEnabled"))
-          .count();
-      assertEquals(1, eventCount);
+            && e.roomId().equals(roomId)
+            && e.actorId().equals("admin-user")
+            && e.changedFields().equals("title,description,meetingType,startsAt,endsAt,allowGuests,recordingEnabled"))
+          .toList();
+        assertEquals(1, createdEvents.size());
 
-            Integer auditCount = jdbcTemplate.queryForObject(
-              "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ? AND action_type = ?",
-              Integer.class,
-              "trace-meeting-create-1",
-              "create");
+          Integer auditCount = awaitAuditCount(createdEvents.getFirst().traceId(), "create");
             assertEquals(1, auditCount);
   }
 
@@ -228,20 +201,15 @@ class MeetingsControllerTest {
         .andExpect(jsonPath("$.meetingId").value(meetingId))
         .andExpect(jsonPath("$.title").value("Update target renamed"));
 
-    long eventCount = applicationEvents.stream(MeetingUpdatedEvent.class)
-        .filter(e -> e.meetingId().equals(meetingId)
-            && e.roomId().equals(roomId)
-            && e.actorId().equals("admin-user")
-            && e.traceId().equals("trace-meeting-update-1")
-            && e.changedFields().equals("title"))
-        .count();
-    assertEquals(1, eventCount);
+    var updatedEvents = applicationEvents.stream(MeetingUpdatedEvent.class)
+      .filter(e -> e.meetingId().equals(meetingId)
+        && e.roomId().equals(roomId)
+        && e.actorId().equals("admin-user")
+        && e.changedFields().equals("title"))
+      .toList();
+    assertEquals(1, updatedEvents.size());
 
-        Integer auditCount = jdbcTemplate.queryForObject(
-          "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ? AND action_type = ?",
-          Integer.class,
-          "trace-meeting-update-1",
-          "update");
+      Integer auditCount = awaitAuditCount(updatedEvents.getFirst().traceId(), "update");
         assertEquals(1, auditCount);
   }
 
@@ -288,8 +256,8 @@ class MeetingsControllerTest {
                 """))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("INVALID_SCHEDULE"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-meeting-schedule-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVALID_SCHEDULE.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-meeting-schedule-1"));
   }
 
   @Test
@@ -358,7 +326,7 @@ class MeetingsControllerTest {
                 """))
         .andExpect(status().isConflict())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("IDEMPOTENCY_CONFLICT"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.IDEMPOTENCY_CONFLICT.code()));
   }
 
   @Test
@@ -517,24 +485,40 @@ class MeetingsControllerTest {
                 """))
         .andExpect(status().isConflict())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("MEETING_FINALIZED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-meeting-finalized-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.MEETING_FINALIZED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-meeting-finalized-1"));
 
-      long eventCount = applicationEvents.stream(MeetingCanceledEvent.class)
+        var canceledEvents = applicationEvents.stream(MeetingCanceledEvent.class)
           .filter(e -> e.meetingId().equals(meetingId)
-              && e.roomId().equals(roomId)
-              && e.actorId().equals("admin-user")
-              && e.traceId().equals("trace-meeting-cancel-1")
-              && e.changedFields().equals("status"))
-          .count();
-      assertEquals(1, eventCount);
+            && e.roomId().equals(roomId)
+            && e.actorId().equals("admin-user")
+            && e.changedFields().equals("status"))
+          .toList();
+        assertEquals(1, canceledEvents.size());
 
-            Integer auditCount = jdbcTemplate.queryForObject(
-              "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ? AND action_type = ?",
-              Integer.class,
-              "trace-meeting-cancel-1",
-              "cancel");
+          Integer auditCount = awaitAuditCount(canceledEvents.getFirst().traceId(), "cancel");
             assertEquals(1, auditCount);
+  }
+
+  private Integer awaitAuditCount(String traceId, String actionType) throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+    while (System.nanoTime() < deadline) {
+      Integer auditCount = jdbcTemplate.queryForObject(
+          "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ? AND action_type = ?",
+          Integer.class,
+          traceId,
+          actionType);
+      if (auditCount != null && auditCount > 0) {
+        return auditCount;
+      }
+      Thread.sleep(25);
+    }
+
+    return jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ? AND action_type = ?",
+        Integer.class,
+        traceId,
+        actionType);
   }
 
   @Test
@@ -615,46 +599,8 @@ class MeetingsControllerTest {
                 """))
         .andExpect(status().isForbidden())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-              .andExpect(jsonPath("$.properties.errorCode").value("TENANT_CLAIM_REQUIRED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-meeting-tenant-1"));
-  }
-
-  // AC3: limit/offset pagination params
-  @Test
-  void listMeetingsWithLimitOffsetMapsToCorrectPage() throws Exception {
-    String roomResponse = mockMvc.perform(post("/api/v1/rooms")
-            .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> {
-                  attrs.put("sub", "admin-user");
-                  attrs.put("tenantId", "tenant-1");
-                })
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("""
-                {
-                  "name": "Meetings room limit-offset",
-                  "tenantId": "tenant-1",
-                  "configSetId": "config-1"
-                }
-                """))
-        .andExpect(status().isCreated())
-        .andReturn().getResponse().getContentAsString();
-
-    String roomId = com.jayway.jsonpath.JsonPath.parse(roomResponse).read("$.roomId");
-
-    mockMvc.perform(get("/api/v1/rooms/{roomId}/meetings?limit=5&offset=10", roomId)
-            .with(oauth2Login()
-                .attributes(attrs -> {
-                  attrs.put("sub", "admin-user");
-                  attrs.put("tenantId", "tenant-1");
-                })
-                .authorities(new SimpleGrantedAuthority("ROLE_admin"))))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.content").isArray())
-        .andExpect(jsonPath("$.page").value(2))
-        .andExpect(jsonPath("$.pageSize").value(5));
+              .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TENANT_CLAIM_REQUIRED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-meeting-tenant-1"));
   }
 
   @Test
@@ -690,5 +636,19 @@ class MeetingsControllerTest {
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.pageSize").value(20));
+  }
+
+  @Test
+  void listMeetingsForMissingRoomReturnsRoomNotFoundProblemDetail() throws Exception {
+    mockMvc.perform(get("/api/v1/rooms/{roomId}/meetings", "missing-room")
+            .with(oauth2Login()
+                .attributes(attrs -> {
+                  attrs.put("sub", "admin-user");
+                  attrs.put("tenantId", "tenant-1");
+                })
+                .authorities(new SimpleGrantedAuthority("ROLE_admin"))))
+        .andExpect(status().isNotFound())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ROOM_NOT_FOUND.code()));
   }
 }

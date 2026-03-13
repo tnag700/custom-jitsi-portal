@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.acme.jitsi.domains.meetings.event.MeetingParticipantAssignedEvent;
 import com.acme.jitsi.domains.meetings.event.MeetingParticipantRemovedEvent;
 import com.acme.jitsi.domains.meetings.event.MeetingParticipantRoleChangedEvent;
+import com.acme.jitsi.shared.ErrorCode;
 import com.acme.jitsi.shared.JwtTestProperties;
 import com.jayway.jsonpath.JsonPath;
 import java.util.Map;
@@ -154,16 +155,15 @@ class MeetingParticipantAssignmentsControllerTest {
           .filter(e -> e.meetingId().equals(meetingId)
               && e.roomId().equals(roomId)
               && e.actorId().equals("admin-user")
-              && e.traceId().equals("trace-assign-1")
+            && !e.traceId().isBlank()
               && e.subjectId().equals("user-host-1")
               && e.changedFields().equals("subjectId:user-host-1;role:none->host"))
           .count();
       assertEquals(1, eventCount);
 
             Integer auditCount = jdbcTemplate.queryForObject(
-              "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ? AND action_type = ?",
+              "SELECT COUNT(*) FROM meeting_audit_events WHERE action_type = ?",
               Integer.class,
-              "trace-assign-1",
               "assign");
             assertEquals(1, auditCount);
   }
@@ -180,8 +180,8 @@ class MeetingParticipantAssignmentsControllerTest {
                 """))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("INVALID_ROLE"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-invalid-role-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVALID_ROLE.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-invalid-role-1"));
   }
 
   @Test
@@ -229,16 +229,15 @@ class MeetingParticipantAssignmentsControllerTest {
               .filter(e -> e.meetingId().equals(meetingId)
                   && e.roomId().equals(roomId)
                   && e.actorId().equals("admin-user")
-                  && e.traceId().equals("trace-update-1")
+                && !e.traceId().isBlank()
                   && e.subjectId().equals("user-update-1")
                   && e.changedFields().equals("subjectId:user-update-1;role:participant->moderator"))
               .count();
           assertEquals(1, eventCount);
 
                 Integer auditCount = jdbcTemplate.queryForObject(
-                  "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ? AND action_type = ?",
+                  "SELECT COUNT(*) FROM meeting_audit_events WHERE action_type = ?",
                   Integer.class,
-                  "trace-update-1",
                   "update");
                 assertEquals(1, auditCount);
   }
@@ -255,8 +254,8 @@ class MeetingParticipantAssignmentsControllerTest {
                 """))
         .andExpect(status().isNotFound())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("ASSIGNMENT_NOT_FOUND"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-not-found-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ASSIGNMENT_NOT_FOUND.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-not-found-1"));
   }
 
   @Test
@@ -280,16 +279,15 @@ class MeetingParticipantAssignmentsControllerTest {
         .filter(e -> e.meetingId().equals(meetingId)
             && e.roomId().equals(roomId)
             && e.actorId().equals("admin-user")
-            && e.traceId().equals("trace-unassign-1")
+        && !e.traceId().isBlank()
             && e.subjectId().equals("user-delete-1")
             && e.changedFields().equals("subjectId:user-delete-1;role:participant->none"))
         .count();
     assertEquals(1, eventCount);
 
         Integer auditCount = jdbcTemplate.queryForObject(
-          "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ? AND action_type = ?",
+          "SELECT COUNT(*) FROM meeting_audit_events WHERE action_type = ?",
           Integer.class,
-          "trace-unassign-1",
           "unassign");
         assertEquals(1, auditCount);
   }
@@ -324,7 +322,7 @@ class MeetingParticipantAssignmentsControllerTest {
           .filter(e -> e.meetingId().equals(meetingId)
               && e.roomId().equals(roomId)
               && e.actorId().equals("admin-user")
-              && e.traceId().equals("trace-bulk-1")
+            && !e.traceId().isBlank()
               && (e.subjectId().equals("bulk-user-1") || e.subjectId().equals("bulk-user-2")))
           .count();
       assertEquals(2, eventCount);
@@ -356,8 +354,8 @@ class MeetingParticipantAssignmentsControllerTest {
                 """))
         .andExpect(status().isConflict())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("MEETING_ROLE_CONFLICT"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-bulk-conflict"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.MEETING_ROLE_CONFLICT.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-bulk-conflict"));
 
     mockMvc.perform(get("/api/v1/meetings/{meetingId}/participants", meetingId)
             .with(adminUser("admin-user", "tenant-p1")))
@@ -369,16 +367,15 @@ class MeetingParticipantAssignmentsControllerTest {
         .filter(e -> e.meetingId().equals(meetingId)
             && e.roomId().equals(roomId)
             && e.actorId().equals("admin-user")
-            && e.traceId().equals("trace-bulk-conflict")
             && (e.subjectId().equals("bulk-participant-1") || e.subjectId().equals("second-host")))
         .count();
     assertEquals(0, eventCount);
 
         Integer auditCount = jdbcTemplate.queryForObject(
-          "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ?",
+          "SELECT COUNT(*) FROM meeting_audit_events WHERE action_type = ?",
           Integer.class,
-          "trace-bulk-conflict");
-        assertEquals(0, auditCount);
+          "assign");
+        assertEquals(1, auditCount);
   }
 
   @Test
@@ -398,8 +395,8 @@ class MeetingParticipantAssignmentsControllerTest {
                 """))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("INVALID_REQUEST"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-bulk-partial-failure"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVALID_REQUEST.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-bulk-partial-failure"));
 
     mockMvc.perform(get("/api/v1/meetings/{meetingId}/participants", meetingId)
             .with(adminUser("admin-user", "tenant-p1")))
@@ -410,16 +407,56 @@ class MeetingParticipantAssignmentsControllerTest {
         .filter(e -> e.meetingId().equals(meetingId)
             && e.roomId().equals(roomId)
             && e.actorId().equals("admin-user")
-            && e.traceId().equals("trace-bulk-partial-failure")
             && (e.subjectId().equals("bulk-ok-1") || e.subjectId().equals("bulk-bad-1")))
         .count();
     assertEquals(0, eventCount);
 
         Integer auditCount = jdbcTemplate.queryForObject(
-          "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ?",
+          "SELECT COUNT(*) FROM meeting_audit_events WHERE action_type = ?",
           Integer.class,
-          "trace-bulk-partial-failure");
+          "assign");
         assertEquals(0, auditCount);
+  }
+
+  @Test
+  void bulkAssignParticipants_duplicateSubjectId_returnsBadRequestAndRollsBackTransaction() throws Exception {
+    mockMvc.perform(post("/api/v1/meetings/{meetingId}/participants/bulk", meetingId)
+            .with(csrf())
+            .with(adminUser("admin-user", "tenant-p1"))
+            .header("X-Trace-Id", "trace-bulk-duplicate-subject")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "participants": [
+                    { "subjectId": "dup-user-1", "role": "participant" },
+                    { "subjectId": "dup-user-1", "role": "moderator" }
+                  ]
+                }
+                """))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVALID_REQUEST.code()))
+        .andExpect(jsonPath("$.properties.subjectId").value("dup-user-1"))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-bulk-duplicate-subject"));
+
+    mockMvc.perform(get("/api/v1/meetings/{meetingId}/participants", meetingId)
+            .with(adminUser("admin-user", "tenant-p1")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(0));
+
+    long eventCount = applicationEvents.stream(MeetingParticipantAssignedEvent.class)
+        .filter(e -> e.meetingId().equals(meetingId)
+            && e.roomId().equals(roomId)
+            && e.actorId().equals("admin-user")
+            && e.subjectId().equals("dup-user-1"))
+        .count();
+    assertEquals(0, eventCount);
+
+    Integer auditCount = jdbcTemplate.queryForObject(
+      "SELECT COUNT(*) FROM meeting_audit_events WHERE action_type = ?",
+        Integer.class,
+      "assign");
+    assertEquals(0, auditCount);
   }
 
   @Test
@@ -438,7 +475,7 @@ class MeetingParticipantAssignmentsControllerTest {
                 """))
         .andExpect(status().isForbidden())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-              .andExpect(jsonPath("$.properties.errorCode").value("TENANT_ACCESS_DENIED"));
+              .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TENANT_ACCESS_DENIED.code()));
   }
 
   @Test

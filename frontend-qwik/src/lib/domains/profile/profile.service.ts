@@ -1,5 +1,14 @@
-import { baseHeaders, mutationHeaders } from "~/lib/domains/meetings/meetings.service";
 import type { ProfileErrorPayload, UserProfileResponse, UpsertProfileRequest } from "./types";
+import {
+  createApiClient,
+  adaptProblemDetails,
+  userProfileResponseSchema,
+} from "../../shared/api";
+import type {
+  MutationRequestContext,
+  ServerRequestContext,
+} from "../../shared/routes/server-handlers";
+import { asMutationRequestContext, asServerRequestContext } from "../../shared/routes/server-handlers";
 
 export class ProfileServiceError extends Error {
   payload: ProfileErrorPayload;
@@ -19,79 +28,95 @@ function fallbackProfileErrorCode(status: number): string {
   return "PROFILE_UNKNOWN";
 }
 
-interface ProblemDetailsLike {
-  title?: unknown;
-  detail?: unknown;
-  errorCode?: unknown;
-  traceId?: unknown;
-}
-
-async function readProblemDetails(response: Response): Promise<ProblemDetailsLike> {
+function parseOrThrow<T>(parseFn: (d: unknown) => T, data: unknown, endpoint: string): T {
   try {
-    return (await response.json()) as ProblemDetailsLike;
-  } catch {
-    return {};
+    return parseFn(data);
+  } catch (e) {
+    throw new ProfileServiceError({
+      title: "Неожиданный формат ответа",
+      detail: `${endpoint}: ${e instanceof Error ? e.message : "неверный формат ответа"}`,
+      errorCode: "PROFILE_RESPONSE_INVALID",
+    });
   }
 }
 
 export async function adaptProfileProblemDetails(
   response: Response,
 ): Promise<ProfileErrorPayload> {
-  const problem = await readProblemDetails(response);
-  const errorCode =
-    typeof problem.errorCode === "string" && problem.errorCode.length > 0
-      ? problem.errorCode
-      : fallbackProfileErrorCode(response.status);
-
-  return {
-    title:
-      typeof problem.title === "string" && problem.title.length > 0
-        ? problem.title
-        : "Ошибка операции с профилем",
-    detail:
-      typeof problem.detail === "string" && problem.detail.length > 0
-        ? problem.detail
-        : "Не удалось выполнить операцию.",
-    errorCode,
-    traceId:
-      typeof problem.traceId === "string" && problem.traceId.length > 0
-        ? problem.traceId
-        : undefined,
-  };
+  return adaptProblemDetails(
+    response,
+    response.status,
+    fallbackProfileErrorCode,
+    "Ошибка операции с профилем",
+    "Не удалось выполнить операцию.",
+  );
 }
 
+export function fetchMyProfile(context: ServerRequestContext): Promise<UserProfileResponse | null>;
+export function fetchMyProfile(sessionCookie: string, apiUrl: string): Promise<UserProfileResponse | null>;
 export async function fetchMyProfile(
-  sessionCookie: string,
-  apiUrl: string,
+  contextOrSessionCookie: ServerRequestContext | string,
+  apiUrl?: string,
 ): Promise<UserProfileResponse | null> {
-  const url = `${apiUrl}/profile/me`;
-  const response = await fetch(url, {
-    method: "GET",
-    headers: baseHeaders(sessionCookie),
+  const context = asServerRequestContext(contextOrSessionCookie, apiUrl);
+  const client = createApiClient(context.apiUrl);
+  const { data, error, response } = await client.GET("/api/v1/profile/me", {
+    headers: context.headers,
   });
+
   if (response.status === 404) {
     return null;
   }
-  if (!response.ok) {
-    throw new ProfileServiceError(await adaptProfileProblemDetails(response));
+  if (!response.ok || error) {
+    throw new ProfileServiceError(
+      await adaptProblemDetails(
+        error ?? response,
+        response.status,
+        fallbackProfileErrorCode,
+        "Ошибка операции с профилем",
+        "Не удалось выполнить операцию.",
+      ),
+    );
   }
-  return (await response.json()) as UserProfileResponse;
+  return parseOrThrow((d) => userProfileResponseSchema.parse(d), data, "GET /api/v1/profile/me");
 }
 
-export async function upsertMyProfile(
+export function upsertMyProfile(context: MutationRequestContext, data: UpsertProfileRequest): Promise<UserProfileResponse>;
+export function upsertMyProfile(
   sessionCookie: string,
   apiUrl: string,
   csrfToken: string,
   data: UpsertProfileRequest,
+): Promise<UserProfileResponse>;
+export async function upsertMyProfile(
+  contextOrSessionCookie: MutationRequestContext | string,
+  apiUrlOrData: string | UpsertProfileRequest,
+  csrfToken?: string,
+  data?: UpsertProfileRequest,
 ): Promise<UserProfileResponse> {
-  const url = `${apiUrl}/profile/me`;
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: mutationHeaders(sessionCookie, csrfToken),
-    body: JSON.stringify(data),
+  const context = asMutationRequestContext(
+    contextOrSessionCookie,
+    typeof contextOrSessionCookie === "string" ? (apiUrlOrData as string) : undefined,
+    csrfToken,
+  );
+  const resolvedData = typeof contextOrSessionCookie === "string" ? data! : (apiUrlOrData as UpsertProfileRequest);
+  const client = createApiClient(context.apiUrl);
+  const { data: responseData, error, response } = await client.PUT("/api/v1/profile/me", {
+    headers: context.headers,
+    body: resolvedData,
   });
-  if (!response.ok) {
-    throw new ProfileServiceError(await adaptProfileProblemDetails(response));
+
+  if (!response.ok || error) {
+    throw new ProfileServiceError(
+      await adaptProblemDetails(
+        error ?? response,
+        response.status,
+        fallbackProfileErrorCode,
+        "Ошибка операции с профилем",
+        "Не удалось выполнить операцию.",
+      ),
+    );
   }
-  return (await response.json()) as UserProfileResponse;
+
+  return parseOrThrow((d) => userProfileResponseSchema.parse(d), responseData, "PUT /api/v1/profile/me");
 }

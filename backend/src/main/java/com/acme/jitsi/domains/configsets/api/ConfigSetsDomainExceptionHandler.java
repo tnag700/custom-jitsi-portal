@@ -8,6 +8,7 @@ import com.acme.jitsi.domains.configsets.service.ConfigSetRollbackNotAllowedExce
 import com.acme.jitsi.domains.configsets.service.ConfigSetRolloutNotAllowedException;
 import com.acme.jitsi.domains.configsets.service.ConfigSetRolloutValidationFailedException;
 import com.acme.jitsi.security.ProblemResponseFacade;
+import com.acme.jitsi.shared.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +38,7 @@ class ConfigSetsDomainExceptionHandler {
         HttpStatus.BAD_REQUEST,
         "Некорректные данные конфиг-набора",
         ex.getMessage(),
-        "CONFIG_SET_INVALID",
+        ErrorCode.CONFIG_SET_INVALID.code(),
         ex);
   }
 
@@ -48,7 +49,7 @@ class ConfigSetsDomainExceptionHandler {
         HttpStatus.NOT_FOUND,
         "Конфиг-набор не найден",
         ex.getMessage(),
-        "CONFIG_SET_NOT_FOUND",
+        ErrorCode.CONFIG_SET_NOT_FOUND.code(),
         ex);
   }
 
@@ -59,7 +60,7 @@ class ConfigSetsDomainExceptionHandler {
         HttpStatus.CONFLICT,
         "Имя конфиг-набора уже занято",
         ex.getMessage(),
-        "CONFIG_SET_NAME_CONFLICT",
+        ErrorCode.CONFIG_SET_NAME_CONFLICT.code(),
         ex);
   }
 
@@ -72,7 +73,7 @@ class ConfigSetsDomainExceptionHandler {
         HttpStatus.UNPROCESSABLE_ENTITY,
         "Активация конфиг-набора не разрешена",
         ex.getMessage(),
-        "CONFIG_SET_ACTIVATION_NOT_ALLOWED",
+        ErrorCode.CONFIG_SET_ACTIVATION_NOT_ALLOWED.code(),
         ex);
   }
 
@@ -85,7 +86,7 @@ class ConfigSetsDomainExceptionHandler {
         HttpStatus.UNPROCESSABLE_ENTITY,
         "Rollout конфиг-набора не разрешён",
         ex.getMessage(),
-        "CONFIG_SET_ROLLOUT_NOT_ALLOWED",
+        ErrorCode.CONFIG_SET_ROLLOUT_NOT_ALLOWED.code(),
         ex);
   }
 
@@ -98,7 +99,7 @@ class ConfigSetsDomainExceptionHandler {
         HttpStatus.UNPROCESSABLE_ENTITY,
         "Конфиг-набор несовместим",
         ex.getMessage(),
-        "CONFIG_INCOMPATIBLE",
+        ErrorCode.CONFIG_INCOMPATIBLE.code(),
         ex);
   }
 
@@ -111,7 +112,7 @@ class ConfigSetsDomainExceptionHandler {
         HttpStatus.UNPROCESSABLE_ENTITY,
         "Rollback конфиг-набора не разрешён",
         ex.getMessage(),
-        "CONFIG_SET_ROLLBACK_NOT_ALLOWED",
+        ErrorCode.CONFIG_SET_ROLLBACK_NOT_ALLOWED.code(),
         ex);
   }
 

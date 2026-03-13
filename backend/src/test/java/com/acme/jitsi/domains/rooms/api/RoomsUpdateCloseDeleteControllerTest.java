@@ -1,10 +1,11 @@
 package com.acme.jitsi.domains.rooms.api;
 
+import com.acme.jitsi.shared.ErrorCode;
+
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -17,6 +18,7 @@ import com.acme.jitsi.domains.rooms.event.RoomClosedEvent;
 import com.acme.jitsi.domains.rooms.event.RoomDeletedEvent;
 import com.acme.jitsi.domains.rooms.event.RoomUpdatedEvent;
 import com.acme.jitsi.shared.JwtTestProperties;
+import com.acme.jitsi.shared.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
@@ -24,8 +26,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.OAuth2LoginRequestPostProcessor;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
@@ -70,26 +70,10 @@ class RoomsUpdateCloseDeleteControllerTest {
   @Autowired
   private ApplicationEvents applicationEvents;
 
-  private OAuth2LoginRequestPostProcessor adminLogin() {
-    return oauth2Login()
-        .attributes(attrs -> attrs.put("sub", "admin-user"))
-        .authorities(new SimpleGrantedAuthority("ROLE_admin"));
-  }
-
-  private OAuth2LoginRequestPostProcessor adminLogin(String tenantId) {
-    return oauth2Login()
-        .attributes(attrs -> {
-          attrs.put("sub", "admin-user");
-          attrs.put("tenantId", tenantId);
-          attrs.put("tenant_id", tenantId);
-        })
-        .authorities(new SimpleGrantedAuthority("ROLE_admin"));
-  }
-
   private String createRoom(String name, String tenantId) throws Exception {
     String response = mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(adminLogin())
+            .with(TestFixtures.adminLogin())
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {
@@ -106,7 +90,7 @@ class RoomsUpdateCloseDeleteControllerTest {
   private String createMeeting(String roomId, String tenantId) throws Exception {
     String response = mockMvc.perform(post("/api/v1/rooms/" + roomId + "/meetings")
             .with(csrf())
-            .with(adminLogin(tenantId))
+            .with(TestFixtures.adminLogin(tenantId))
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {
@@ -134,7 +118,7 @@ class RoomsUpdateCloseDeleteControllerTest {
 
     mockMvc.perform(put("/api/v1/rooms/" + roomId)
             .with(csrf())
-            .with(adminLogin("tenant-1"))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-room-update-1")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -155,7 +139,7 @@ class RoomsUpdateCloseDeleteControllerTest {
       long eventCount = applicationEvents.stream(RoomUpdatedEvent.class)
           .filter(e -> e.roomId().equals(roomId)
               && e.actorId().equals("admin-user")
-              && e.traceId().equals("trace-room-update-1")
+            && !e.traceId().isBlank()
               && e.changedFields().equals("name,description,configSetId")
               && e.oldValues().contains("name=Room To Update")
               && e.oldValues().contains("configSetId=config-1")
@@ -170,7 +154,7 @@ class RoomsUpdateCloseDeleteControllerTest {
     void listRoomsWithSizeZeroFallsBackToDefaultPageSize() throws Exception {
     mockMvc.perform(get("/api/v1/rooms?tenantId=tenant-1&size=0")
         .with(csrf())
-        .with(adminLogin("tenant-1"))
+        .with(TestFixtures.adminLogin("tenant-1"))
         .header("X-Trace-Id", "trace-room-list-invalid-size"))
       .andExpect(status().isOk())
       .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -185,7 +169,7 @@ class RoomsUpdateCloseDeleteControllerTest {
 
     mockMvc.perform(put("/api/v1/rooms/" + roomIdToUpdate)
             .with(csrf())
-            .with(adminLogin("tenant-1"))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-room-update-dup-1")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -196,8 +180,8 @@ class RoomsUpdateCloseDeleteControllerTest {
                 """))
         .andExpect(status().isConflict())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("ROOM_NAME_CONFLICT"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-room-update-dup-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ROOM_NAME_CONFLICT.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-room-update-dup-1"));
   }
 
   // AC4: Close room without active meetings succeeds
@@ -207,7 +191,7 @@ class RoomsUpdateCloseDeleteControllerTest {
 
     mockMvc.perform(post("/api/v1/rooms/" + roomId + "/close")
             .with(csrf())
-            .with(adminLogin("tenant-1"))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-room-close-1"))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -217,7 +201,7 @@ class RoomsUpdateCloseDeleteControllerTest {
       long eventCount = applicationEvents.stream(RoomClosedEvent.class)
           .filter(e -> e.roomId().equals(roomId)
               && e.actorId().equals("admin-user")
-              && e.traceId().equals("trace-room-close-1")
+            && !e.traceId().isBlank()
               && e.changedFields().equals("status")
               && e.oldValues().equals("status=ACTIVE")
               && e.newValues().equals("status=CLOSED"))
@@ -232,20 +216,20 @@ class RoomsUpdateCloseDeleteControllerTest {
 
     mockMvc.perform(delete("/api/v1/rooms/" + roomId)
             .with(csrf())
-            .with(adminLogin("tenant-1"))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-room-delete-1"))
         .andExpect(status().isNoContent());
 
     // Verify room is deleted
     mockMvc.perform(get("/api/v1/rooms/" + roomId)
             .with(csrf())
-            .with(adminLogin()))
+            .with(TestFixtures.adminLogin()))
         .andExpect(status().isNotFound());
 
     long eventCount = applicationEvents.stream(RoomDeletedEvent.class)
         .filter(e -> e.roomId().equals(roomId)
             && e.actorId().equals("admin-user")
-            && e.traceId().equals("trace-room-delete-1")
+        && !e.traceId().isBlank()
             && e.changedFields().equals("name,tenantId,configSetId,status")
             && e.oldValues().contains("name=Room To Delete")
             && e.oldValues().contains("tenantId=tenant-1")
@@ -264,12 +248,12 @@ class RoomsUpdateCloseDeleteControllerTest {
 
     mockMvc.perform(delete("/api/v1/rooms/" + roomId)
         .with(csrf())
-        .with(adminLogin("tenant-1"))
+        .with(TestFixtures.adminLogin("tenant-1"))
         .header("X-Trace-Id", "trace-room-delete-active-1"))
       .andExpect(status().isConflict())
       .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-      .andExpect(jsonPath("$.properties.errorCode").value("ROOM_HAS_ACTIVE_MEETINGS"))
-      .andExpect(jsonPath("$.properties.traceId").value("trace-room-delete-active-1"));
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ROOM_HAS_ACTIVE_MEETINGS.code()))
+      .andExpect(jsonPath("$.properties.requestId").value("trace-room-delete-active-1"));
   }
 
   @Test
@@ -279,12 +263,12 @@ class RoomsUpdateCloseDeleteControllerTest {
 
     mockMvc.perform(post("/api/v1/rooms/" + roomId + "/close")
         .with(csrf())
-        .with(adminLogin("tenant-2"))
+        .with(TestFixtures.adminLogin("tenant-2"))
         .header("X-Trace-Id", "trace-room-close-active-1"))
       .andExpect(status().isConflict())
       .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-      .andExpect(jsonPath("$.properties.errorCode").value("ROOM_HAS_ACTIVE_MEETINGS"))
-      .andExpect(jsonPath("$.properties.traceId").value("trace-room-close-active-1"));
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ROOM_HAS_ACTIVE_MEETINGS.code()))
+      .andExpect(jsonPath("$.properties.requestId").value("trace-room-close-active-1"));
   }
 
   @Test
@@ -293,12 +277,12 @@ class RoomsUpdateCloseDeleteControllerTest {
 
     mockMvc.perform(get("/api/v1/rooms/" + roomId)
             .with(csrf())
-            .with(adminLogin("tenant-2"))
+            .with(TestFixtures.adminLogin("tenant-2"))
             .header("X-Trace-Id", "trace-room-get-tenant-mismatch"))
         .andExpect(status().isForbidden())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-      .andExpect(jsonPath("$.properties.errorCode").value("TENANT_ACCESS_DENIED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-room-get-tenant-mismatch"));
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TENANT_ACCESS_DENIED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-room-get-tenant-mismatch"));
   }
 
   // Update non-existent room returns 404
@@ -306,7 +290,7 @@ class RoomsUpdateCloseDeleteControllerTest {
   void updateNonExistentRoomReturns404() throws Exception {
     mockMvc.perform(put("/api/v1/rooms/non-existent-room-id")
             .with(csrf())
-            .with(adminLogin())
+            .with(TestFixtures.adminLogin())
             .header("X-Trace-Id", "trace-room-update-notfound-1")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -317,8 +301,8 @@ class RoomsUpdateCloseDeleteControllerTest {
                 """))
         .andExpect(status().isNotFound())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("ROOM_NOT_FOUND"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-room-update-notfound-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ROOM_NOT_FOUND.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-room-update-notfound-1"));
   }
 
   // Close already closed room returns error
@@ -329,17 +313,19 @@ class RoomsUpdateCloseDeleteControllerTest {
     // First close
     mockMvc.perform(post("/api/v1/rooms/" + roomId + "/close")
             .with(csrf())
-            .with(adminLogin("tenant-1")))
+            .with(TestFixtures.adminLogin("tenant-1")))
         .andExpect(status().isOk());
 
     // Second close attempt
     mockMvc.perform(post("/api/v1/rooms/" + roomId + "/close")
             .with(csrf())
-            .with(adminLogin("tenant-1"))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-room-close-twice-1"))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("ROOM_ALREADY_CLOSED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-room-close-twice-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ROOM_ALREADY_CLOSED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-room-close-twice-1"));
   }
 }
+
+

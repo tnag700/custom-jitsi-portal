@@ -4,6 +4,11 @@ import {
   exchangeInvite,
   validateInviteToken,
 } from "../lib/domains/invites/invite-exchange.service";
+import {
+  applyInviteListState,
+  summarizeInviteList,
+} from "../lib/domains/invites/components/invite-list-state";
+import type { Invite } from "../lib/domains/invites/types";
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -17,6 +22,23 @@ function jsonResponse(body: unknown, status: number): Response {
 afterEach(() => {
   vi.restoreAllMocks();
 });
+
+function invite(overrides: Partial<Invite>): Invite {
+  return {
+    id: "invite-1",
+    meetingId: "meeting-1",
+    token: "token-1",
+    role: "participant",
+    maxUses: 1,
+    usedCount: 0,
+    expiresAt: null,
+    revokedAt: null,
+    createdAt: "2026-03-10T08:00:00Z",
+    createdBy: "dev-admin",
+    valid: true,
+    ...overrides,
+  };
+}
 
 describe("invites exchange runtime", () => {
   it("validateInviteToken calls GET validate endpoint and returns payload", async () => {
@@ -94,5 +116,31 @@ describe("invites exchange runtime", () => {
       const inviteError = error as InviteExchangeError;
       expect(inviteError.payload.errorCode).toBe("INVITE_NOT_FOUND");
     }
+  });
+});
+
+describe("invite list state", () => {
+  const data: Invite[] = [
+    invite({ id: "active-1", token: "t1" }),
+    invite({ id: "expired-1", token: "t2", valid: false }),
+    invite({ id: "deleted-1", token: "t3", valid: false, revokedAt: "2026-03-10T10:00:00Z" }),
+    invite({ id: "deleted-2", token: "t4", valid: false, revokedAt: "2026-03-10T12:30:00Z" }),
+  ];
+
+  it("shows only non-deleted valid invites in active mode", () => {
+    expect(applyInviteListState(data, "active").map((item) => item.id)).toEqual(["active-1"]);
+  });
+
+  it("shows only revoked invites in deleted mode", () => {
+    expect(applyInviteListState(data, "deleted").map((item) => item.id)).toEqual(["deleted-1", "deleted-2"]);
+  });
+
+  it("builds deleted summary with last deleted timestamp", () => {
+    expect(summarizeInviteList(data)).toEqual({
+      activeCount: 1,
+      deletedCount: 2,
+      totalCount: 4,
+      lastDeletedAt: "2026-03-10T12:30:00Z",
+    });
   });
 });

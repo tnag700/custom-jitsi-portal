@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.acme.jitsi.shared.ErrorCode;
 import com.acme.jitsi.shared.JwtTestProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,7 +70,7 @@ class ProfileControllerTest {
                 })
                 .authorities(new SimpleGrantedAuthority("ROLE_user"))))
         .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.properties.errorCode").value("PROFILE_NOT_FOUND"))
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.PROFILE_NOT_FOUND.code()))
         .andExpect(jsonPath("$.properties.traceId").exists());
   }
 
@@ -177,7 +178,7 @@ class ProfileControllerTest {
                 }
                 """))
               .andExpect(status().isBadRequest())
-              .andExpect(jsonPath("$.properties.errorCode").value("PROFILE_VALIDATION_FAILED"));
+              .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.PROFILE_VALIDATION_FAILED.code()));
   }
 
   @Test
@@ -199,7 +200,114 @@ class ProfileControllerTest {
                 }
                 """))
               .andExpect(status().isBadRequest())
-              .andExpect(jsonPath("$.properties.errorCode").value("PROFILE_VALIDATION_FAILED"));
+              .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.PROFILE_VALIDATION_FAILED.code()));
+  }
+
+  @Test
+  void upsertReturns403WhenTenantClaimIsEmptyCollection() throws Exception {
+    mockMvc.perform(put("/api/v1/profile/me")
+            .with(csrf())
+            .with(oauth2Login()
+                .attributes(attrs -> {
+                  attrs.put("sub", "user-empty-claim");
+                  attrs.put("tenantId", java.util.List.of());
+                })
+                .authorities(new SimpleGrantedAuthority("ROLE_user")))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fullName": "Иван Иванов",
+                  "organization": "Организация",
+                  "position": "Инженер"
+                }
+                """))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TENANT_CLAIM_REQUIRED.code()));
+  }
+
+  @Test
+  void upsertReturns403WhenTenantClaimsAreMissing() throws Exception {
+    mockMvc.perform(put("/api/v1/profile/me")
+            .with(csrf())
+            .with(oauth2Login()
+                .attributes(attrs -> attrs.put("sub", "user-missing-claim"))
+                .authorities(new SimpleGrantedAuthority("ROLE_user")))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fullName": "Иван Иванов",
+                  "organization": "Организация",
+                  "position": "Инженер"
+                }
+                """))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TENANT_CLAIM_REQUIRED.code()));
+  }
+
+  @Test
+  void upsertReturns403WhenTenantClaimIsBlank() throws Exception {
+    mockMvc.perform(put("/api/v1/profile/me")
+            .with(csrf())
+            .with(oauth2Login()
+                .attributes(attrs -> {
+                  attrs.put("sub", "user-blank-claim");
+                  attrs.put("tenantId", "   ");
+                })
+                .authorities(new SimpleGrantedAuthority("ROLE_user")))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fullName": "Иван Иванов",
+                  "organization": "Организация",
+                  "position": "Инженер"
+                }
+                """))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TENANT_CLAIM_REQUIRED.code()));
+  }
+
+  @Test
+  void upsertReturns403WhenTenantCollectionFirstElementIsNull() throws Exception {
+    mockMvc.perform(put("/api/v1/profile/me")
+            .with(csrf())
+            .with(oauth2Login()
+                .attributes(attrs -> {
+                  attrs.put("sub", "user-null-collection-element");
+                  attrs.put("tenantId", java.util.Arrays.asList(null, "tenant-1"));
+                })
+                .authorities(new SimpleGrantedAuthority("ROLE_user")))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fullName": "Иван Иванов",
+                  "organization": "Организация",
+                  "position": "Инженер"
+                }
+                """))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TENANT_CLAIM_REQUIRED.code()));
+  }
+
+  @Test
+  void upsertReturns403WhenTenantCollectionFirstElementIsBlank() throws Exception {
+    mockMvc.perform(put("/api/v1/profile/me")
+            .with(csrf())
+            .with(oauth2Login()
+                .attributes(attrs -> {
+                  attrs.put("sub", "user-blank-collection-element");
+                  attrs.put("tenantId", java.util.List.of("   "));
+                })
+                .authorities(new SimpleGrantedAuthority("ROLE_user")))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fullName": "Иван Иванов",
+                  "organization": "Организация",
+                  "position": "Инженер"
+                }
+                """))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TENANT_CLAIM_REQUIRED.code()));
   }
 
   // AC 9: Unauthenticated access denied

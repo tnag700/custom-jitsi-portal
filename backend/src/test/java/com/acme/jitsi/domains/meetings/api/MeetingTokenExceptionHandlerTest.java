@@ -1,5 +1,7 @@
 package com.acme.jitsi.domains.meetings.api;
 
+import com.acme.jitsi.shared.ErrorCode;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.acme.jitsi.security.ApiValidationExceptionHandler;
@@ -16,6 +18,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 
 class MeetingTokenExceptionHandlerTest {
 
@@ -47,7 +50,7 @@ class MeetingTokenExceptionHandlerTest {
     assertThat(detail.getTitle()).isEqualTo("Ошибка валидации");
     assertThat(detail.getDetail()).isEqualTo("meetingId: meetingId is required");
     assertThat(detail.getInstance()).hasToString("/api/v1/meetings/meeting-a/access-token");
-    assertThat(detail.getProperties()).containsEntry("errorCode", "INVALID_REQUEST");
+    assertThat(detail.getProperties()).containsEntry("errorCode", ErrorCode.INVALID_REQUEST.code());
     assertThat(detail.getProperties()).containsEntry("traceId", "trace-method-arg-1");
   }
 
@@ -66,7 +69,7 @@ class MeetingTokenExceptionHandlerTest {
     assertThat(detail.getTitle()).isEqualTo("Некорректный запрос");
     assertThat(detail.getDetail()).isEqualTo("Проверьте корректность тела запроса.");
     assertThat(detail.getInstance()).hasToString("/api/v1/meetings/meeting-b/access-token");
-    assertThat(detail.getProperties()).containsEntry("errorCode", "INVALID_REQUEST");
+    assertThat(detail.getProperties()).containsEntry("errorCode", ErrorCode.INVALID_REQUEST.code());
     assertThat(detail.getProperties()).containsEntry("traceId", "trace-not-readable-1");
   }
 
@@ -89,7 +92,30 @@ class MeetingTokenExceptionHandlerTest {
     ProblemDetail detail = handler.handleMethodArgumentNotValid(exception, request);
 
     assertThat(detail.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
-    assertThat(detail.getProperties()).containsEntry("errorCode", "INVALID_ROLE");
+    assertThat(detail.getProperties()).containsEntry("errorCode", ErrorCode.INVALID_ROLE.code());
+  }
+
+  @Test
+  void missingRequestHeaderBuildsRfc7807ProblemDetail() throws Exception {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setRequestURI("/api/v1/meetings/meeting-c/access-token");
+    request.addHeader("X-Trace-Id", "trace-missing-header-1");
+
+    MethodParameter parameter =
+        new MethodParameter(
+            DummyController.class.getDeclaredMethod("handle", DummyRequest.class),
+            0);
+    MissingRequestHeaderException exception =
+        new MissingRequestHeaderException("Idempotency-Key", parameter);
+
+    ProblemDetail detail = handler.handleMissingRequestHeader(exception, request);
+
+    assertThat(detail.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+    assertThat(detail.getTitle()).isEqualTo("Ошибка валидации");
+    assertThat(detail.getDetail()).isEqualTo("Отсутствует обязательный заголовок: Idempotency-Key");
+    assertThat(detail.getInstance()).hasToString("/api/v1/meetings/meeting-c/access-token");
+    assertThat(detail.getProperties()).containsEntry("errorCode", ErrorCode.INVALID_REQUEST.code());
+    assertThat(detail.getProperties()).containsEntry("traceId", "trace-missing-header-1");
   }
 
   private static final class DummyController {
@@ -102,3 +128,5 @@ class MeetingTokenExceptionHandlerTest {
   private static final class DummyRequest {
   }
 }
+
+

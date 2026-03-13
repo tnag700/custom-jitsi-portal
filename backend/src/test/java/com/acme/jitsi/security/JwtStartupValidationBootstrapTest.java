@@ -41,7 +41,7 @@ class JwtStartupValidationBootstrapTest {
     assertThatThrownBy(bootstrap::afterPropertiesSet)
         .isInstanceOf(JwtStartupValidationException.class)
         .extracting(error -> ((JwtStartupValidationException) error).errorCode())
-        .isEqualTo("CONFIG_INCOMPATIBLE");
+      .isEqualTo(JwtStartupValidationErrorCode.CONFIG_INCOMPATIBLE.name());
 
     assertThat(reporter.events).hasSize(1);
     JwtStartupValidationEvent event = reporter.events.getFirst();

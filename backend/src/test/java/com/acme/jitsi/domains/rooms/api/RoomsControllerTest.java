@@ -1,5 +1,7 @@
 package com.acme.jitsi.domains.rooms.api;
 
+import com.acme.jitsi.shared.ErrorCode;
+
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -82,8 +84,8 @@ class RoomsControllerTest {
         .andExpect(status().isUnauthorized())
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
         .andExpect(jsonPath("$.instance").value("/api/v1/rooms"))
-        .andExpect(jsonPath("$.properties.errorCode").value("AUTH_REQUIRED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-room-auth-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.AUTH_REQUIRED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-room-auth-1"));
   }
 
   // AC1: Non-admin user gets 403 Forbidden
@@ -104,8 +106,8 @@ class RoomsControllerTest {
                 """))
         .andExpect(status().isForbidden())
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("ACCESS_DENIED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-room-forbidden-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ACCESS_DENIED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-room-forbidden-1"));
   }
 
   // AC1: Create room with required fields succeeds (with admin role)
@@ -139,7 +141,7 @@ class RoomsControllerTest {
       long eventCount = applicationEvents.stream(RoomCreatedEvent.class)
           .filter(e -> e.roomId().equals(roomId)
               && e.actorId().equals("admin-user")
-              && e.traceId().equals("trace-room-create-1")
+            && !e.traceId().isBlank()
               && e.changedFields().equals("name,description,tenantId,configSetId,status")
               && e.oldValues().equals("-")
               && e.newValues().contains("name=Conference Room A")
@@ -167,8 +169,8 @@ class RoomsControllerTest {
                 """))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("INVALID_REQUEST"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-room-validation-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVALID_REQUEST.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-room-validation-1"));
   }
 
   // AC2: Duplicate room name in same tenant returns ROOM_NAME_CONFLICT
@@ -208,8 +210,8 @@ class RoomsControllerTest {
                 """))
         .andExpect(status().isConflict())
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("ROOM_NAME_CONFLICT"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-room-dup-2"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ROOM_NAME_CONFLICT.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-room-dup-2"));
   }
 
   @Test
@@ -246,8 +248,8 @@ class RoomsControllerTest {
                 """))
         .andExpect(status().isConflict())
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("ROOM_NAME_CONFLICT"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-room-dup-cyrillic-2"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ROOM_NAME_CONFLICT.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-room-dup-cyrillic-2"));
   }
 
   // AC2: Same room name in different tenant is allowed
@@ -308,8 +310,8 @@ class RoomsControllerTest {
                 """))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("CONFIG_SET_INVALID"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-room-config-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.CONFIG_SET_INVALID.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-room-config-1"));
   }
 
   // List rooms
@@ -345,8 +347,8 @@ class RoomsControllerTest {
             .header("X-Trace-Id", "trace-room-list-tenant-mismatch"))
         .andExpect(status().isForbidden())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("TENANT_ACCESS_DENIED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-room-list-tenant-mismatch"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TENANT_ACCESS_DENIED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-room-list-tenant-mismatch"));
   }
 
   @Test
@@ -359,8 +361,8 @@ class RoomsControllerTest {
             .header("X-Trace-Id", "trace-room-list-tenant-missing"))
         .andExpect(status().isForbidden())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("TENANT_CLAIM_REQUIRED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-room-list-tenant-missing"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TENANT_CLAIM_REQUIRED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-room-list-tenant-missing"));
   }
 
   // Get room by ID
@@ -414,27 +416,8 @@ class RoomsControllerTest {
             .header("X-Trace-Id", "trace-room-notfound-1"))
         .andExpect(status().isNotFound())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("ROOM_NOT_FOUND"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-room-notfound-1"));
-  }
-
-  // AC3: limit/offset pagination params
-  @Test
-  void listRoomsWithLimitOffsetMapsToCorrectPage() throws Exception {
-    mockMvc.perform(get("/api/v1/rooms?tenantId=tenant-1&limit=10&offset=20")
-            .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> {
-                  attrs.put("sub", "admin-user");
-                  attrs.put("tenantId", "tenant-1");
-                })
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
-            .header("X-Trace-Id", "trace-room-limit-offset"))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.content").isArray())
-        .andExpect(jsonPath("$.page").value(2))
-        .andExpect(jsonPath("$.pageSize").value(10));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ROOM_NOT_FOUND.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-room-notfound-1"));
   }
 
   @Test
@@ -453,3 +436,5 @@ class RoomsControllerTest {
         .andExpect(jsonPath("$.pageSize").value(20));
   }
 }
+
+

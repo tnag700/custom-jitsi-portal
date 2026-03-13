@@ -8,6 +8,7 @@ import com.acme.jitsi.domains.meetings.service.DuplicateHandlingPolicy;
 import com.acme.jitsi.domains.meetings.service.Meeting;
 import com.acme.jitsi.domains.meetings.service.MeetingInvite;
 import com.acme.jitsi.domains.meetings.service.MeetingInviteService;
+import com.acme.jitsi.domains.meetings.service.MeetingRoomsPort;
 import com.acme.jitsi.domains.meetings.service.MeetingService;
 import com.acme.jitsi.domains.meetings.usecase.CreateBulkInvitesCommand;
 import com.acme.jitsi.domains.meetings.usecase.CreateBulkInvitesUseCase;
@@ -15,8 +16,6 @@ import com.acme.jitsi.domains.meetings.usecase.CreateInviteCommand;
 import com.acme.jitsi.domains.meetings.usecase.CreateInviteUseCase;
 import com.acme.jitsi.domains.meetings.usecase.RevokeInviteCommand;
 import com.acme.jitsi.domains.meetings.usecase.RevokeInviteUseCase;
-import com.acme.jitsi.domains.rooms.service.Room;
-import com.acme.jitsi.domains.rooms.service.RoomService;
 import com.acme.jitsi.infrastructure.idempotency.Idempotent;
 import com.acme.jitsi.security.ProblemResponseFacade;
 import com.acme.jitsi.security.TenantAccessGuard;
@@ -48,7 +47,7 @@ class MeetingInvitesController {
   private final CreateBulkInvitesUseCase createBulkInvitesUseCase;
   private final RevokeInviteUseCase revokeInviteUseCase;
   private final MeetingService meetingService;
-  private final RoomService roomService;
+  private final MeetingRoomsPort meetingRoomsPort;
   private final TenantAccessGuard tenantAccessGuard;
   private final ProblemResponseFacade problemResponseFacade;
   private final Clock clock;
@@ -59,7 +58,7 @@ class MeetingInvitesController {
       CreateBulkInvitesUseCase createBulkInvitesUseCase,
       RevokeInviteUseCase revokeInviteUseCase,
       MeetingService meetingService,
-      RoomService roomService,
+      MeetingRoomsPort meetingRoomsPort,
       TenantAccessGuard tenantAccessGuard,
       ProblemResponseFacade problemResponseFacade,
       Clock clock) {
@@ -68,7 +67,7 @@ class MeetingInvitesController {
     this.createBulkInvitesUseCase = createBulkInvitesUseCase;
     this.revokeInviteUseCase = revokeInviteUseCase;
     this.meetingService = meetingService;
-    this.roomService = roomService;
+    this.meetingRoomsPort = meetingRoomsPort;
     this.tenantAccessGuard = tenantAccessGuard;
     this.problemResponseFacade = problemResponseFacade;
     this.clock = clock;
@@ -102,24 +101,18 @@ class MeetingInvitesController {
       @PathVariable("meetingId") String meetingId,
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "20") int size,
-      @RequestParam(name = "limit", required = false) Integer limit,
-      @RequestParam(name = "offset", required = false) Integer offset,
       @AuthenticationPrincipal OAuth2User principal) {
     assertTenantAccess(meetingId, principal);
 
-    int resolvedPage = (offset != null && limit != null && limit > 0) ? offset / limit : page;
-    int resolvedSize = (limit != null && limit > 0) ? limit : size;
-    if (resolvedSize <= 0) {
-      resolvedSize = 20;
-    }
+    int resolvedSize = (size <= 0) ? 20 : size;
 
     List<InviteResponse> items =
-        inviteService.listByMeeting(meetingId, resolvedPage, resolvedSize).stream().map(InviteResponse::fromDomain).toList();
+        inviteService.listByMeeting(meetingId, page, resolvedSize).stream().map(InviteResponse::fromDomain).toList();
 
     long totalElements = inviteService.countByMeeting(meetingId);
     int totalPages = (int) Math.ceil((double) totalElements / resolvedSize);
 
-    return ResponseEntity.ok(new PagedInviteResponse(items, resolvedPage, resolvedSize, totalElements, totalPages));
+    return ResponseEntity.ok(new PagedInviteResponse(items, page, resolvedSize, totalElements, totalPages));
   }
 
   @Idempotent
@@ -180,7 +173,6 @@ class MeetingInvitesController {
 
   private void assertTenantAccess(String meetingId, OAuth2User principal) {
     Meeting meeting = meetingService.getMeeting(meetingId);
-    Room room = roomService.getRoom(meeting.roomId());
-    tenantAccessGuard.assertAccess(room.tenantId(), principal);
+    tenantAccessGuard.assertAccess(meetingRoomsPort.getRequiredRoom(meeting.roomId()).tenantId(), principal);
   }
 }

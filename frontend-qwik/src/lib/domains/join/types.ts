@@ -12,6 +12,24 @@ export interface MeetingAccessTokenResponse {
   role: string;
 }
 
+export interface JoinReadinessCheck {
+  key: string;
+  status: "ok" | "warn" | "error" | "timeout";
+  headline: string;
+  reason: string;
+  actions: string[];
+  errorCode?: string | null;
+  blocking: boolean;
+}
+
+export interface JoinReadinessPayload {
+  status: "ready" | "degraded" | "blocked";
+  checkedAt: string;
+  traceId?: string | null;
+  publicJoinUrl?: string | null;
+  systemChecks: JoinReadinessCheck[];
+}
+
 export interface JoinErrorPayload {
   title: string;
   detail: string;

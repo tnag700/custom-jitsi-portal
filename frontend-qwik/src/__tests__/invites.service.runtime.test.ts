@@ -39,7 +39,6 @@ describe("invites.service runtime", () => {
         method: "GET",
         headers: {
           Cookie: "JSESSIONID=sess-1",
-          "Content-Type": "application/json",
         },
       },
     );
@@ -58,6 +57,8 @@ describe("invites.service runtime", () => {
       usedCount: 0,
       expiresAt: "2026-03-10T10:00:00Z",
       revokedAt: null,
+      createdBy: "",
+      valid: false,
       createdAt: "2026-03-03T10:00:00Z",
       updatedAt: "2026-03-03T10:00:00Z",
     };
@@ -83,7 +84,7 @@ describe("invites.service runtime", () => {
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({
-          Cookie: "JSESSIONID=sess-1",
+          Cookie: "JSESSIONID=sess-1; XSRF-TOKEN=csrf-1",
           "X-XSRF-TOKEN": "csrf-1",
           "Idempotency-Key": "idem-1",
         }),
@@ -104,6 +105,7 @@ describe("invites.service runtime", () => {
       expect.objectContaining({
         method: "DELETE",
         headers: expect.objectContaining({
+          Cookie: "JSESSIONID=sess-1; XSRF-TOKEN=csrf-1",
           "X-XSRF-TOKEN": "csrf-1",
         }),
       }),

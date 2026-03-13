@@ -1,6 +1,7 @@
 package com.acme.jitsi.infrastructure.idempotency;
 
 import com.acme.jitsi.security.ProblemResponseFacade;
+import com.acme.jitsi.shared.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -9,6 +10,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class IdempotencyExceptionHandler {
+
+    private static final String IDEMPOTENCY_CONFLICT_DETAIL =
+            "Request with the same Idempotency-Key is already being processed or has already been processed.";
 
     private final ProblemResponseFacade problemResponseFacade;
 
@@ -22,8 +26,8 @@ public class IdempotencyExceptionHandler {
                 request,
                 HttpStatus.CONFLICT,
                 "Idempotency Conflict",
-                ex.getMessage(),
-                "IDEMPOTENCY_CONFLICT"
+                IDEMPOTENCY_CONFLICT_DETAIL,
+                ErrorCode.IDEMPOTENCY_CONFLICT.code()
         );
     }
 
@@ -34,7 +38,7 @@ public class IdempotencyExceptionHandler {
                 HttpStatus.BAD_REQUEST,
                 "Invalid Idempotency Key",
                 ex.getMessage(),
-                "IDEMPOTENCY_KEY_INVALID"
+                ErrorCode.IDEMPOTENCY_KEY_INVALID.code()
         );
     }
 }

@@ -1,19 +1,33 @@
 package com.acme.jitsi.security;
 
+import com.acme.jitsi.shared.ErrorCode;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 import com.acme.jitsi.shared.JwtTestProperties;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import org.springframework.http.MediaType;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest(
@@ -53,12 +67,12 @@ class AuthControllerSecurityTest {
 
   @Test
   void authErrorEndpointReturnsStableAccessDeniedPayload() throws Exception {
-    mockMvc.perform(get("/api/v1/auth/error").param("code", "ACCESS_DENIED"))
+    mockMvc.perform(get("/api/v1/auth/error").param("code", ErrorCode.ACCESS_DENIED.code()))
       .andExpect(status().isForbidden())
-      .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+      .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
       .andExpect(jsonPath("$.type").value("about:blank"))
       .andExpect(jsonPath("$.status").value(403))
-      .andExpect(jsonPath("$.properties.errorCode").value("ACCESS_DENIED"))
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ACCESS_DENIED.code()))
       .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
         .andExpect(jsonPath("$.title").exists())
       .andExpect(jsonPath("$.detail").exists());
@@ -68,10 +82,10 @@ class AuthControllerSecurityTest {
   void authErrorEndpointFallsBackToAuthRequiredForUnknownCode() throws Exception {
     mockMvc.perform(get("/api/v1/auth/error").param("code", "UNEXPECTED"))
       .andExpect(status().isUnauthorized())
-      .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+      .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
       .andExpect(jsonPath("$.status").value(401))
       .andExpect(jsonPath("$.instance").value("/api/v1/auth/error"))
-      .andExpect(jsonPath("$.properties.errorCode").value("AUTH_REQUIRED"))
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.AUTH_REQUIRED.code()))
       .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
         .andExpect(jsonPath("$.title").exists())
       .andExpect(jsonPath("$.detail").exists());
@@ -81,10 +95,10 @@ class AuthControllerSecurityTest {
   void authErrorEndpointUsesDefaultAuthRequiredCodeWhenParameterMissing() throws Exception {
     mockMvc.perform(get("/api/v1/auth/error"))
       .andExpect(status().isUnauthorized())
-      .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+      .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
       .andExpect(jsonPath("$.status").value(401))
       .andExpect(jsonPath("$.instance").value("/api/v1/auth/error"))
-      .andExpect(jsonPath("$.properties.errorCode").value("AUTH_REQUIRED"))
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.AUTH_REQUIRED.code()))
       .andExpect(jsonPath("$.properties.traceId").isNotEmpty());
   }
 
@@ -113,13 +127,46 @@ class AuthControllerSecurityTest {
         .andExpect(jsonPath("$.claims").isArray());
   }
 
+        @Test
+        void authenticatedLogoutReturnsProviderRedirectAndClearsCookies() throws Exception {
+          mockMvc.perform(post("/api/v1/auth/logout")
+          .with(authentication(oidcAuthentication("id-token-logout-1", "u-logout")))
+          .with(csrf()))
+          .andExpect(status().isFound())
+          .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("protocol/openid-connect/logout")))
+          .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("id_token_hint=id-token-logout-1")))
+          .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("post_logout_redirect_uri=http://localhost:3000/auth")))
+          .andExpect(result -> {
+            var cookies = result.getResponse().getHeaders("Set-Cookie");
+            assertThat(cookies).anyMatch(value -> value.contains("JSESSIONID=") && value.contains("Max-Age=0"));
+            assertThat(cookies).anyMatch(value -> value.contains("XSRF-TOKEN=") && value.contains("Max-Age=0"));
+          });
+        }
+
+        @Test
+        void logoutEndpointRequiresAuthentication() throws Exception {
+          mockMvc.perform(post("/api/v1/auth/logout").with(csrf()))
+          .andExpect(status().isUnauthorized())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+          .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.AUTH_REQUIRED.code()));
+        }
+
+        @Test
+        void logoutEndpointRejectsRequestWithoutCsrf() throws Exception {
+          mockMvc.perform(post("/api/v1/auth/logout")
+          .with(authentication(oidcAuthentication("id-token-no-csrf", "u-logout"))))
+          .andExpect(status().isForbidden())
+          .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+          .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ACCESS_DENIED.code()));
+        }
+
   @Test
     void loginEndpointWithUnsupportedApiVersionRequiresAuthentication() throws Exception {
     mockMvc.perform(get("/api/v2/auth/login"))
       .andExpect(status().isUnauthorized())
       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
       .andExpect(jsonPath("$.instance").value("/api/v2/auth/login"))
-      .andExpect(jsonPath("$.properties.errorCode").value("AUTH_REQUIRED"));
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.AUTH_REQUIRED.code()));
   }
 
   @Test
@@ -128,6 +175,17 @@ class AuthControllerSecurityTest {
       .andExpect(status().isUnauthorized())
       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
       .andExpect(jsonPath("$.instance").value("/api/auth/login"))
-      .andExpect(jsonPath("$.properties.errorCode").value("AUTH_REQUIRED"));
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.AUTH_REQUIRED.code()));
   }
+
+    private OAuth2AuthenticationToken oidcAuthentication(String tokenValue, String subject) {
+      OidcIdToken idToken = new OidcIdToken(
+          tokenValue,
+          Instant.now(),
+          Instant.now().plusSeconds(300),
+          Map.of("sub", subject, "email", subject + "@example.test", "name", "Logout User"));
+      OidcUser user = new DefaultOidcUser(List.of(new SimpleGrantedAuthority("ROLE_admin")), idToken, "sub");
+      return new OAuth2AuthenticationToken(user, user.getAuthorities(), "keycloak");
+    }
 }
+

@@ -8,6 +8,11 @@ import org.springframework.stereotype.Component;
 class InviteUsageLimitValidator implements InviteValidator {
 
   @Override
+  public boolean isTerminalValidator() {
+    return true;
+  }
+
+  @Override
   public void validate(InviteValidationContext context) {
     context.inviteUsageStoreRouter().assertCanConsume(context.invite());
   }

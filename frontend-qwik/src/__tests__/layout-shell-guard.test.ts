@@ -93,6 +93,14 @@ describe("Layout Shell Guard: AppHeader.tsx (AC: 4, 6)", () => {
     expect(tsx).toContain("Выйти");
   });
 
+  it("should submit logout via Form action instead of direct href", () => {
+    const tsx = readSrc("lib/shared/components/AppHeader.tsx");
+    expect(tsx).toContain("<Form");
+    expect(tsx).toContain("logoutAction");
+    expect(tsx).toContain('type="submit"');
+    expect(tsx).not.toContain("authLogoutHref");
+  });
+
   it("should show branding when sidebar is collapsed or user is unauthenticated", () => {
     const tsx = readSrc("lib/shared/components/AppHeader.tsx");
     expect(tsx).toContain("isSidebarExpanded");
@@ -134,7 +142,10 @@ describe("Layout Shell Guard: routes/layout.tsx (AC: 1, 6)", () => {
     const tsx = readSrc("routes/layout.tsx");
     expect(tsx).toContain("AuthContext");
     expect(tsx).toContain("fetchAuthMe");
-    expect(tsx).toContain("JSESSIONID");
+    expect(tsx).toContain("buildServerRequestContext");
+    expect(tsx).toContain("buildMutationRequestContext");
+    expect(tsx).toContain("logoutFromAuthSession");
+    expect(tsx).toContain("useLogout");
     expect(tsx).toContain("useAuth");
     expect(tsx).toContain("useContextProvider(AuthContext, authStore)");
     expect(tsx).not.toContain("AUTH_COOKIE");
@@ -148,5 +159,6 @@ describe("Layout Shell Guard: routes/layout.tsx (AC: 1, 6)", () => {
     expect(tsx).toContain("showSidebarToggle={false}");
     expect(tsx).toContain("isSidebarExpanded={expanded.value}");
     expect(tsx).toContain("userDisplayName={authStore.profile?.displayName ?? null}");
+    expect(tsx).toContain("logoutAction={logoutAction}");
   });
 });

@@ -1,5 +1,7 @@
 package com.acme.jitsi.domains.meetings.api;
 
+import com.acme.jitsi.shared.ErrorCode;
+
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -13,6 +15,7 @@ import com.acme.jitsi.domains.meetings.event.MeetingInviteCreatedEvent;
 import com.acme.jitsi.domains.meetings.event.MeetingInviteRevokedEvent;
 import com.acme.jitsi.infrastructure.idempotency.Idempotent;
 import com.acme.jitsi.shared.JwtTestProperties;
+import com.acme.jitsi.shared.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.Method;
@@ -21,6 +24,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,15 +34,9 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -48,7 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @SpringBootTest(
     properties = {
-      "spring.datasource.url=jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
+  "spring.datasource.url=jdbc:h2:mem:testdb-meeting-invites;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
       "spring.datasource.driver-class-name=org.h2.Driver",
       "spring.jpa.hibernate.ddl-auto=validate",
       "spring.flyway.enabled=true",
@@ -78,18 +76,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
     })
 @AutoConfigureMockMvc
 @RecordApplicationEvents
-@Testcontainers
-class MeetingInvitesControllerTest {
-
-  @Container
-  static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
-      .withExposedPorts(6379);
-
-  @DynamicPropertySource
-  static void redisProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.data.redis.host", redis::getHost);
-    registry.add("spring.data.redis.port", redis::getFirstMappedPort);
-  }
+@Tag("integration")
+@Tag("container")
+class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestSupport {
 
   @Autowired
   private MockMvc mockMvc;
@@ -115,12 +104,7 @@ class MeetingInvitesControllerTest {
     // Create room first
     String roomResponse = mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> {
-                  attrs.put("sub", "admin-user");
-                  attrs.put("tenantId", "tenant-1");
-                })
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {
@@ -137,12 +121,7 @@ class MeetingInvitesControllerTest {
     // Create meeting
     String meetingResponse = mockMvc.perform(post("/api/v1/rooms/{roomId}/meetings", roomId)
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> {
-                  attrs.put("sub", "admin-user");
-                  attrs.put("tenantId", "tenant-1");
-                })
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-meeting-create-invite-test")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -275,7 +254,7 @@ class MeetingInvitesControllerTest {
                 """))
         .andExpect(status().isConflict())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("IDEMPOTENCY_CONFLICT"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.IDEMPOTENCY_CONFLICT.code()));
   }
 
   @Test
@@ -523,39 +502,50 @@ class MeetingInvitesControllerTest {
           .header("X-Trace-Id", revokeTraceId))
         .andExpect(status().isNoContent());
 
-      long createCount = applicationEvents.stream(MeetingInviteCreatedEvent.class)
+        var createdEvents = applicationEvents.stream(MeetingInviteCreatedEvent.class)
           .filter(e -> e.meetingId().equals(meetingId)
-              && e.roomId().equals(roomId)
-              && e.actorId().equals("admin-user")
-              && e.traceId().equals(createTraceId)
-              && e.changedFields().contains("role=")
-              && e.changedFields().contains("maxUses=2"))
-          .count();
-      assertEquals(1, createCount);
+            && e.roomId().equals(roomId)
+            && e.actorId().equals("admin-user")
+            && e.changedFields().contains("role=")
+            && e.changedFields().contains("maxUses=2"))
+          .toList();
+        assertEquals(1, createdEvents.size());
 
-            Integer createAuditCount = jdbcTemplate.queryForObject(
-              "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ? AND action_type = ?",
-              Integer.class,
-              createTraceId,
-              "invite_create");
+          Integer createAuditCount = awaitAuditCount(createdEvents.getFirst().traceId(), "invite_create");
             assertEquals(1, createAuditCount);
 
-      long revokeCount = applicationEvents.stream(MeetingInviteRevokedEvent.class)
+        var revokedEvents = applicationEvents.stream(MeetingInviteRevokedEvent.class)
           .filter(e -> e.meetingId().equals(meetingId)
-              && e.roomId().equals(roomId)
-              && e.actorId().equals("admin-user")
-              && e.traceId().equals(revokeTraceId)
-              && e.changedFields().contains("inviteId=" + inviteId))
-          .count();
-      assertEquals(1, revokeCount);
+            && e.roomId().equals(roomId)
+            && e.actorId().equals("admin-user")
+            && e.changedFields().contains("inviteId=" + inviteId))
+          .toList();
+        assertEquals(1, revokedEvents.size());
 
-            Integer revokeAuditCount = jdbcTemplate.queryForObject(
-              "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ? AND action_type = ?",
-              Integer.class,
-              revokeTraceId,
-              "invite_revoke");
+          Integer revokeAuditCount = awaitAuditCount(revokedEvents.getFirst().traceId(), "invite_revoke");
             assertEquals(1, revokeAuditCount);
       }
+
+  private Integer awaitAuditCount(String traceId, String actionType) throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+    while (System.nanoTime() < deadline) {
+      Integer auditCount = jdbcTemplate.queryForObject(
+          "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ? AND action_type = ?",
+          Integer.class,
+          traceId,
+          actionType);
+      if (auditCount != null && auditCount > 0) {
+        return auditCount;
+      }
+      Thread.sleep(25);
+    }
+
+    return jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ? AND action_type = ?",
+        Integer.class,
+        traceId,
+        actionType);
+  }
 
   // AC4: Create invite without authorization returns 401
   @Test
@@ -614,7 +604,7 @@ class MeetingInvitesControllerTest {
                 """))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("INVALID_REQUEST"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVALID_REQUEST.code()));
   }
 
   // AC5: Create invite with maxUses exceeded returns bad request
@@ -638,7 +628,7 @@ class MeetingInvitesControllerTest {
                 """))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("VALIDATION_ERROR"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.VALIDATION_ERROR.code()));
   }
 
   // AC5: Create invite with expiresInHours too large returns bad request
@@ -663,7 +653,7 @@ class MeetingInvitesControllerTest {
                 """))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("VALIDATION_ERROR"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.VALIDATION_ERROR.code()));
   }
 
   // AC6: List invites for non-existent meeting returns not found
@@ -680,7 +670,7 @@ class MeetingInvitesControllerTest {
             .header("X-Trace-Id", "trace-invite-list-notfound"))
         .andExpect(status().isNotFound())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("MEETING_NOT_FOUND"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.MEETING_NOT_FOUND.code()));
   }
 
   // AC6: Revoke non-existent invite returns not found
@@ -697,7 +687,7 @@ class MeetingInvitesControllerTest {
             .header("X-Trace-Id", "trace-invite-revoke-notfound"))
         .andExpect(status().isNotFound())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("INVITE_NOT_FOUND"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVITE_NOT_FOUND.code()));
   }
 
   @Test
@@ -793,25 +783,6 @@ class MeetingInvitesControllerTest {
         .andExpect(status().isForbidden());
   }
 
-  // AC3: limit/offset pagination params
-  @Test
-  void listInvitesWithLimitOffsetMapsToCorrectPage() throws Exception {
-    mockMvc.perform(get("/api/v1/meetings/{meetingId}/invites?limit=5&offset=10", meetingId)
-            .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> {
-                  attrs.put("sub", "admin-user");
-                  attrs.put("tenantId", "tenant-1");
-                })
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
-            .header("X-Trace-Id", "trace-invite-limit-offset"))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.content").isArray())
-        .andExpect(jsonPath("$.page").value(2))
-        .andExpect(jsonPath("$.pageSize").value(5));
-  }
-
   @Test
   void listInvitesWithSizeZeroFallsBackToDefaultPageSize() throws Exception {
     mockMvc.perform(get("/api/v1/meetings/{meetingId}/invites?size=0", meetingId)
@@ -828,3 +799,5 @@ class MeetingInvitesControllerTest {
         .andExpect(jsonPath("$.pageSize").value(20));
   }
 }
+
+

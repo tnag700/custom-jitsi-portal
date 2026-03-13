@@ -1,4 +1,9 @@
 {
+  "scripts": {
+    "openapi:generate": "node scripts/generate-openapi.mjs",
+    "openapi:check": "node scripts/check-openapi.mjs",
+    "frontend:api-types:check": "node scripts/check-frontend-api-types.mjs"
+  },
   "dependencies": {
     "@tanstack/svelte-query": "^6.0.18",
     "@upstash/context7-mcp": "^2.1.2"

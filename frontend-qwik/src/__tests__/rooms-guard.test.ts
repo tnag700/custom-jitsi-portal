@@ -34,8 +34,8 @@ describe("Rooms Guard: service (AC: 1, 3-6)", () => {
 
   it("rooms.service.ts should include Idempotency-Key support in mutation headers", () => {
     const ts = readSrc("lib/domains/rooms/rooms.service.ts");
-    expect(ts).toContain("idempotencyKey?: string");
-    expect(ts).toContain("headers[\"Idempotency-Key\"] = idempotencyKey");
+    expect(ts).toContain("idempotencyKey");
+    expect(ts).toContain("createMutationHeaders");
   });
 });
 
@@ -77,29 +77,29 @@ describe("Rooms Guard: barrel export (AC: all)", () => {
 });
 
 describe("Rooms Guard: route (AC: 1-7)", () => {
-  it("routes/rooms/index.tsx should contain routeLoader$ and routeAction$", () => {
+  it("routes/rooms/index.tsx should re-export route handlers and page boundary", () => {
     const tsx = readSrc("routes/rooms/index.tsx");
-    expect(tsx).toContain("routeLoader$");
-    expect(tsx).toContain("routeAction$");
+    expect(tsx).toContain("useRooms");
+    expect(tsx).toContain("useCreateRoom");
+    expect(tsx).toContain("./route-handlers");
+    expect(tsx).toContain("./rooms-page");
   });
 
-  it("routes/rooms/index.tsx should use Form actions for close/delete and RoomForm for create/update", () => {
-    const tsx = readSrc("routes/rooms/index.tsx");
+  it("routes/rooms/route-handlers.ts should contain routeLoader$ and routeAction$ with explicit roomId schema", () => {
+    const ts = readSrc("routes/rooms/route-handlers.ts");
+    expect(ts).toContain("routeLoader$");
+    expect(ts).toContain("routeAction$");
+    expect(ts).toContain("const roomIdSchema = z.object");
+  });
+
+  it("routes/rooms/rooms-page.tsx should use Form actions and ApiErrorAlert for confirmation errors", () => {
+    const tsx = readSrc("routes/rooms/rooms-page.tsx");
     expect(tsx).toContain("<Form action={closeAction}>");
     expect(tsx).toContain("<Form action={deleteAction}>");
     expect(tsx).toContain("action={createAction}");
     expect(tsx).toContain("action={updateAction}");
-  });
-
-  it("routes/rooms/index.tsx should use ApiErrorAlert for close/delete confirmation errors", () => {
-    const tsx = readSrc("routes/rooms/index.tsx");
     expect(tsx).toContain("ApiErrorAlert");
     expect(tsx).toContain("Ошибка закрытия комнаты");
     expect(tsx).toContain("Ошибка удаления комнаты");
-  });
-
-  it("routes/rooms/index.tsx should define explicit roomId schema", () => {
-    const tsx = readSrc("routes/rooms/index.tsx");
-    expect(tsx).toContain("const roomIdSchema = z.object");
   });
 });

@@ -2,6 +2,7 @@ package com.acme.jitsi.domains.meetings.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.acme.jitsi.domains.meetings.service.Meeting;
 import com.acme.jitsi.shared.JwtTestProperties;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +42,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
       "app.rooms.config-sets.config-2.role-claim=role",
     })
 class MeetingJpaRepositorySoftDeleteIntegrationTest {
+
+  @Autowired
+  private JpaMeetingRepository repository;
 
   @Autowired
   private MeetingJpaRepository meetingJpaRepository;
@@ -83,6 +87,51 @@ class MeetingJpaRepositorySoftDeleteIntegrationTest {
     insertMeeting("meeting-deleted-only", "room-m-2", true, now.plusSeconds(3600), now.plusSeconds(7200));
 
     assertThat(meetingJpaRepository.existsActiveOrFutureMeetings("room-m-2", now.minusSeconds(3600), now)).isFalse();
+  }
+
+  @Test
+  void adapterSaveRoundTripKeepsSingleRowAndUpdateSemantics() {
+    insertRoom("room-m-3");
+    Meeting original = new Meeting(
+        "meeting-roundtrip-1",
+        "room-m-3",
+        "Planning",
+        "Initial",
+        "scheduled",
+        "config-1",
+        com.acme.jitsi.domains.meetings.service.MeetingStatus.SCHEDULED,
+        Instant.parse("2026-02-23T11:00:00Z"),
+        Instant.parse("2026-02-23T12:00:00Z"),
+        true,
+        false,
+        Instant.parse("2026-02-23T10:00:00Z"),
+        Instant.parse("2026-02-23T10:00:00Z"));
+    Meeting updated = new Meeting(
+        "meeting-roundtrip-1",
+        "room-m-3",
+        "Planning updated",
+        "Updated",
+        "scheduled",
+        "config-1",
+        com.acme.jitsi.domains.meetings.service.MeetingStatus.SCHEDULED,
+        Instant.parse("2026-02-23T11:30:00Z"),
+        Instant.parse("2026-02-23T12:30:00Z"),
+        false,
+        true,
+        original.createdAt(),
+        Instant.parse("2026-02-23T10:45:00Z"));
+
+    assertThat(repository.save(original)).isEqualTo(original);
+    assertThat(repository.save(updated)).isEqualTo(updated);
+    assertThat(repository.findById(updated.meetingId())).contains(updated);
+    assertThat(jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM meetings WHERE meeting_id = ?",
+        Integer.class,
+        updated.meetingId())).isEqualTo(1);
+    assertThat(jdbcTemplate.queryForObject(
+        "SELECT created_at FROM meetings WHERE meeting_id = ?",
+        Instant.class,
+        updated.meetingId())).isEqualTo(original.createdAt());
   }
 
   private void insertRoom(String roomId) {

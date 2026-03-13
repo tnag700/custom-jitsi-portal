@@ -1,4 +1,4 @@
-import { component$, useSignal, type QRL } from "@qwik.dev/core";
+import { $, component$, useSignal, useTask$, type QRL } from "@qwik.dev/core";
 import { Form } from "@qwik.dev/router";
 import { ApiErrorAlert } from "~/lib/shared";
 import type { InviteErrorPayload } from "../types";
@@ -21,12 +21,60 @@ export const InviteForm = component$<InviteFormProps>(({ meetingId, isLoading, e
   const roleValue = useSignal<"participant" | "moderator">("participant");
   const maxUsesValue = useSignal("1");
   const expiresInHoursValue = useSignal("");
+  const panelRef = useSignal<HTMLDivElement>();
 
   const errorMessage = error ? ERROR_MESSAGES[error.errorCode] ?? error.detail : null;
 
+  const requestClose$ = $(() => {
+    if (typeof window === "undefined") {
+      void onCancel$();
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      void onCancel$();
+    });
+  });
+
+  const handleBackdropClick$ = $((event: MouseEvent, overlay: HTMLDivElement) => {
+    if (event.target === overlay) {
+      void requestClose$();
+    }
+  });
+
+  const handleKeyDown$ = $((event: KeyboardEvent) => {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    event.preventDefault();
+    void requestClose$();
+  });
+
+  useTask$(({ track }) => {
+    track(() => panelRef.value);
+    if (typeof window !== "undefined" && panelRef.value) {
+      queueMicrotask(() => {
+        panelRef.value?.focus();
+      });
+    }
+  });
+
   return (
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div class="w-full max-w-lg rounded border border-border bg-surface p-6">
+    <div
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      role="presentation"
+      onClick$={handleBackdropClick$}
+      onKeyDown$={handleKeyDown$}
+    >
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="invite-form-title"
+        tabIndex={-1}
+        class="w-full max-w-lg rounded border border-border bg-surface p-6"
+      >
         <h2 class="mb-4 text-lg font-semibold text-text">Создать инвайт</h2>
 
         {errorMessage && (
@@ -97,7 +145,7 @@ export const InviteForm = component$<InviteFormProps>(({ meetingId, isLoading, e
             <button
               type="button"
               class="rounded border border-border px-4 py-2 text-sm text-text hover:bg-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-              onClick$={() => onCancel$()}
+              onClick$={requestClose$}
               disabled={isLoading}
             >
               Отмена

@@ -19,14 +19,7 @@ class JpaRoomRepository implements RoomRepository {
 
   @Override
   public Room save(Room room) {
-    RoomEntity entity = jpaRepository.findById(room.roomId())
-        .map(existing -> {
-          existing.updateFrom(room);
-          return existing;
-        })
-        .orElseGet(() -> new RoomEntity(room));
-
-    RoomEntity saved = jpaRepository.save(entity);
+    RoomEntity saved = jpaRepository.save(new RoomEntity(room));
     return saved.toDomain();
   }
 

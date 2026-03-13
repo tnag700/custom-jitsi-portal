@@ -4,9 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
-import com.acme.jitsi.domains.rooms.service.Room;
-import com.acme.jitsi.domains.rooms.service.RoomService;
-import com.acme.jitsi.domains.rooms.service.RoomStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -22,14 +19,11 @@ class MeetingServiceTest {
   @Mock
   private MeetingRepository meetingRepository;
 
-  @Mock
-  private RoomService roomService;
-
   private MeetingService meetingService;
 
   @BeforeEach
   void setUp() {
-    meetingService = new MeetingService(meetingRepository, roomService);
+    meetingService = new MeetingService(meetingRepository);
   }
 
   @Test
@@ -68,9 +62,7 @@ class MeetingServiceTest {
   }
 
   @Test
-  void listAndCountMeetingsValidateRoomAndReturnValues() {
-    Room room = new Room("room-1", "Room", null, "tenant-1", "config-1", RoomStatus.ACTIVE, Instant.now(), Instant.now());
-    when(roomService.getRoom("room-1")).thenReturn(room);
+  void listAndCountMeetingsReturnValuesWithoutRoomValidation() {
     when(meetingRepository.findByRoomId("room-1", 0, 20)).thenReturn(List.of());
     when(meetingRepository.countByRoomId("room-1")).thenReturn(0L);
 

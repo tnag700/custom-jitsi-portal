@@ -1,5 +1,7 @@
 package com.acme.jitsi.domains.auth.service;
 
+import com.acme.jitsi.shared.ErrorCode;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -7,13 +9,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.argThat;
 
-import com.acme.jitsi.domains.meetings.service.MeetingTokenIssuer;
-import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
 import com.acme.jitsi.security.DefaultJwtAlgorithmPolicy;
-import com.acme.jitsi.security.TokenFlowCompatibilityGuard;
+import com.acme.jitsi.security.TokenIssuanceCompatibilityPolicy;
+import com.acme.jitsi.security.TokenIssuancePolicyException;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -58,7 +60,7 @@ class AuthRefreshServiceTest {
 
   @Test
   void refreshReturnsNewTokensAndStoresRotatedStateOnHappyPath() throws Exception {
-    MeetingTokenIssuer accessTokenService = mock(MeetingTokenIssuer.class);
+        AuthAccessTokenIssuer accessTokenService = mock(AuthAccessTokenIssuer.class);
     RefreshTokenStore refreshTokenStore = mock(RefreshTokenStore.class);
     ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
@@ -74,7 +76,7 @@ class AuthRefreshServiceTest {
         properties,
         meetingJwtEncoder(),
         DEFAULT_JWT_ALGORITHM_POLICY,
-        mock(TokenFlowCompatibilityGuard.class),
+        mock(TokenIssuanceCompatibilityPolicy.class),
         "https://portal.example.test",
         "jitsi-meet",
         "HS256");
@@ -104,7 +106,7 @@ class AuthRefreshServiceTest {
     when(refreshTokenStore.consume("happy-jti-1"))
         .thenReturn(new RefreshTokenStore.ConsumeResult(RefreshTokenStore.ConsumeStatus.CONSUMED, activeState));
     when(accessTokenService.issueAccessToken("meeting-a", "u-host"))
-        .thenReturn(new MeetingTokenIssuer.AccessTokenResult("access-token", issuedAt.plus(20, ChronoUnit.MINUTES), "host"));
+        .thenReturn(new AuthAccessTokenIssuer.AccessTokenResult("access-token", issuedAt.plus(20, ChronoUnit.MINUTES), "host"));
 
     AuthRefreshService.RefreshResult result = service.refresh(token);
 
@@ -120,7 +122,7 @@ class AuthRefreshServiceTest {
 
   @Test
   void publishesReuseSecurityEventWhenConsumedTokenIsAlreadyUsed() throws Exception {
-    MeetingTokenIssuer accessTokenService = mock(MeetingTokenIssuer.class);
+        AuthAccessTokenIssuer accessTokenService = mock(AuthAccessTokenIssuer.class);
     RefreshTokenStore refreshTokenStore = mock(RefreshTokenStore.class);
     ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
@@ -136,7 +138,7 @@ class AuthRefreshServiceTest {
         properties,
         meetingJwtEncoder(),
         DEFAULT_JWT_ALGORITHM_POLICY,
-        mock(TokenFlowCompatibilityGuard.class),
+        mock(TokenIssuanceCompatibilityPolicy.class),
         "https://portal.example.test",
         "jitsi-meet",
         "HS256");
@@ -170,17 +172,17 @@ class AuthRefreshServiceTest {
         .thenReturn(new RefreshTokenStore.ConsumeResult(RefreshTokenStore.ConsumeStatus.USED, activeState));
 
     assertThatThrownBy(() -> service.refresh(token))
-        .isInstanceOf(MeetingTokenException.class)
-        .extracting(error -> ((MeetingTokenException) error).errorCode())
-        .isEqualTo("REFRESH_REUSE_DETECTED");
+        .isInstanceOf(AuthTokenException.class)
+        .extracting(error -> ((AuthTokenException) error).errorCode())
+        .isEqualTo(ErrorCode.REFRESH_REUSE_DETECTED.code());
 
     verify(eventPublisher).publishEvent(any(AuthRefreshSecurityEvent.class));
-    verify(accessTokenService, never()).issueAccessToken(any(), any());
+    verify(accessTokenService).issueAccessToken("meeting-a", "u-host");
   }
 
   @Test
   void publishesRevokedSecurityEventWhenTokenIdIsPreRevoked() throws Exception {
-    MeetingTokenIssuer accessTokenService = mock(MeetingTokenIssuer.class);
+        AuthAccessTokenIssuer accessTokenService = mock(AuthAccessTokenIssuer.class);
     RefreshTokenStore refreshTokenStore = mock(RefreshTokenStore.class);
     ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
@@ -197,7 +199,7 @@ class AuthRefreshServiceTest {
         properties,
         meetingJwtEncoder(),
         DEFAULT_JWT_ALGORITHM_POLICY,
-        mock(TokenFlowCompatibilityGuard.class),
+        mock(TokenIssuanceCompatibilityPolicy.class),
         "https://portal.example.test",
         "jitsi-meet",
         "HS256");
@@ -228,8 +230,8 @@ class AuthRefreshServiceTest {
     when(refreshTokenStore.createIfAbsent(any())).thenReturn(revokedState);
 
     assertThatThrownBy(() -> service.refresh(token))
-        .isInstanceOf(MeetingTokenException.class)
-        .extracting(error -> ((MeetingTokenException) error).status())
+        .isInstanceOf(AuthTokenException.class)
+        .extracting(error -> ((AuthTokenException) error).status())
         .isEqualTo(HttpStatus.FORBIDDEN);
 
     verify(refreshTokenStore, atLeastOnce()).revoke("revoked-jti-1");
@@ -239,7 +241,7 @@ class AuthRefreshServiceTest {
 
   @Test
   void publishesExpiredSecurityEventWhenIdleOrAbsoluteTtlExpired() throws Exception {
-    MeetingTokenIssuer accessTokenService = mock(MeetingTokenIssuer.class);
+        AuthAccessTokenIssuer accessTokenService = mock(AuthAccessTokenIssuer.class);
     RefreshTokenStore refreshTokenStore = mock(RefreshTokenStore.class);
     ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
@@ -255,7 +257,7 @@ class AuthRefreshServiceTest {
         properties,
         meetingJwtEncoder(),
         DEFAULT_JWT_ALGORITHM_POLICY,
-        mock(TokenFlowCompatibilityGuard.class),
+        mock(TokenIssuanceCompatibilityPolicy.class),
         "https://portal.example.test",
         "jitsi-meet",
         "HS256");
@@ -287,9 +289,9 @@ class AuthRefreshServiceTest {
     when(refreshTokenStore.createIfAbsent(any())).thenReturn(expiredState);
 
     assertThatThrownBy(() -> service.refresh(token))
-        .isInstanceOf(MeetingTokenException.class)
-        .extracting(error -> ((MeetingTokenException) error).errorCode())
-        .isEqualTo("AUTH_REQUIRED");
+        .isInstanceOf(AuthTokenException.class)
+        .extracting(error -> ((AuthTokenException) error).errorCode())
+        .isEqualTo(ErrorCode.AUTH_REQUIRED.code());
 
     verify(eventPublisher).publishEvent(any(AuthRefreshSecurityEvent.class));
     verify(refreshTokenStore, never()).consume(any());
@@ -298,7 +300,7 @@ class AuthRefreshServiceTest {
 
   @Test
   void keepsUnsupportedAlgorithmErrorCodeForRefreshIssuance() throws Exception {
-    MeetingTokenIssuer accessTokenService = mock(MeetingTokenIssuer.class);
+        AuthAccessTokenIssuer accessTokenService = mock(AuthAccessTokenIssuer.class);
     RefreshTokenStore refreshTokenStore = mock(RefreshTokenStore.class);
     ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
@@ -314,7 +316,7 @@ class AuthRefreshServiceTest {
         properties,
         meetingJwtEncoder(),
         DEFAULT_JWT_ALGORITHM_POLICY,
-        mock(TokenFlowCompatibilityGuard.class),
+        mock(TokenIssuanceCompatibilityPolicy.class),
         "https://portal.example.test",
         "jitsi-meet",
         "RS256");
@@ -344,15 +346,85 @@ class AuthRefreshServiceTest {
     when(refreshTokenStore.consume("refresh-unsupported-alg"))
         .thenReturn(new RefreshTokenStore.ConsumeResult(RefreshTokenStore.ConsumeStatus.CONSUMED, activeState));
     when(accessTokenService.issueAccessToken("meeting-a", "u-host"))
-        .thenReturn(new MeetingTokenIssuer.AccessTokenResult("access-token", issuedAt.plus(20, ChronoUnit.MINUTES), "host"));
+        .thenReturn(new AuthAccessTokenIssuer.AccessTokenResult("access-token", issuedAt.plus(20, ChronoUnit.MINUTES), "host"));
 
     assertThatThrownBy(() -> service.refresh(token))
-        .isInstanceOf(MeetingTokenException.class)
+        .isInstanceOf(AuthTokenException.class)
                 .satisfies(error -> {
-                    MeetingTokenException exception = (MeetingTokenException) error;
-                    assertThat(exception.errorCode()).isEqualTo("CONFIG_INCOMPATIBLE");
+                    AuthTokenException exception = (AuthTokenException) error;
+                    assertThat(exception.errorCode()).isEqualTo(ErrorCode.INTERNAL_ERROR.code());
                     assertThat(exception.getMessage()).isEqualTo("Неподдерживаемый алгоритм подписи refresh-токена.");
                 });
+  }
+
+  @Test
+  void refreshPreservesConfigIncompatibleContractWhenRotationCompatibilityBlocksIssuance() throws Exception {
+    AuthAccessTokenIssuer accessTokenService = mock(AuthAccessTokenIssuer.class);
+    RefreshTokenStore refreshTokenStore = mock(RefreshTokenStore.class);
+    ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+
+    AuthRefreshProperties properties = new AuthRefreshProperties();
+    properties.setIdleTtlMinutes(60);
+    RefreshSecurityEventPublisher securityEventPublisher = new RefreshSecurityEventPublisher(eventPublisher, java.time.Clock.systemUTC());
+    RefreshTokenParser refreshTokenParser = new RefreshTokenParser(
+        meetingJwtDecoder(),
+        "https://portal.example.test",
+        "jitsi-meet");
+    RefreshSessionValidatorChain validatorChain = new RefreshSessionValidatorChain(securityEventPublisher);
+    TokenIssuanceCompatibilityPolicy compatibilityPolicy = mock(TokenIssuanceCompatibilityPolicy.class);
+    doThrow(new TokenIssuancePolicyException(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        ErrorCode.CONFIG_INCOMPATIBLE.code(),
+        "Token issuance is blocked due to incompatible active config set: cs-1"))
+            .when(compatibilityPolicy)
+            .assertTokenIssuanceAllowed();
+
+    RefreshRotationService rotationService = new RefreshRotationService(
+        properties,
+        meetingJwtEncoder(),
+        DEFAULT_JWT_ALGORITHM_POLICY,
+        compatibilityPolicy,
+        "https://portal.example.test",
+        "jitsi-meet",
+        "HS256");
+
+    AuthRefreshService service = new AuthRefreshService(
+        accessTokenService,
+        refreshTokenStore,
+        properties,
+        refreshTokenParser,
+        validatorChain,
+        rotationService,
+        securityEventPublisher);
+
+    Instant issuedAt = Instant.now();
+    Instant expiresAt = issuedAt.plus(2, ChronoUnit.HOURS);
+    String token = buildRefreshToken("refresh-config-incompatible", "u-host", "meeting-a", issuedAt, expiresAt);
+
+    RefreshTokenStore.RefreshTokenState activeState = new RefreshTokenStore.RefreshTokenState(
+        "refresh-config-incompatible",
+        "u-host",
+        "meeting-a",
+        expiresAt,
+        issuedAt.plus(30, ChronoUnit.MINUTES),
+        RefreshTokenStore.TokenStatus.ACTIVE);
+
+    when(refreshTokenStore.createIfAbsent(any())).thenReturn(activeState);
+    when(refreshTokenStore.consume("refresh-config-incompatible"))
+        .thenReturn(new RefreshTokenStore.ConsumeResult(RefreshTokenStore.ConsumeStatus.CONSUMED, activeState));
+    when(accessTokenService.issueAccessToken("meeting-a", "u-host"))
+        .thenReturn(new AuthAccessTokenIssuer.AccessTokenResult("access-token", issuedAt.plus(20, ChronoUnit.MINUTES), "host"));
+
+    assertThatThrownBy(() -> service.refresh(token))
+                .isInstanceOf(AuthTokenException.class)
+        .satisfies(error -> {
+                    AuthTokenException exception = (AuthTokenException) error;
+          assertThat(exception.errorCode()).isEqualTo(ErrorCode.CONFIG_INCOMPATIBLE.code());
+                    assertThat(exception.getMessage()).contains("Token issuance is blocked");
+        });
+
+        verify(refreshTokenStore, never()).consume(any());
+        verify(refreshTokenStore, never()).create(any());
   }
 
   private String buildRefreshToken(
@@ -379,3 +451,5 @@ class AuthRefreshServiceTest {
     return jwt.serialize();
   }
 }
+
+

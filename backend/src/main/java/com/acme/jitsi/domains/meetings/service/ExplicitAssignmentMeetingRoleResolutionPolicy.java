@@ -1,5 +1,6 @@
 package com.acme.jitsi.domains.meetings.service;
 
+import com.acme.jitsi.shared.ErrorCode;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.core.annotation.Order;
@@ -21,13 +22,13 @@ class ExplicitAssignmentMeetingRoleResolutionPolicy implements MeetingRoleResolu
     }
 
     if (matchingAssignments.size() > 1) {
-      throw new MeetingTokenException(HttpStatus.CONFLICT, "ROLE_MISMATCH",
+      throw new MeetingTokenException(HttpStatus.CONFLICT, ErrorCode.ROLE_MISMATCH.code(),
           "Conflicting role assignments for subject '" + context.subject() + "' in meeting '" + context.meetingId() + "'.");
     }
 
     Optional<MeetingRole> role = MeetingRole.from(matchingAssignments.get(0).role());
     if (role.isEmpty()) {
-      throw new MeetingTokenException(HttpStatus.CONFLICT, "ROLE_MISMATCH",
+      throw new MeetingTokenException(HttpStatus.CONFLICT, ErrorCode.ROLE_MISMATCH.code(),
           "Invalid configured role for subject '" + context.subject() + "' in meeting '" + context.meetingId() + "'.");
     }
     return role;

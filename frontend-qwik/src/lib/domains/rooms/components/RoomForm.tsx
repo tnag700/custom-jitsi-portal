@@ -1,6 +1,6 @@
-import { $, component$, useSignal, type QRL } from "@qwik.dev/core";
+import { $, component$, useSignal, useTask$, type Signal } from "@qwik.dev/core";
 import { Form } from "@qwik.dev/router";
-import { ApiErrorAlert } from "~/lib/shared";
+import { ApiErrorAlert, AppDialog } from "~/lib/shared";
 import type { Room, RoomErrorPayload } from "../types";
 import { createRoomSchema, updateRoomSchema } from "../rooms.zod";
 
@@ -10,7 +10,7 @@ interface RoomFormProps {
   configSets: string[];
   isLoading: boolean;
   error?: RoomErrorPayload;
-  onCancel$: QRL<() => void>;
+  isOpen: Signal<boolean>;
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -21,8 +21,9 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 export const RoomForm = component$<RoomFormProps>(
-  ({ action, room, configSets, isLoading, error, onCancel$ }) => {
+  ({ action, room, configSets, isLoading, error, isOpen }) => {
     const isEdit = !!room;
+    const formId = isEdit ? "room-edit-form" : "room-create-form";
     const nameValue = useSignal(room?.name ?? "");
     const descriptionValue = useSignal(room?.description ?? "");
     const configSetIdValue = useSignal(room?.configSetId ?? (configSets[0] ?? ""));
@@ -58,12 +59,31 @@ export const RoomForm = component$<RoomFormProps>(
       ? ERROR_MESSAGES[error.errorCode] ?? error.detail
       : null;
 
+    useTask$(({ track }) => {
+      const open = track(() => isOpen.value);
+      const roomId = track(() => room?.roomId ?? null);
+
+      if (!open) {
+        return;
+      }
+
+      nameValue.value = room?.name ?? "";
+      descriptionValue.value = room?.description ?? "";
+      configSetIdValue.value = room?.configSetId ?? (configSets[0] ?? "");
+      validationErrors.value = {};
+      void roomId;
+    });
+
     return (
-      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div class="w-full max-w-md rounded border border-border bg-surface p-6">
-          <h2 class="mb-4 text-lg font-semibold text-text">
-            {isEdit ? "Редактировать комнату" : "Создать комнату"}
-          </h2>
+      <AppDialog
+        title={isEdit ? "Редактировать комнату" : "Создать комнату"}
+        description={isEdit ? "Измените свойства комнаты и сохраните обновления." : "Заполните основные поля для новой комнаты."}
+        maxWidth="max-w-md"
+        showTrigger={false}
+        closeOnBackdropClick={false}
+        closeLabel="Отмена"
+        bind:show={isOpen}
+      >
 
           {errorMessage && (
             <div class="mb-4" role="alert" aria-live="polite">
@@ -76,7 +96,7 @@ export const RoomForm = component$<RoomFormProps>(
             </div>
           )}
 
-          <Form action={action as never} onSubmit$={handleSubmit$}>
+          <Form id={formId} action={action as never} onSubmit$={handleSubmit$}>
             <div class="space-y-4">
             <div>
               <label class="mb-1 block text-sm font-medium text-text" for="room-name">
@@ -147,26 +167,18 @@ export const RoomForm = component$<RoomFormProps>(
 
             {room?.roomId && <input type="hidden" name="roomId" value={room.roomId} />}
 
-            <div class="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                class="rounded border border-border px-4 py-2 text-sm text-text hover:bg-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                onClick$={() => onCancel$()}
-                disabled={isLoading}
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                class="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
-                disabled={isLoading}
-              >
-                {isLoading ? "Сохранение..." : isEdit ? "Сохранить" : "Создать"}
-              </button>
-            </div>
           </Form>
-        </div>
-      </div>
+
+          <button
+            q:slot="actions"
+            form={formId}
+            type="submit"
+            class="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
+            disabled={isLoading}
+          >
+            {isLoading ? "Сохранение..." : isEdit ? "Сохранить" : "Создать"}
+          </button>
+      </AppDialog>
     );
   },
 );

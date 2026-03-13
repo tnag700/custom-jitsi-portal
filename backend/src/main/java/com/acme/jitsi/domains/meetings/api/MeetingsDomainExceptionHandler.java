@@ -10,13 +10,16 @@ import com.acme.jitsi.domains.meetings.service.BulkInviteValidationException;
 import com.acme.jitsi.domains.meetings.service.InvalidMeetingDataException;
 import com.acme.jitsi.domains.meetings.service.InvalidRecipientFormatException;
 import com.acme.jitsi.domains.meetings.service.InvalidMeetingScheduleException;
+import com.acme.jitsi.domains.meetings.service.MeetingConfigSetInvalidException;
 import com.acme.jitsi.domains.meetings.service.MeetingAssignmentNotFoundException;
 import com.acme.jitsi.domains.meetings.service.MeetingFinalizedException;
 import com.acme.jitsi.domains.meetings.service.MeetingInvalidRoleException;
 import com.acme.jitsi.domains.meetings.service.MeetingNotFoundException;
 import com.acme.jitsi.domains.meetings.service.MeetingRoleConflictException;
 import com.acme.jitsi.domains.meetings.service.MeetingRoomInactiveException;
+import com.acme.jitsi.domains.meetings.service.MeetingRoomNotFoundException;
 import com.acme.jitsi.security.ProblemResponseFacade;
+import com.acme.jitsi.shared.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,13 +45,19 @@ class MeetingsDomainExceptionHandler {
   @ExceptionHandler(MeetingNotFoundException.class)
   ProblemDetail handleMeetingNotFound(MeetingNotFoundException ex, HttpServletRequest request) {
     return buildAndLogProblemDetail(
-        request, HttpStatus.NOT_FOUND, "Встреча не найдена", ex.getMessage(), "MEETING_NOT_FOUND", ex);
+      request, HttpStatus.NOT_FOUND, "Встреча не найдена", ex.getMessage(), ErrorCode.MEETING_NOT_FOUND.code(), ex);
+  }
+
+  @ExceptionHandler(MeetingRoomNotFoundException.class)
+  ProblemDetail handleRoomNotFound(MeetingRoomNotFoundException ex, HttpServletRequest request) {
+    return buildAndLogProblemDetail(
+        request, HttpStatus.NOT_FOUND, "Комната не найдена", ex.getMessage(), ErrorCode.ROOM_NOT_FOUND.code(), ex);
   }
 
   @ExceptionHandler(InvalidMeetingScheduleException.class)
   ProblemDetail handleInvalidSchedule(InvalidMeetingScheduleException ex, HttpServletRequest request) {
     return buildAndLogProblemDetail(
-        request, HttpStatus.BAD_REQUEST, "Некорректное расписание", ex.getMessage(), "INVALID_SCHEDULE", ex);
+      request, HttpStatus.BAD_REQUEST, "Некорректное расписание", ex.getMessage(), ErrorCode.INVALID_SCHEDULE.code(), ex);
   }
 
   @ExceptionHandler(InvalidMeetingDataException.class)
@@ -58,20 +67,31 @@ class MeetingsDomainExceptionHandler {
         HttpStatus.BAD_REQUEST,
         "Некорректные данные встречи",
         ex.getMessage(),
-        "VALIDATION_ERROR",
+        ErrorCode.VALIDATION_ERROR.code(),
         ex);
   }
 
   @ExceptionHandler(MeetingFinalizedException.class)
   ProblemDetail handleMeetingFinalized(MeetingFinalizedException ex, HttpServletRequest request) {
     return buildAndLogProblemDetail(
-        request, HttpStatus.CONFLICT, "Встреча финализирована", ex.getMessage(), "MEETING_FINALIZED", ex);
+      request, HttpStatus.CONFLICT, "Встреча финализирована", ex.getMessage(), ErrorCode.MEETING_FINALIZED.code(), ex);
   }
 
   @ExceptionHandler(MeetingRoomInactiveException.class)
   ProblemDetail handleInactiveRoom(MeetingRoomInactiveException ex, HttpServletRequest request) {
     return buildAndLogProblemDetail(
-        request, HttpStatus.CONFLICT, "Комната недоступна", ex.getMessage(), "ROOM_INACTIVE", ex);
+      request, HttpStatus.CONFLICT, "Комната недоступна", ex.getMessage(), ErrorCode.ROOM_INACTIVE.code(), ex);
+  }
+
+  @ExceptionHandler(MeetingConfigSetInvalidException.class)
+  ProblemDetail handleInvalidConfigSet(MeetingConfigSetInvalidException ex, HttpServletRequest request) {
+    return buildAndLogProblemDetail(
+      request,
+      HttpStatus.BAD_REQUEST,
+      "Некорректный набор конфигурации",
+      ex.getMessage(),
+      ErrorCode.CONFIG_SET_INVALID.code(),
+      ex);
   }
 
   @ExceptionHandler(MeetingAssignmentNotFoundException.class)
@@ -81,7 +101,7 @@ class MeetingsDomainExceptionHandler {
         HttpStatus.NOT_FOUND,
         "Назначение не найдено",
         ex.getMessage(),
-        "ASSIGNMENT_NOT_FOUND",
+        ErrorCode.ASSIGNMENT_NOT_FOUND.code(),
         ex);
   }
 
@@ -100,31 +120,31 @@ class MeetingsDomainExceptionHandler {
   @ExceptionHandler(InviteNotFoundException.class)
   ProblemDetail handleInviteNotFound(InviteNotFoundException ex, HttpServletRequest request) {
     return buildAndLogProblemDetail(
-        request, HttpStatus.NOT_FOUND, "Инвайт не найден", ex.getMessage(), "INVITE_NOT_FOUND", ex);
+      request, HttpStatus.NOT_FOUND, "Инвайт не найден", ex.getMessage(), ErrorCode.INVITE_NOT_FOUND.code(), ex);
   }
 
   @ExceptionHandler(InviteAlreadyRevokedException.class)
   ProblemDetail handleInviteAlreadyRevoked(InviteAlreadyRevokedException ex, HttpServletRequest request) {
     return buildAndLogProblemDetail(
-        request, HttpStatus.CONFLICT, "Инвайт уже отозван", ex.getMessage(), "INVITE_ALREADY_REVOKED", ex);
+      request, HttpStatus.CONFLICT, "Инвайт уже отозван", ex.getMessage(), ErrorCode.INVITE_ALREADY_REVOKED.code(), ex);
   }
 
   @ExceptionHandler(InviteExpiredException.class)
   ProblemDetail handleInviteExpired(InviteExpiredException ex, HttpServletRequest request) {
     return buildAndLogProblemDetail(
-        request, HttpStatus.GONE, "Срок действия инвайта истёк", ex.getMessage(), "INVITE_EXPIRED", ex);
+      request, HttpStatus.GONE, "Срок действия инвайта истёк", ex.getMessage(), ErrorCode.INVITE_EXPIRED.code(), ex);
   }
 
   @ExceptionHandler(InviteExhaustedException.class)
   ProblemDetail handleInviteExhausted(InviteExhaustedException ex, HttpServletRequest request) {
     return buildAndLogProblemDetail(
-        request, HttpStatus.CONFLICT, "Лимит использований исчерпан", ex.getMessage(), "INVITE_EXHAUSTED", ex);
+      request, HttpStatus.CONFLICT, "Лимит использований исчерпан", ex.getMessage(), ErrorCode.INVITE_EXHAUSTED.code(), ex);
   }
 
   @ExceptionHandler(InviteRevokedException.class)
   ProblemDetail handleInviteRevoked(InviteRevokedException ex, HttpServletRequest request) {
     return buildAndLogProblemDetail(
-        request, HttpStatus.GONE, "Инвайт отозван", ex.getMessage(), "INVITE_REVOKED", ex);
+      request, HttpStatus.GONE, "Инвайт отозван", ex.getMessage(), ErrorCode.INVITE_REVOKED.code(), ex);
   }
 
   @ExceptionHandler(BulkInviteValidationException.class)
@@ -134,7 +154,7 @@ class MeetingsDomainExceptionHandler {
         HttpStatus.UNPROCESSABLE_ENTITY,
         "Частичная ошибка массового создания инвайтов",
         ex.getMessage(),
-        "BULK_INVITE_VALIDATION_FAILED",
+        ErrorCode.BULK_INVITE_VALIDATION_FAILED.code(),
         ex);
     problem.setProperty("errors", ex.errors());
     if (ex.result() != null) {
@@ -147,7 +167,7 @@ class MeetingsDomainExceptionHandler {
 
   @ExceptionHandler(BulkAssignmentValidationException.class)
   ProblemDetail handleBulkAssignmentValidation(BulkAssignmentValidationException ex, HttpServletRequest request) {
-    HttpStatus status = "MEETING_ROLE_CONFLICT".equals(ex.errorCode()) ? HttpStatus.CONFLICT : HttpStatus.BAD_REQUEST;
+    HttpStatus status = ErrorCode.MEETING_ROLE_CONFLICT.code().equals(ex.errorCode()) ? HttpStatus.CONFLICT : HttpStatus.BAD_REQUEST;
     ProblemDetail problem = buildAndLogProblemDetail(
         request,
         status,
@@ -167,7 +187,7 @@ class MeetingsDomainExceptionHandler {
         HttpStatus.BAD_REQUEST,
         "Некорректный получатель",
         ex.getMessage(),
-        "INVALID_RECIPIENT_FORMAT",
+        ErrorCode.INVALID_RECIPIENT_FORMAT.code(),
         ex);
     problem.setProperty("rowIndex", ex.rowIndex());
     problem.setProperty("recipient", ex.recipient());
@@ -177,7 +197,7 @@ class MeetingsDomainExceptionHandler {
   @ExceptionHandler(IllegalArgumentException.class)
   ProblemDetail handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
     String path = request.getRequestURI();
-    String errorCode = isInviteValidationError(ex, path) ? "VALIDATION_ERROR" : "INVALID_REQUEST";
+    String errorCode = isInviteValidationError(ex, path) ? ErrorCode.VALIDATION_ERROR.code() : ErrorCode.INVALID_REQUEST.code();
     return buildAndLogProblemDetail(
         request, HttpStatus.BAD_REQUEST, "Некорректный запрос", ex.getMessage(), errorCode, ex);
   }

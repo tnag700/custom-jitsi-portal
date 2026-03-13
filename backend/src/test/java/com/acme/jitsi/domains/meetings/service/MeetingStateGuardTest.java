@@ -3,6 +3,7 @@ package com.acme.jitsi.domains.meetings.service;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import com.acme.jitsi.shared.ErrorCode;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -38,7 +39,7 @@ class MeetingStateGuardTest {
     assertThatThrownBy(() -> meetingStateGuard.assertJoinAllowed("missing-meeting"))
         .isInstanceOfSatisfying(MeetingTokenException.class, ex -> {
           org.assertj.core.api.Assertions.assertThat(ex.status()).isEqualTo(HttpStatus.NOT_FOUND);
-          org.assertj.core.api.Assertions.assertThat(ex.errorCode()).isEqualTo("MEETING_NOT_FOUND");
+          org.assertj.core.api.Assertions.assertThat(ex.errorCode()).isEqualTo(ErrorCode.MEETING_NOT_FOUND.code());
         });
   }
 }

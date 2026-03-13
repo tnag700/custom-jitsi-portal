@@ -7,15 +7,10 @@ import org.springframework.stereotype.Service;
 @Conditional(NotDatabaseInviteModeCondition.class)
 public class InviteValidationService implements InviteValidationPort {
 
-  public record InviteResolution(String meetingId) {
-  }
-
-  public record InviteReservation(String inviteToken, String meetingId) {
-  }
-
   private final InviteExchangeProperties properties;
   private final InviteUsageStoreRouter inviteUsageStoreRouter;
   private final InviteValidationChain inviteValidationChain;
+  private final InviteReservationRegistry reservationRegistry = new InviteReservationRegistry();
 
   InviteValidationService(
       InviteExchangeProperties properties,
@@ -27,17 +22,11 @@ public class InviteValidationService implements InviteValidationPort {
   }
 
   @Override
-  public InviteResolution validate(String inviteToken) {
+  public InviteValidationResult validate(String inviteToken) {
     InviteValidationContext context = new InviteValidationContext(inviteToken, properties, inviteUsageStoreRouter);
     inviteValidationChain.validate(context);
     InviteExchangeProperties.Invite invite = context.invite();
-    return new InviteResolution(invite.meetingId());
-  }
-
-  @Override
-  public InviteResolution validateAndConsume(String inviteToken) {
-    InviteReservation reservation = reserve(inviteToken);
-    return new InviteResolution(reservation.meetingId());
+    return new InviteValidationResult(invite.meetingId());
   }
 
   @Override
@@ -47,12 +36,12 @@ public class InviteValidationService implements InviteValidationPort {
 
     InviteExchangeProperties.Invite invite = context.invite();
     inviteUsageStoreRouter.consume(invite);
-    return new InviteReservation(invite.token(), invite.meetingId());
+    return reservationRegistry.issue(invite.token(), invite.meetingId());
   }
 
   @Override
   public void rollback(InviteReservation reservation) {
-    if (reservation == null) {
+    if (!reservationRegistry.authorizeRollback(reservation)) {
       return;
     }
     inviteUsageStoreRouter.rollback(reservation.inviteToken());

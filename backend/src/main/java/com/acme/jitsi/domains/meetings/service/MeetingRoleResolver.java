@@ -2,8 +2,10 @@ package com.acme.jitsi.domains.meetings.service;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.core.annotation.AnnotationAwareOrderComparator;
+import com.acme.jitsi.shared.pipeline.OrderedPipelineConfigurationException;
+import com.acme.jitsi.shared.pipeline.OrderedTerminalPipelineSupport;
 import org.springframework.stereotype.Component;
+import org.springframework.util.ClassUtils;
 
 @Component
 class MeetingRoleResolver {
@@ -13,8 +15,17 @@ class MeetingRoleResolver {
 
   MeetingRoleResolver(MeetingTokenProperties properties, List<MeetingRoleResolutionPolicy> policies) {
     this.properties = properties;
-    this.policies = new ArrayList<>(policies);
-    AnnotationAwareOrderComparator.sort(this.policies);
+    this.policies = OrderedTerminalPipelineSupport.sortAndValidate(
+        "MeetingRoleResolver",
+        new ArrayList<>(policies),
+        MeetingRoleResolutionPolicy::isTerminalPolicy,
+        policy -> ClassUtils.getUserClass(policy).getSimpleName(),
+        OrderedTerminalPipelineSupport.expectedSequence(
+            BlockedSubjectMeetingRoleResolutionPolicy.class,
+            UnknownMeetingMeetingRoleResolutionPolicy.class,
+            DbParticipantAssignmentMeetingRoleResolutionPolicy.class,
+            ExplicitAssignmentMeetingRoleResolutionPolicy.class,
+            UnknownRolePolicyMeetingRoleResolutionPolicy.class));
   }
 
   MeetingRole resolve(String meetingId, String subject) {
@@ -24,8 +35,15 @@ class MeetingRoleResolver {
       if (resolved.isPresent()) {
         return resolved.get();
       }
+
+      if (policy.isTerminalPolicy()) {
+        throw new OrderedPipelineConfigurationException(
+            "MeetingRoleResolver terminal policy " + policy.getClass().getSimpleName()
+                + " completed without producing a decision.");
+      }
     }
 
-    throw new IllegalStateException("No meeting role resolution policy produced a decision");
+    throw new OrderedPipelineConfigurationException(
+        "MeetingRoleResolver reached the end of the pipeline without a terminal policy.");
   }
 }

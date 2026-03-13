@@ -54,6 +54,11 @@ export const assignParticipantSchema = z.object({
   role: roleSchema,
 });
 
+export const bulkAssignParticipantsSchema = z.object({
+  subjectIds: z.array(z.string().min(1, "subjectId обязателен")).min(1, "Выберите хотя бы одного пользователя"),
+  defaultRole: roleSchema,
+});
+
 export const updateParticipantRoleSchema = z.object({
   role: roleSchema,
 });

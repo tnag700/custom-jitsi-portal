@@ -4,12 +4,11 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.acme.jitsi.shared.TestFixtures;
 import com.acme.jitsi.domains.rooms.event.RoomDeletedEvent;
 import com.acme.jitsi.domains.rooms.service.ActiveMeetingsChecker;
 import com.acme.jitsi.domains.rooms.service.Room;
 import com.acme.jitsi.domains.rooms.service.RoomRepository;
-import com.acme.jitsi.domains.rooms.service.RoomStatus;
-import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,7 +35,7 @@ class DeleteRoomUseCaseTest {
 
   @Test
   void executeDeletesRoomAndPublishesEvent() {
-    Room existing = new Room("room-1", "Room", null, "tenant-1", "config-1", RoomStatus.ACTIVE, Instant.now(), Instant.now());
+    Room existing = TestFixtures.room();
     when(activeMeetingsChecker.hasActiveOrFutureMeetings("room-1")).thenReturn(false);
 
     useCase.execute(new DeleteRoomCommand(existing, "actor-1", "trace-1"));

@@ -1,6 +1,6 @@
 package com.acme.jitsi.domains.invites.service;
 
-import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
+import com.acme.jitsi.shared.ErrorCode;
 import java.time.Instant;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -14,7 +14,7 @@ class InviteExpirationValidator implements InviteValidator {
   public void validate(InviteValidationContext context) {
     Instant expiresAt = context.invite().expiresAt();
     if (expiresAt != null && Instant.now().isAfter(expiresAt)) {
-      throw new MeetingTokenException(HttpStatus.GONE, "INVITE_EXPIRED", "Срок действия инвайта истек.");
+      throw new InviteExchangeException(HttpStatus.GONE, ErrorCode.INVITE_EXPIRED.code(), "Срок действия инвайта истек.");
     }
   }
 }

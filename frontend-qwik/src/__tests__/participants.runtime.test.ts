@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   assignParticipant,
+  bulkAssignParticipants,
   fetchParticipants,
+  searchUsers,
   unassignParticipant,
   updateParticipantRole,
 } from "../lib/domains/meetings/participants.service";
@@ -75,6 +77,66 @@ describe("participants.service runtime", () => {
           "X-XSRF-TOKEN": "csrf-1",
         }),
       }),
+    );
+    expect(result).toEqual(payload);
+  });
+
+  it("bulkAssignParticipants posts the selected users to the bulk endpoint", async () => {
+    const payload = [
+      {
+        meetingId: "m-1",
+        subjectId: "u-2",
+        role: "participant",
+        assignedBy: "admin",
+        assignedAt: "2026-03-03T10:00:00Z",
+      },
+      {
+        meetingId: "m-1",
+        subjectId: "u-3",
+        role: "participant",
+        assignedBy: "admin",
+        assignedAt: "2026-03-03T10:00:00Z",
+      },
+    ];
+
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 201));
+
+    const result = await bulkAssignParticipants(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      "csrf-1",
+      "idem-bulk-1",
+      "meeting-1",
+      {
+        defaultRole: "participant",
+        participants: [{ subjectId: "u-2" }, { subjectId: "u-3" }],
+      },
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/meetings/meeting-1/participants/bulk",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          "Idempotency-Key": "idem-bulk-1",
+          "X-XSRF-TOKEN": "csrf-1",
+        }),
+      }),
+    );
+    expect(result).toEqual(payload);
+  });
+
+  it("searchUsers queries the tenant-scoped directory endpoint", async () => {
+    const payload = [
+      { subjectId: "u-1", fullName: "Иванов Иван", organization: "ЦРБ", position: "Врач" },
+    ];
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+
+    const result = await searchUsers("sess-1", "http://localhost:8080/api/v1", "tenant-1", "иван", "ЦРБ");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/users/search?tenant_id=tenant-1&q=%D0%B8%D0%B2%D0%B0%D0%BD&organization=%D0%A6%D0%A0%D0%91",
+      expect.objectContaining({ method: "GET" }),
     );
     expect(result).toEqual(payload);
   });

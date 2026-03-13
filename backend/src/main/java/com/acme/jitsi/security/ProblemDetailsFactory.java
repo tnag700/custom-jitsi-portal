@@ -1,6 +1,9 @@
 package com.acme.jitsi.security;
 
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,6 +14,7 @@ import org.springframework.stereotype.Component;
 public class ProblemDetailsFactory {
 
   private static final String TRACE_ID_ATTRIBUTE = ProblemDetailsFactory.class.getName() + ".traceId";
+  private static final String REQUEST_ID_ATTRIBUTE = ProblemDetailsFactory.class.getName() + ".requestId";
   private static final Pattern TRACE_ID_PATTERN = Pattern.compile("^[A-Za-z0-9._:-]{1,128}$");
 
   public Map<String, Object> build(
@@ -20,6 +24,7 @@ public class ProblemDetailsFactory {
       String detail,
       String errorCode) {
     String traceId = resolveTraceId(request);
+    String requestId = resolveRequestId(request);
     String instance = request.getRequestURI();
     int statusCode = status.value();
     return Map.of(
@@ -30,23 +35,48 @@ public class ProblemDetailsFactory {
       "instance", instance,
         "properties", Map.of(
             "errorCode", errorCode,
-            "traceId", traceId));
+            "traceId", traceId,
+            "requestId", requestId));
   }
 
   public String resolveTraceId(HttpServletRequest request) {
-    String headerTraceId = request.getHeader("X-Trace-Id");
-    String normalizedHeaderTraceId = normalizeTraceId(headerTraceId);
-    if (normalizedHeaderTraceId != null) {
-      request.setAttribute(TRACE_ID_ATTRIBUTE, normalizedHeaderTraceId);
-      return normalizedHeaderTraceId;
-    }
     Object cachedTraceId = request.getAttribute(TRACE_ID_ATTRIBUTE);
     if (cachedTraceId instanceof String cached && hasText(cached)) {
       return cached;
     }
-    String generatedTraceId = createGeneratedTraceId();
+
+    String currentTraceId = currentTraceId();
+    if (currentTraceId != null) {
+      request.setAttribute(TRACE_ID_ATTRIBUTE, currentTraceId);
+      return currentTraceId;
+    }
+
+    String normalizedHeaderTraceId = normalizeTraceId(request.getHeader("X-Trace-Id"));
+    if (normalizedHeaderTraceId != null) {
+      request.setAttribute(TRACE_ID_ATTRIBUTE, normalizedHeaderTraceId);
+      return normalizedHeaderTraceId;
+    }
+
+    String generatedTraceId = createGeneratedId();
     request.setAttribute(TRACE_ID_ATTRIBUTE, generatedTraceId);
     return generatedTraceId;
+  }
+
+  public String resolveRequestId(HttpServletRequest request) {
+    Object cachedRequestId = request.getAttribute(REQUEST_ID_ATTRIBUTE);
+    if (cachedRequestId instanceof String cached && hasText(cached)) {
+      return cached;
+    }
+
+    String normalizedHeaderTraceId = normalizeTraceId(request.getHeader("X-Trace-Id"));
+    if (normalizedHeaderTraceId != null) {
+      request.setAttribute(REQUEST_ID_ATTRIBUTE, normalizedHeaderTraceId);
+      return normalizedHeaderTraceId;
+    }
+
+    String generatedRequestId = createGeneratedId();
+    request.setAttribute(REQUEST_ID_ATTRIBUTE, generatedRequestId);
+    return generatedRequestId;
   }
 
   private String normalizeTraceId(String traceId) {
@@ -77,9 +107,15 @@ public class ProblemDetailsFactory {
     return false;
   }
 
-  private String createGeneratedTraceId() {
-    long nowMillis = System.currentTimeMillis();
-    long nowNanos = System.nanoTime();
-    return Long.toHexString(nowMillis) + "-" + Long.toHexString(nowNanos);
+  private String currentTraceId() {
+    SpanContext spanContext = Span.current().getSpanContext();
+    if (!spanContext.isValid()) {
+      return null;
+    }
+    return spanContext.getTraceId();
+  }
+
+  private String createGeneratedId() {
+    return UUID.randomUUID().toString().replace("-", "");
   }
 }

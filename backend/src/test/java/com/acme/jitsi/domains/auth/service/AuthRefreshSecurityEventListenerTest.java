@@ -1,5 +1,7 @@
 package com.acme.jitsi.domains.auth.service;
 
+import com.acme.jitsi.shared.ErrorCode;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.Level;
@@ -23,7 +25,7 @@ class AuthRefreshSecurityEventListenerTest {
       AuthRefreshSecurityEventListener listener = new AuthRefreshSecurityEventListener();
       listener.onAuthRefreshSecurityEvent(new AuthRefreshSecurityEvent(
           "REFRESH_REUSE",
-          "REFRESH_REUSE_DETECTED",
+          ErrorCode.REFRESH_REUSE_DETECTED.code(),
           "token-1",
           "u-1",
           "meeting-a",
@@ -33,7 +35,7 @@ class AuthRefreshSecurityEventListenerTest {
       ILoggingEvent event = appender.list.getFirst();
       assertThat(event.getLevel()).isEqualTo(Level.WARN);
       assertThat(event.getFormattedMessage()).contains("auth_refresh_security_event");
-      assertThat(event.getFormattedMessage()).contains("REFRESH_REUSE_DETECTED");
+      assertThat(event.getFormattedMessage()).contains(ErrorCode.REFRESH_REUSE_DETECTED.code());
     } finally {
       logger.detachAppender(appender);
       appender.stop();
@@ -51,7 +53,7 @@ class AuthRefreshSecurityEventListenerTest {
       AuthRefreshSecurityEventListener listener = new AuthRefreshSecurityEventListener();
       listener.onAuthRefreshSecurityEvent(new AuthRefreshSecurityEvent(
           "REFRESH_EXPIRED",
-          "AUTH_REQUIRED",
+          ErrorCode.AUTH_REQUIRED.code(),
           "token-2",
           "u-2",
           "meeting-b",
@@ -61,10 +63,12 @@ class AuthRefreshSecurityEventListenerTest {
       ILoggingEvent event = appender.list.getFirst();
       assertThat(event.getLevel()).isEqualTo(Level.INFO);
       assertThat(event.getFormattedMessage()).contains("auth_refresh_security_event");
-      assertThat(event.getFormattedMessage()).contains("AUTH_REQUIRED");
+      assertThat(event.getFormattedMessage()).contains(ErrorCode.AUTH_REQUIRED.code());
     } finally {
       logger.detachAppender(appender);
       appender.stop();
     }
   }
 }
+
+

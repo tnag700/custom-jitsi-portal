@@ -1,5 +1,6 @@
 package com.acme.jitsi.domains.meetings.service;
 
+import com.acme.jitsi.shared.ErrorCode;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
@@ -10,7 +11,7 @@ public class MeetingInvalidRoleException extends RuntimeException {
 
   public MeetingInvalidRoleException(String message) {
     super(message);
-    this.errorCode = "INVALID_ROLE";
+    this.errorCode = ErrorCode.INVALID_ROLE.code();
   }
 
   public MeetingInvalidRoleException(String message, String errorCode) {

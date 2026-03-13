@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.acme.jitsi.shared.TestFixtures;
 import com.acme.jitsi.domains.rooms.event.RoomUpdatedEvent;
 import com.acme.jitsi.domains.rooms.service.ConfigSetValidator;
 import com.acme.jitsi.domains.rooms.service.Room;
@@ -43,7 +44,7 @@ class UpdateRoomUseCaseTest {
 
   @Test
   void executeUpdatesRoomAndPublishesEvent() {
-    Room existing = new Room("room-1", "Old", "desc", "tenant-1", "config-1", RoomStatus.ACTIVE, Instant.now(), Instant.now());
+    Room existing = TestFixtures.room("room-1", "Old", "desc", "tenant-1", "config-1", RoomStatus.ACTIVE);
     when(roomRepository.existsByNameAndTenantIdAndRoomIdNot("New", "tenant-1", "room-1")).thenReturn(false);
     when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

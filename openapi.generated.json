@@ -1,0 +1,2596 @@
+{
+  "components" : {
+    "schemas" : {
+      "AssignParticipantRequest" : {
+        "properties" : {
+          "role" : {
+            "minLength" : 1,
+            "pattern" : "^(host|moderator|participant)$",
+            "type" : "string"
+          },
+          "subjectId" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "role", "subjectId" ],
+        "type" : "object"
+      },
+      "AuthRefreshRequest" : {
+        "properties" : {
+          "refreshToken" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "refreshToken" ],
+        "type" : "object"
+      },
+      "AuthRefreshResponse" : {
+        "properties" : {
+          "accessToken" : {
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "refreshToken" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          },
+          "tokenType" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AuthRefreshRevokeRequest" : {
+        "properties" : {
+          "tokenId" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "tokenId" ],
+        "type" : "object"
+      },
+      "BulkAssignParticipantsRequest" : {
+        "properties" : {
+          "defaultRole" : {
+            "pattern" : "^(host|moderator|participant)$",
+            "type" : "string"
+          },
+          "participants" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ParticipantAssignment"
+            },
+            "minItems" : 1,
+            "type" : "array"
+          }
+        },
+        "required" : [ "participants" ],
+        "type" : "object"
+      },
+      "BulkCreateInviteRequest" : {
+        "properties" : {
+          "defaultMaxUses" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "defaultRole" : {
+            "enum" : [ "participant", "moderator", "host" ],
+            "type" : "string"
+          },
+          "defaultTtlMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "duplicatePolicy" : {
+            "enum" : [ "SKIP_EXISTING", "REPLACE" ],
+            "type" : "string"
+          },
+          "recipients" : {
+            "items" : {
+              "$ref" : "#/components/schemas/BulkInviteRecipientDto"
+            },
+            "minItems" : 1,
+            "type" : "array"
+          }
+        },
+        "required" : [ "recipients" ],
+        "type" : "object"
+      },
+      "BulkInviteCreatedItemDto" : {
+        "properties" : {
+          "inviteId" : {
+            "type" : "string"
+          },
+          "recipient" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          },
+          "token" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "BulkInviteErrorItem" : {
+        "properties" : {
+          "errorCode" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "recipient" : {
+            "type" : "string"
+          },
+          "rowIndex" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "BulkInviteRecipientDto" : {
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          },
+          "role" : {
+            "enum" : [ "participant", "moderator", "host" ],
+            "type" : "string"
+          },
+          "rowIndex" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "userId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "BulkInviteResponse" : {
+        "properties" : {
+          "created" : {
+            "items" : {
+              "$ref" : "#/components/schemas/BulkInviteCreatedItemDto"
+            },
+            "type" : "array"
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/BulkInviteErrorItem"
+            },
+            "type" : "array"
+          },
+          "skipped" : {
+            "items" : {
+              "$ref" : "#/components/schemas/BulkInviteSkippedItemDto"
+            },
+            "type" : "array"
+          },
+          "summary" : {
+            "$ref" : "#/components/schemas/BulkInviteSummaryDto"
+          }
+        },
+        "type" : "object"
+      },
+      "BulkInviteSkippedItemDto" : {
+        "properties" : {
+          "reason" : {
+            "type" : "string"
+          },
+          "recipient" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "BulkInviteSummaryDto" : {
+        "properties" : {
+          "created" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "failed" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "skipped" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "total" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ConfigSetCompatibilityMismatchResponse" : {
+        "properties" : {
+          "actual" : {
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "expected" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ConfigSetCompatibilityResponse" : {
+        "properties" : {
+          "checkedAt" : {
+            "type" : "string"
+          },
+          "mismatches" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ConfigSetCompatibilityMismatchResponse"
+            },
+            "type" : "array"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "traceId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ConfigSetResponse" : {
+        "properties" : {
+          "accessTtlMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "algorithm" : {
+            "type" : "string"
+          },
+          "audience" : {
+            "type" : "string"
+          },
+          "configSetId" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "environmentType" : {
+            "type" : "string"
+          },
+          "issuer" : {
+            "type" : "string"
+          },
+          "jwksUri" : {
+            "type" : "string"
+          },
+          "meetingsServiceUrl" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "refreshTtlMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "roleClaim" : {
+            "type" : "string"
+          },
+          "signingSecret" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "tenantId" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ConfigSetRolloutResponse" : {
+        "properties" : {
+          "actorId" : {
+            "type" : "string"
+          },
+          "completedAt" : {
+            "type" : "string"
+          },
+          "configSetId" : {
+            "type" : "string"
+          },
+          "environmentType" : {
+            "type" : "string"
+          },
+          "previousConfigSetId" : {
+            "type" : "string"
+          },
+          "rolloutId" : {
+            "type" : "string"
+          },
+          "startedAt" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "tenantId" : {
+            "type" : "string"
+          },
+          "validationErrors" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "CreateConfigSetRequest" : {
+        "properties" : {
+          "accessTtlMinutes" : {
+            "format" : "int32",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "algorithm" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "audience" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "environmentType" : {
+            "enum" : [ "DEV", "TEST", "PROD" ],
+            "type" : "string"
+          },
+          "issuer" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "jwksUri" : {
+            "type" : "string"
+          },
+          "meetingsServiceUrl" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "name" : {
+            "maxLength" : 255,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "refreshTtlMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "roleClaim" : {
+            "maxLength" : 255,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "signingSecret" : {
+            "type" : "string"
+          },
+          "tenantId" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "algorithm", "audience", "environmentType", "issuer", "meetingsServiceUrl", "name", "tenantId" ],
+        "type" : "object"
+      },
+      "CreateInviteRequest" : {
+        "properties" : {
+          "expiresInHours" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxUses" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "role" : {
+            "enum" : [ "participant", "moderator", "host" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "role" ],
+        "type" : "object"
+      },
+      "CreateMeetingRequest" : {
+        "properties" : {
+          "allowGuests" : {
+            "type" : "boolean"
+          },
+          "description" : {
+            "maxLength" : 1000,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "endsAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "meetingType" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "recordingEnabled" : {
+            "type" : "boolean"
+          },
+          "startsAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "title" : {
+            "maxLength" : 255,
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "endsAt", "meetingType", "startsAt", "title" ],
+        "type" : "object"
+      },
+      "CreateRoomRequest" : {
+        "properties" : {
+          "configSetId" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "description" : {
+            "maxLength" : 1000,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "name" : {
+            "maxLength" : 255,
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "tenantId" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "configSetId", "name", "tenantId" ],
+        "type" : "object"
+      },
+      "CsrfToken" : {
+        "properties" : {
+          "headerName" : {
+            "type" : "string"
+          },
+          "parameterName" : {
+            "type" : "string"
+          },
+          "token" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "HealthResponse" : {
+        "properties" : {
+          "checkedAt" : {
+            "type" : "string"
+          },
+          "compatibilityStatus" : {
+            "type" : "string"
+          },
+          "configSetId" : {
+            "type" : "string"
+          },
+          "details" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "traceId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "InviteExchangeRequest" : {
+        "properties" : {
+          "displayName" : {
+            "type" : "string"
+          },
+          "inviteToken" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "inviteToken" ],
+        "type" : "object"
+      },
+      "InviteExchangeResponse" : {
+        "properties" : {
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "joinUrl" : {
+            "type" : "string"
+          },
+          "meetingId" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "InviteResponse" : {
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "createdBy" : {
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "maxUses" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "meetingId" : {
+            "type" : "string"
+          },
+          "revokedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          },
+          "token" : {
+            "type" : "string"
+          },
+          "usedCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "valid" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "InviteValidationResponse" : {
+        "properties" : {
+          "meetingId" : {
+            "type" : "string"
+          },
+          "valid" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "JoinReadinessCheckResponse" : {
+        "properties" : {
+          "actions" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "blocking" : {
+            "type" : "boolean"
+          },
+          "errorCode" : {
+            "type" : "string"
+          },
+          "headline" : {
+            "type" : "string"
+          },
+          "key" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "JoinReadinessResponse" : {
+        "properties" : {
+          "checkedAt" : {
+            "type" : "string"
+          },
+          "publicJoinUrl" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "systemChecks" : {
+            "items" : {
+              "$ref" : "#/components/schemas/JoinReadinessCheckResponse"
+            },
+            "type" : "array"
+          },
+          "traceId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "MeetingAccessTokenResponse" : {
+        "properties" : {
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "joinUrl" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "MeetingResponse" : {
+        "properties" : {
+          "allowGuests" : {
+            "type" : "boolean"
+          },
+          "configSetId" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "endsAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "meetingId" : {
+            "type" : "string"
+          },
+          "meetingType" : {
+            "type" : "string"
+          },
+          "recordingEnabled" : {
+            "type" : "boolean"
+          },
+          "roomId" : {
+            "type" : "string"
+          },
+          "startsAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "PagedConfigSetResponse" : {
+        "properties" : {
+          "content" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ConfigSetResponse"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "pageSize" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "PagedInviteResponse" : {
+        "properties" : {
+          "content" : {
+            "items" : {
+              "$ref" : "#/components/schemas/InviteResponse"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "pageSize" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "PagedMeetingResponse" : {
+        "properties" : {
+          "content" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MeetingResponse"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "pageSize" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "PagedRoomResponse" : {
+        "properties" : {
+          "content" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RoomResponse"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "pageSize" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "totalElements" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalPages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ParticipantAssignment" : {
+        "properties" : {
+          "role" : {
+            "pattern" : "^(host|moderator|participant)?$",
+            "type" : "string"
+          },
+          "subjectId" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "subjectId" ],
+        "type" : "object"
+      },
+      "ParticipantAssignmentResponse" : {
+        "properties" : {
+          "assignedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "assignedBy" : {
+            "type" : "string"
+          },
+          "assignmentId" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "fullName" : {
+            "type" : "string"
+          },
+          "meetingId" : {
+            "type" : "string"
+          },
+          "organization" : {
+            "type" : "string"
+          },
+          "position" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          },
+          "subjectId" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "RoomResponse" : {
+        "properties" : {
+          "configSetId" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "roomId" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "tenantId" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "SafeUserProfileResponse" : {
+        "properties" : {
+          "claims" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "tenant" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "UpcomingMeetingCardResponse" : {
+        "properties" : {
+          "joinAvailability" : {
+            "enum" : [ "available", "scheduled" ],
+            "type" : "string"
+          },
+          "meetingId" : {
+            "type" : "string"
+          },
+          "roomName" : {
+            "type" : "string"
+          },
+          "startsAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "UpdateConfigSetRequest" : {
+        "properties" : {
+          "accessTtlMinutes" : {
+            "format" : "int32",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "algorithm" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "audience" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "environmentType" : {
+            "enum" : [ "DEV", "TEST", "PROD" ],
+            "type" : "string"
+          },
+          "issuer" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "jwksUri" : {
+            "type" : "string"
+          },
+          "meetingsServiceUrl" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "name" : {
+            "maxLength" : 255,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "refreshTtlMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "roleClaim" : {
+            "maxLength" : 255,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "signingSecret" : {
+            "type" : "string"
+          },
+          "tenantId" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "algorithm", "audience", "environmentType", "issuer", "meetingsServiceUrl", "name", "tenantId" ],
+        "type" : "object"
+      },
+      "UpdateMeetingRequest" : {
+        "properties" : {
+          "allowGuests" : {
+            "type" : "boolean"
+          },
+          "description" : {
+            "maxLength" : 1000,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "endsAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "meetingType" : {
+            "type" : "string"
+          },
+          "recordingEnabled" : {
+            "type" : "boolean"
+          },
+          "startsAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "title" : {
+            "maxLength" : 255,
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "UpdateParticipantRoleRequest" : {
+        "properties" : {
+          "role" : {
+            "minLength" : 1,
+            "pattern" : "^(host|moderator|participant)$",
+            "type" : "string"
+          }
+        },
+        "required" : [ "role" ],
+        "type" : "object"
+      },
+      "UpdateRoomRequest" : {
+        "properties" : {
+          "configSetId" : {
+            "type" : "string"
+          },
+          "description" : {
+            "maxLength" : 1000,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "name" : {
+            "maxLength" : 255,
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "UpsertProfileRequest" : {
+        "properties" : {
+          "fullName" : {
+            "maxLength" : 500,
+            "minLength" : 2,
+            "type" : "string"
+          },
+          "organization" : {
+            "maxLength" : 500,
+            "minLength" : 2,
+            "type" : "string"
+          },
+          "position" : {
+            "maxLength" : 500,
+            "minLength" : 2,
+            "type" : "string"
+          }
+        },
+        "required" : [ "fullName", "organization", "position" ],
+        "type" : "object"
+      },
+      "UserProfileResponse" : {
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "fullName" : {
+            "type" : "string"
+          },
+          "organization" : {
+            "type" : "string"
+          },
+          "position" : {
+            "type" : "string"
+          },
+          "subjectId" : {
+            "type" : "string"
+          },
+          "tenantId" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "UserProfileSummary" : {
+        "properties" : {
+          "fullName" : {
+            "type" : "string"
+          },
+          "organization" : {
+            "type" : "string"
+          },
+          "position" : {
+            "type" : "string"
+          },
+          "subjectId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      }
+    }
+  },
+  "info" : {
+    "title" : "Jitsi Portal API",
+    "version" : "0.1.0"
+  },
+  "openapi" : "3.1.0",
+  "paths" : {
+    "/api/v1/auth/csrf" : {
+      "get" : {
+        "operationId" : "csrf",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "csrfToken",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/CsrfToken"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "additionalProperties" : {
+                    "type" : "string"
+                  },
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/error" : {
+      "get" : {
+        "operationId" : "error",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "code",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "additionalProperties" : { },
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/login" : {
+      "get" : {
+        "operationId" : "login",
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/logout" : {
+      "post" : {
+        "operationId" : "logout",
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/me" : {
+      "get" : {
+        "operationId" : "me",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SafeUserProfileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/refresh" : {
+      "post" : {
+        "operationId" : "refresh",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AuthRefreshRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuthRefreshResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/refresh/revoke" : {
+      "post" : {
+        "operationId" : "revokeRefresh",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AuthRefreshRevokeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/config-sets" : {
+      "get" : {
+        "operationId" : "listByTenant",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "tenantId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedConfigSetResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "config-sets-controller" ]
+      },
+      "post" : {
+        "operationId" : "create",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateConfigSetRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfigSetResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "config-sets-controller" ]
+      }
+    },
+    "/api/v1/config-sets/active" : {
+      "get" : {
+        "operationId" : "getActiveForEnvironment",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "tenantId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "environmentType",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "DEV", "TEST", "PROD" ],
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfigSetResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "config-sets-controller" ]
+      }
+    },
+    "/api/v1/config-sets/rollouts/latest" : {
+      "get" : {
+        "operationId" : "getLatestRollout",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "tenantId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "environmentType",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "DEV", "TEST", "PROD" ],
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfigSetRolloutResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "config-sets-controller" ]
+      }
+    },
+    "/api/v1/config-sets/{configSetId}" : {
+      "get" : {
+        "operationId" : "getById",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "configSetId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfigSetResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "config-sets-controller" ]
+      },
+      "put" : {
+        "operationId" : "update",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "configSetId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateConfigSetRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfigSetResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "config-sets-controller" ]
+      }
+    },
+    "/api/v1/config-sets/{configSetId}/activate" : {
+      "post" : {
+        "operationId" : "activate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "configSetId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "tenantId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfigSetResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "config-sets-controller" ]
+      }
+    },
+    "/api/v1/config-sets/{configSetId}/compatibility" : {
+      "get" : {
+        "operationId" : "getCompatibility",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "configSetId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "tenantId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfigSetCompatibilityResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "config-sets-controller" ]
+      }
+    },
+    "/api/v1/config-sets/{configSetId}/deactivate" : {
+      "post" : {
+        "operationId" : "deactivate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "configSetId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "tenantId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfigSetResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "config-sets-controller" ]
+      }
+    },
+    "/api/v1/config-sets/{configSetId}/rollback" : {
+      "post" : {
+        "operationId" : "rollback",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "configSetId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "tenantId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "environmentType",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "DEV", "TEST", "PROD" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfigSetRolloutResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "config-sets-controller" ]
+      }
+    },
+    "/api/v1/config-sets/{configSetId}/rollout" : {
+      "post" : {
+        "operationId" : "rollout",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "configSetId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "tenantId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfigSetRolloutResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "config-sets-controller" ]
+      }
+    },
+    "/api/v1/health" : {
+      "get" : {
+        "operationId" : "getHealth",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "health-controller" ]
+      }
+    },
+    "/api/v1/health/join-readiness" : {
+      "get" : {
+        "operationId" : "getJoinReadiness",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JoinReadinessResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "health-controller" ]
+      }
+    },
+    "/api/v1/invites/exchange" : {
+      "post" : {
+        "operationId" : "exchange",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/InviteExchangeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InviteExchangeResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "invite-exchange-controller" ]
+      }
+    },
+    "/api/v1/invites/{inviteToken}/validate" : {
+      "get" : {
+        "operationId" : "validate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "inviteToken",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InviteValidationResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "invite-exchange-controller" ]
+      }
+    },
+    "/api/v1/meetings/upcoming" : {
+      "get" : {
+        "operationId" : "listUpcoming",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/UpcomingMeetingCardResponse"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "upcoming-meetings-controller" ]
+      }
+    },
+    "/api/v1/meetings/{meetingId}" : {
+      "get" : {
+        "operationId" : "getMeeting",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "meetingId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MeetingResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "meetings-controller" ]
+      },
+      "put" : {
+        "operationId" : "updateMeeting",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "meetingId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateMeetingRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MeetingResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "meetings-controller" ]
+      }
+    },
+    "/api/v1/meetings/{meetingId}/access-token" : {
+      "post" : {
+        "operationId" : "issueAccessToken",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "meetingId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MeetingAccessTokenResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "meeting-access-token-controller" ]
+      }
+    },
+    "/api/v1/meetings/{meetingId}/cancel" : {
+      "post" : {
+        "operationId" : "cancelMeeting",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "meetingId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MeetingResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "meetings-controller" ]
+      }
+    },
+    "/api/v1/meetings/{meetingId}/invites" : {
+      "get" : {
+        "operationId" : "listInvites",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "meetingId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedInviteResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "meeting-invites-controller" ]
+      },
+      "post" : {
+        "operationId" : "createInvite",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "meetingId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateInviteRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InviteResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "meeting-invites-controller" ]
+      }
+    },
+    "/api/v1/meetings/{meetingId}/invites/bulk" : {
+      "post" : {
+        "operationId" : "createBulkInvites",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "meetingId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BulkCreateInviteRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BulkInviteResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "meeting-invites-controller" ]
+      }
+    },
+    "/api/v1/meetings/{meetingId}/invites/{inviteId}" : {
+      "delete" : {
+        "operationId" : "revokeInvite",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "meetingId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "inviteId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "meeting-invites-controller" ]
+      }
+    },
+    "/api/v1/meetings/{meetingId}/participants" : {
+      "get" : {
+        "operationId" : "listParticipants",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "meetingId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/ParticipantAssignmentResponse"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "meeting-participant-assignments-controller" ]
+      },
+      "post" : {
+        "operationId" : "assignParticipant",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "meetingId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AssignParticipantRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ParticipantAssignmentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "meeting-participant-assignments-controller" ]
+      }
+    },
+    "/api/v1/meetings/{meetingId}/participants/bulk" : {
+      "post" : {
+        "operationId" : "bulkAssignParticipants",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "meetingId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BulkAssignParticipantsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/ParticipantAssignmentResponse"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "meeting-participant-assignments-controller" ]
+      }
+    },
+    "/api/v1/meetings/{meetingId}/participants/{subjectId}" : {
+      "delete" : {
+        "operationId" : "unassignParticipant",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "meetingId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "subjectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "meeting-participant-assignments-controller" ]
+      },
+      "put" : {
+        "operationId" : "updateParticipant",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "meetingId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "subjectId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateParticipantRoleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ParticipantAssignmentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "meeting-participant-assignments-controller" ]
+      }
+    },
+    "/api/v1/profile/me" : {
+      "get" : {
+        "operationId" : "getMyProfile",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserProfileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "profile-controller" ]
+      },
+      "put" : {
+        "operationId" : "upsertMyProfile",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpsertProfileRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserProfileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "profile-controller" ]
+      }
+    },
+    "/api/v1/rooms" : {
+      "get" : {
+        "operationId" : "listRooms",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "tenantId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedRoomResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "rooms-controller" ]
+      },
+      "post" : {
+        "operationId" : "createRoom",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateRoomRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RoomResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "rooms-controller" ]
+      }
+    },
+    "/api/v1/rooms/{roomId}" : {
+      "delete" : {
+        "operationId" : "deleteRoom",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "roomId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "rooms-controller" ]
+      },
+      "get" : {
+        "operationId" : "getRoom",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "roomId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RoomResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "rooms-controller" ]
+      },
+      "put" : {
+        "operationId" : "updateRoom",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "roomId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateRoomRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RoomResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "rooms-controller" ]
+      }
+    },
+    "/api/v1/rooms/{roomId}/close" : {
+      "post" : {
+        "operationId" : "closeRoom",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "roomId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RoomResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "rooms-controller" ]
+      }
+    },
+    "/api/v1/rooms/{roomId}/meetings" : {
+      "get" : {
+        "operationId" : "listMeetings",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "roomId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedMeetingResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "meetings-controller" ]
+      },
+      "post" : {
+        "operationId" : "createMeeting",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "roomId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateMeetingRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MeetingResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "meetings-controller" ]
+      }
+    },
+    "/api/v1/test/idempotent" : {
+      "post" : {
+        "operationId" : "testEndpoint",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "idempotency-test-controller" ]
+      }
+    },
+    "/api/v1/users/search" : {
+      "get" : {
+        "operationId" : "searchUsers",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "tenant_id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "organization",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/UserProfileSummary"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "user-search-controller" ]
+      }
+    }
+  },
+  "servers" : [ {
+    "url" : "http://localhost:8080"
+  } ],
+  "x-generated-from" : "Generated from backend runtime contract. Do not edit by hand."
+}

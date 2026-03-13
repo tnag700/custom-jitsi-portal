@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.acme.jitsi.shared.TestFixtures;
 import com.acme.jitsi.domains.rooms.event.RoomClosedEvent;
 import com.acme.jitsi.domains.rooms.service.ActiveMeetingsChecker;
 import com.acme.jitsi.domains.rooms.service.Room;
@@ -43,7 +44,7 @@ class CloseRoomUseCaseTest {
 
   @Test
   void executeClosesRoomAndPublishesEvent() {
-    Room existing = new Room("room-1", "Room", null, "tenant-1", "config-1", RoomStatus.ACTIVE, Instant.now(), Instant.now());
+    Room existing = TestFixtures.room();
     when(activeMeetingsChecker.hasActiveOrFutureMeetings("room-1")).thenReturn(false);
     when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

@@ -9,7 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.acme.jitsi.config.ResilienceConfig;
-import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
+import com.acme.jitsi.shared.ErrorCode;
 import java.time.Instant;
 import java.util.Date;
 import java.util.concurrent.CompletableFuture;
@@ -90,8 +90,8 @@ class RedisInviteUsageStoreResilienceTest {
         .thenThrow(new QueryTimeoutException("transient-3"));
 
     assertThatThrownBy(() -> inviteUsageStore.consume(invite))
-        .isInstanceOf(MeetingTokenException.class)
-        .satisfies(ex -> assertThat(((MeetingTokenException) ex).errorCode()).isEqualTo("CONFIG_INCOMPATIBLE"));
+      .isInstanceOf(InviteExchangeException.class)
+      .satisfies(ex -> assertThat(((InviteExchangeException) ex).errorCode()).isEqualTo(ErrorCode.CONFIG_INCOMPATIBLE.code()));
 
     verify(valueOperations, times(3)).increment("invites:usage:retry-exhausted-token");
   }
@@ -100,12 +100,28 @@ class RedisInviteUsageStoreResilienceTest {
   void doesNotRetryNonRetryableInviteExhaustedScenario() {
     InviteExchangeProperties.Invite invite = invite("exhausted-token", 1);
     when(valueOperations.increment("invites:usage:exhausted-token")).thenReturn(2L);
+    when(valueOperations.increment("invites:usage:exhausted-token", -1)).thenReturn(1L);
 
     assertThatThrownBy(() -> inviteUsageStore.consume(invite))
-        .isInstanceOf(MeetingTokenException.class)
-        .satisfies(ex -> assertThat(((MeetingTokenException) ex).errorCode()).isEqualTo("INVITE_EXHAUSTED"));
+      .isInstanceOf(InviteExchangeException.class)
+      .satisfies(ex -> assertThat(((InviteExchangeException) ex).errorCode()).isEqualTo(ErrorCode.INVITE_EXHAUSTED.code()));
 
     verify(valueOperations, times(1)).increment("invites:usage:exhausted-token");
+    verify(valueOperations, times(1)).increment("invites:usage:exhausted-token", -1);
+  }
+
+  @Test
+  void rollbackSurfacesRedisFailureInsteadOfSilentlyIgnoringIt() {
+    when(valueOperations.increment("invites:usage:rollback-token", -1))
+        .thenThrow(new QueryTimeoutException("rollback-1"))
+        .thenThrow(new QueryTimeoutException("rollback-2"))
+        .thenThrow(new QueryTimeoutException("rollback-3"));
+
+    assertThatThrownBy(() -> inviteUsageStore.rollback("rollback-token"))
+      .isInstanceOf(InviteExchangeException.class)
+      .satisfies(ex -> assertThat(((InviteExchangeException) ex).errorCode()).isEqualTo(ErrorCode.CONFIG_INCOMPATIBLE.code()));
+
+    verify(valueOperations, times(3)).increment("invites:usage:rollback-token", -1);
   }
 
   @Test

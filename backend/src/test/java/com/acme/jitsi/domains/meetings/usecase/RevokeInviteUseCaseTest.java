@@ -2,7 +2,6 @@ package com.acme.jitsi.domains.meetings.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,6 +11,7 @@ import com.acme.jitsi.domains.meetings.service.MeetingInvite;
 import com.acme.jitsi.domains.meetings.service.MeetingInviteRepository;
 import com.acme.jitsi.domains.meetings.service.MeetingRepository;
 import com.acme.jitsi.domains.meetings.service.MeetingRole;
+import com.acme.jitsi.shared.TestFixtures;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,8 +51,7 @@ class RevokeInviteUseCaseTest {
         null,
         Instant.now(),
         "creator");
-    Meeting meeting = mock(Meeting.class);
-    when(meeting.roomId()).thenReturn("room-1");
+    Meeting meeting = TestFixtures.mockMeeting("meeting-1", "room-1");
     when(inviteRepository.findById("invite-1")).thenReturn(Optional.of(invite));
     when(meetingRepository.findById("meeting-1")).thenReturn(Optional.of(meeting));
     when(inviteRepository.save(any(MeetingInvite.class))).thenAnswer(invocation -> invocation.getArgument(0));

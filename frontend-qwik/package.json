@@ -30,11 +30,13 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "verify:ssr": "npm run build && node scripts/verify-ssr.mjs",
-    "qwik": "qwik"
+    "qwik": "qwik",
+    "generate:api": "npm --prefix .. run openapi:generate && openapi-typescript ../openapi.generated.json -o src/lib/shared/api/generated/api-types.ts"
   },
   "dependencies": {
     "@qwik-ui/headless": "^0.7.4",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "openapi-fetch": "^0.17.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
@@ -46,6 +48,7 @@
     "eslint": "9.39.2",
     "eslint-plugin-qwik": "^2.0.0-beta.25",
     "globals": "17.0.0",
+    "openapi-typescript": "^7.13.0",
     "prettier": "3.6.2",
     "tailwindcss": "^4.2.1",
     "typescript": "5.9.3",

@@ -118,6 +118,15 @@ services:
       - "8000:80"
       - "8443:443"
     environment:
+      - ENABLE_AUTH=1
+      - AUTH_TYPE=jwt
+      - PROSODY_AUTH_TYPE=jwt
+      - JWT_APP_ID=${JWT_APP_ID:-http://localhost:3000}
+      - JWT_APP_SECRET=${APP_MEETINGS_TOKEN_SIGNING_SECRET:-01234567890123456789012345678901}
+      - JWT_ACCEPTED_ISSUERS=${JWT_ACCEPTED_ISSUERS:-http://localhost:3000}
+      - JWT_ACCEPTED_AUDIENCES=${JWT_ACCEPTED_AUDIENCES:-jitsi-meet}
+      - JWT_ALLOW_EMPTY=0
+      - ENABLE_GUESTS=0
       - ENABLE_LETSENCRYPT=0
       - PUBLIC_URL=https://localhost:8443
       - XMPP_DOMAIN=meet.jitsi
@@ -134,6 +143,8 @@ services:
       - TZ=UTC
     volumes:
       - ./pilot/jitsi/web/custom-config.js:/config/custom-config.js:ro
+      - ./pilot/jitsi/web/close.js:/usr/share/jitsi-meet/static/close.js:ro
+      - ./pilot/jitsi/config/web/keys:/config/keys:ro
     depends_on:
       - jitsi-prosody
       - jitsi-jicofo
@@ -147,6 +158,15 @@ services:
   jitsi-prosody:
     image: jitsi/prosody:stable-10741
     environment:
+      - ENABLE_AUTH=1
+      - AUTH_TYPE=jwt
+      - PROSODY_AUTH_TYPE=jwt
+      - JWT_APP_ID=${JWT_APP_ID:-http://localhost:3000}
+      - JWT_APP_SECRET=${APP_MEETINGS_TOKEN_SIGNING_SECRET:-01234567890123456789012345678901}
+      - JWT_ACCEPTED_ISSUERS=${JWT_ACCEPTED_ISSUERS:-http://localhost:3000}
+      - JWT_ACCEPTED_AUDIENCES=${JWT_ACCEPTED_AUDIENCES:-jitsi-meet}
+      - JWT_ALLOW_EMPTY=0
+      - ENABLE_GUESTS=0
       - XMPP_DOMAIN=meet.jitsi
       - XMPP_AUTH_DOMAIN=auth.meet.jitsi
       - XMPP_MUC_DOMAIN=muc.meet.jitsi
@@ -175,6 +195,9 @@ services:
   jitsi-jicofo:
     image: jitsi/jicofo:stable-10741
     environment:
+      - ENABLE_AUTH=1
+      - AUTH_TYPE=jwt
+      - PROSODY_AUTH_TYPE=jwt
       - JICOFO_AUTH_USER=focus
       - JICOFO_AUTH_PASSWORD=focus
       - XMPP_DOMAIN=meet.jitsi
@@ -193,6 +216,9 @@ services:
   jitsi-jvb:
     image: jitsi/jvb:stable-10741
     environment:
+      - ENABLE_AUTH=1
+      - AUTH_TYPE=jwt
+      - PROSODY_AUTH_TYPE=jwt
       - JVB_AUTH_USER=jvb
       - JVB_AUTH_PASSWORD=jvb
       - XMPP_DOMAIN=meet.jitsi

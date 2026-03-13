@@ -1,10 +1,9 @@
 package com.acme.jitsi.domains.meetings.usecase;
 
-import com.acme.jitsi.domains.rooms.service.Room;
 import java.time.Instant;
 
 public record CreateMeetingCommand(
-    Room room,
+    String roomId,
     String title,
     String description,
     String meetingType,

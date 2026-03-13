@@ -98,7 +98,7 @@ describe("auth.service runtime: fetchAuthMe", () => {
             displayName: "Dev Admin",
             email: "dev@example.com",
             tenant: "acme",
-            claims: ["host", 42, "moderator", null],
+            claims: ["host", "moderator"],
           },
           200,
         ),
@@ -119,6 +119,30 @@ describe("auth.service runtime: fetchAuthMe", () => {
       email: "dev@example.com",
       tenant: "acme",
       claims: ["host", "moderator"],
+    });
+  });
+
+  it("throws AUTH_RESPONSE_INVALID when claims contract drifts from string array", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse(
+        {
+          id: "u-1",
+          displayName: "Dev Admin",
+          email: "dev@example.com",
+          tenant: "acme",
+          claims: { ROLE_admin: "ROLE_admin" },
+        },
+        200,
+      ),
+    );
+
+    await expect(
+      fetchAuthMe("session-123", "http://localhost:8080/api/v1"),
+    ).rejects.toMatchObject({
+      name: "AuthServiceError",
+      payload: {
+        errorCode: "AUTH_RESPONSE_INVALID",
+      },
     });
   });
 

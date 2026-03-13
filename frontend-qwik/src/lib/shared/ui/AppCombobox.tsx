@@ -1,35 +1,46 @@
-import { component$, type JSXOutput, type QRL } from "@qwik.dev/core";
+import { component$, type QRL } from "@qwik.dev/core";
 import { Combobox } from "@qwik-ui/headless";
+import { comboboxA11yDefaults, sharedFocusVisibleAttrs } from "./a11y";
+import { asHeadlessComponent } from "./headless-typing";
 
-type ShimComponent = (
-  props: Record<string, unknown>,
-  key: string | null,
-  flags: number,
-  dev?: unknown,
-) => JSXOutput;
-
-const ComboboxRoot = Combobox.Root as unknown as ShimComponent;
-const ComboboxLabel = Combobox.Label as unknown as ShimComponent;
-const ComboboxControl = Combobox.Control as unknown as ShimComponent;
-const ComboboxInput = Combobox.Input as unknown as ShimComponent;
-const ComboboxTrigger = Combobox.Trigger as unknown as ShimComponent;
-const ComboboxPopover = Combobox.Popover as unknown as ShimComponent;
-const ComboboxItem = Combobox.Item as unknown as ShimComponent;
-const ComboboxItemLabel = Combobox.ItemLabel as unknown as ShimComponent;
-const ComboboxItemIndicator = Combobox.ItemIndicator as unknown as ShimComponent;
+const ComboboxRoot = asHeadlessComponent(Combobox.Root);
+const ComboboxLabel = asHeadlessComponent(Combobox.Label);
+const ComboboxControl = asHeadlessComponent(Combobox.Control);
+const ComboboxInput = asHeadlessComponent(Combobox.Input);
+const ComboboxTrigger = asHeadlessComponent(Combobox.Trigger);
+const ComboboxPopover = asHeadlessComponent(Combobox.Popover);
+const ComboboxItem = asHeadlessComponent(Combobox.Item);
+const ComboboxItemLabel = asHeadlessComponent(Combobox.ItemLabel);
+const ComboboxItemIndicator = asHeadlessComponent(Combobox.ItemIndicator);
 
 export interface AppComboboxItem<TValue extends string = string> {
   value: TValue;
   label: string;
 }
 
-export interface AppComboboxProps<TValue extends string = string> {
+interface ComboboxRootProps {
+  name?: string;
+  loop?: boolean;
+  [key: string]: unknown;
+}
+
+export interface AppComboboxProps<TValue extends string = string> extends ComboboxRootProps {
   items: AppComboboxItem<TValue>[];
   value?: TValue;
   onChange$?: QRL<(value: TValue) => void>;
   placeholder?: string;
   disabled?: boolean;
   label?: string;
+  triggerLabel?: string;
+}
+
+export async function forwardComboboxValue<TValue extends string = string>(
+  nextValue: unknown,
+  onChange$?: QRL<(value: TValue) => void>,
+): Promise<void> {
+  if (onChange$ && typeof nextValue === "string") {
+    await onChange$(nextValue as TValue);
+  }
 }
 
 export const AppCombobox = component$(
@@ -40,26 +51,26 @@ export const AppCombobox = component$(
     placeholder = "Выберите значение",
     disabled = false,
     label,
+    triggerLabel = comboboxA11yDefaults.triggerLabel,
+    ...rootProps
   }: AppComboboxProps<TValue>) => {
     return (
       <ComboboxRoot
+        {...rootProps}
         value={value}
         filter
         disabled={disabled}
-        onChange$={async (nextValue: unknown) => {
-          if (onChange$ && typeof nextValue === "string") {
-            await onChange$(nextValue as TValue);
-          }
-        }}
+        onChange$={async (nextValue: unknown) => forwardComboboxValue(nextValue, onChange$)}
       >
         {label ? <ComboboxLabel class="text-sm font-medium text-text">{label}</ComboboxLabel> : null}
 
         <ComboboxControl class="mt-1 flex items-center border border-border rounded-md bg-surface">
           <ComboboxInput
+            {...sharedFocusVisibleAttrs}
             class="w-full bg-transparent px-3 py-2 text-text placeholder:text-muted"
             placeholder={placeholder}
           />
-          <ComboboxTrigger class="px-3 py-2 text-muted" aria-label="Открыть список">
+          <ComboboxTrigger {...sharedFocusVisibleAttrs} class="px-3 py-2 text-muted" aria-label={triggerLabel}>
             <span aria-hidden="true">▾</span>
           </ComboboxTrigger>
         </ComboboxControl>

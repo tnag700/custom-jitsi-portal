@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
-import java.time.Instant;
+import com.acme.jitsi.shared.TestFixtures;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +28,7 @@ class RoomServiceTest {
 
   @Test
   void getRoomReturnsEntity() {
-    Room room = new Room("room-1", "Room", null, "tenant-1", "config-1", RoomStatus.ACTIVE, Instant.now(), Instant.now());
+    Room room = TestFixtures.room();
     when(roomRepository.findById("room-1")).thenReturn(Optional.of(room));
 
     Room found = roomService.getRoom("room-1");

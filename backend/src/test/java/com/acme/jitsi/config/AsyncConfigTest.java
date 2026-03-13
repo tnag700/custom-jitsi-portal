@@ -12,24 +12,34 @@ class AsyncConfigTest {
 
   @Test
   void testGetAsyncExecutor() {
-    AsyncConfig config = new AsyncConfig();
+    AsyncConfig config = new AsyncConfig(2, 10, 500);
     Executor executor = config.getAsyncExecutor();
-    
+
     assertNotNull(executor);
-    assertTrue(executor instanceof ThreadPoolTaskExecutor);
-    
+    assertInstanceOf(ThreadPoolTaskExecutor.class, executor);
+
     ThreadPoolTaskExecutor taskExecutor = (ThreadPoolTaskExecutor) executor;
     assertEquals("AsyncEvent-", taskExecutor.getThreadNamePrefix());
     assertEquals(2, taskExecutor.getCorePoolSize());
     assertEquals(10, taskExecutor.getMaxPoolSize());
+    assertEquals(500, taskExecutor.getQueueCapacity());
   }
 
   @Test
   void testGetAsyncUncaughtExceptionHandler() {
-    AsyncConfig config = new AsyncConfig();
+    AsyncConfig config = new AsyncConfig(2, 10, 500);
     AsyncUncaughtExceptionHandler handler = config.getAsyncUncaughtExceptionHandler();
-    
+
     assertNotNull(handler);
-    assertTrue(handler instanceof AsyncConfig.CustomAsyncExceptionHandler);
+    assertInstanceOf(AsyncConfig.CustomAsyncExceptionHandler.class, handler);
+  }
+
+  @Test
+  void testConstructorRejectsInvalidParams() {
+    assertThrows(IllegalArgumentException.class, () -> new AsyncConfig(0, 10, 500));
+    assertThrows(IllegalArgumentException.class, () -> new AsyncConfig(10, 5, 500));
+    assertThrows(IllegalArgumentException.class, () -> new AsyncConfig(2, 10, 0));
+    assertThrows(IllegalArgumentException.class, () -> new AsyncConfig(2, 10, -1));
+    assertThrows(IllegalArgumentException.class, () -> new AsyncConfig(-1, 10, 500));
   }
 }

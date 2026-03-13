@@ -1,5 +1,6 @@
 package com.acme.jitsi.domains.auth.service;
 
+import com.acme.jitsi.shared.ErrorCode;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -88,7 +89,7 @@ class RedisRefreshTokenStore implements RefreshTokenStore {
     } catch (DataAccessException ex) {
       throw new RetryableRefreshTokenException(
           org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
-          "CONFIG_INCOMPATIBLE",
+          ErrorCode.CONFIG_INCOMPATIBLE.code(),
           "Redis недоступен для атомарного учета токенов.",
           ex);
     }
@@ -115,7 +116,7 @@ class RedisRefreshTokenStore implements RefreshTokenStore {
     } catch (DataAccessException ex) {
       throw new RetryableRefreshTokenException(
           org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
-          "CONFIG_INCOMPATIBLE",
+          ErrorCode.CONFIG_INCOMPATIBLE.code(),
           "Redis недоступен для атомарного учета токенов.",
           ex);
     }
@@ -128,7 +129,7 @@ class RedisRefreshTokenStore implements RefreshTokenStore {
     } catch (DataAccessException ex) {
       throw new RetryableRefreshTokenException(
           org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
-          "CONFIG_INCOMPATIBLE",
+          ErrorCode.CONFIG_INCOMPATIBLE.code(),
           "Redis недоступен для атомарного учета токенов.",
           ex);
     }
@@ -159,7 +160,7 @@ class RedisRefreshTokenStore implements RefreshTokenStore {
     } catch (DataAccessException ex) {
       throw new RetryableRefreshTokenException(
           org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
-          "CONFIG_INCOMPATIBLE",
+          ErrorCode.CONFIG_INCOMPATIBLE.code(),
           "Redis недоступен для атомарного учета токенов.",
           ex);
     }

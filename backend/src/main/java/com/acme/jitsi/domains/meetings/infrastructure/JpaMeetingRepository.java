@@ -20,14 +20,7 @@ class JpaMeetingRepository implements MeetingRepository {
 
   @Override
   public Meeting save(Meeting meeting) {
-    MeetingEntity entity = jpaRepository.findById(meeting.meetingId())
-        .map(existing -> {
-          existing.updateFrom(meeting);
-          return existing;
-        })
-        .orElseGet(() -> new MeetingEntity(meeting));
-
-    return jpaRepository.save(entity).toDomain();
+    return jpaRepository.save(new MeetingEntity(meeting)).toDomain();
   }
 
   @Override

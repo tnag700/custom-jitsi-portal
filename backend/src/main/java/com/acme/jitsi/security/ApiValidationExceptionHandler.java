@@ -1,5 +1,6 @@
 package com.acme.jitsi.security;
 
+import com.acme.jitsi.shared.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
@@ -78,7 +79,7 @@ public class ApiValidationExceptionHandler {
   private String resolveValidationErrorCode(List<FieldError> fieldErrors, String requestUri) {
     boolean hasRoleError = hasRoleFieldError(fieldErrors);
     if (hasRoleError && isMeetingsApiRequest(requestUri)) {
-      return "INVALID_ROLE";
+      return ErrorCode.INVALID_ROLE.code();
     }
 
     return problemDetailsMappingPolicy.resolveValidationErrorCode(requestUri);

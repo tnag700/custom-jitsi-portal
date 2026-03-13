@@ -8,7 +8,6 @@ import java.util.Set;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.stream.Collectors;
-import com.acme.jitsi.domains.rooms.service.RoomService;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -19,19 +18,19 @@ class ConfiguredUpcomingMeetingsService implements UpcomingMeetingsReader {
   private final MeetingTokenProperties properties;
   private final MeetingParticipantAssignmentRepository assignmentRepository;
   private final MeetingService meetingService;
-  private final RoomService roomService;
+  private final MeetingRoomsPort meetingRoomsPort;
   private final Clock clock;
 
   ConfiguredUpcomingMeetingsService(
       MeetingTokenProperties properties,
       MeetingParticipantAssignmentRepository assignmentRepository,
       MeetingService meetingService,
-      RoomService roomService,
+      MeetingRoomsPort meetingRoomsPort,
       Clock clock) {
     this.properties = properties;
     this.assignmentRepository = assignmentRepository;
     this.meetingService = meetingService;
-    this.roomService = roomService;
+    this.meetingRoomsPort = meetingRoomsPort;
     this.clock = clock;
   }
 
@@ -99,7 +98,7 @@ class ConfiguredUpcomingMeetingsService implements UpcomingMeetingsReader {
 
   private String safeResolveRoomName(String roomId) {
     try {
-      return roomService.getRoom(roomId).name();
+      return meetingRoomsPort.getRequiredRoom(roomId).name();
     } catch (RuntimeException ignored) {
       return roomId;
     }

@@ -1,9 +1,21 @@
-import { baseHeaders, mutationHeaders } from "~/lib/domains/meetings/meetings.service";
 import type {
+  JoinReadinessPayload,
   JoinErrorPayload,
   MeetingAccessTokenResponse,
   UpcomingMeetingCard,
 } from "./types";
+import {
+  createApiClient,
+  adaptProblemDetails,
+  joinReadinessResponseSchema,
+  meetingAccessTokenResponseSchema,
+  upcomingMeetingCardSchema,
+} from "../../shared/api";
+import type {
+  MutationRequestContext,
+  ServerRequestContext,
+} from "../../shared/routes/server-handlers";
+import { asMutationRequestContext, asServerRequestContext } from "../../shared/routes/server-handlers";
 
 export class JoinServiceError extends Error {
   payload: JoinErrorPayload;
@@ -24,75 +36,120 @@ function fallbackJoinErrorCode(status: number): string {
   return "JOIN_UNKNOWN";
 }
 
-interface ProblemDetailsLike {
-  title?: unknown;
-  detail?: unknown;
-  errorCode?: unknown;
-  traceId?: unknown;
-}
-
-async function readProblemDetails(response: Response): Promise<ProblemDetailsLike> {
+function parseOrThrow<T>(parseFn: (d: unknown) => T, data: unknown, endpoint: string): T {
   try {
-    return (await response.json()) as ProblemDetailsLike;
-  } catch {
-    return {};
+    return parseFn(data);
+  } catch (e) {
+    throw new JoinServiceError({
+      title: "Неожиданный формат ответа",
+      detail: `${endpoint}: ${e instanceof Error ? e.message : "неверный формат ответа"}`,
+      errorCode: "JOIN_RESPONSE_INVALID",
+    });
   }
 }
 
 export async function adaptJoinProblemDetails(response: Response): Promise<JoinErrorPayload> {
-  const problem = await readProblemDetails(response);
-  const errorCode =
-    typeof problem.errorCode === "string" && problem.errorCode.length > 0
-      ? problem.errorCode
-      : fallbackJoinErrorCode(response.status);
-
-  return {
-    title:
-      typeof problem.title === "string" && problem.title.length > 0
-        ? problem.title
-        : "Ошибка входа во встречу",
-    detail:
-      typeof problem.detail === "string" && problem.detail.length > 0
-        ? problem.detail
-        : "Не удалось войти во встречу.",
-    errorCode,
-    traceId:
-      typeof problem.traceId === "string" && problem.traceId.length > 0
-        ? problem.traceId
-        : undefined,
-  };
+  return adaptProblemDetails(
+    response,
+    response.status,
+    fallbackJoinErrorCode,
+    "Ошибка входа во встречу",
+    "Не удалось войти во встречу.",
+  );
 }
 
+export function fetchUpcomingMeetings(context: ServerRequestContext): Promise<UpcomingMeetingCard[]>;
+export function fetchUpcomingMeetings(sessionCookie: string, apiUrl: string): Promise<UpcomingMeetingCard[]>;
 export async function fetchUpcomingMeetings(
-  sessionCookie: string,
-  apiUrl: string,
+  contextOrSessionCookie: ServerRequestContext | string,
+  apiUrl?: string,
 ): Promise<UpcomingMeetingCard[]> {
-  const response = await fetch(`${apiUrl}/meetings/upcoming`, {
+  const context = asServerRequestContext(contextOrSessionCookie, apiUrl);
+  const client = createApiClient(context.apiUrl);
+  const { data, error, response } = await client.GET("/api/v1/meetings/upcoming", {
+    headers: context.headers,
+  });
+
+  if (!response.ok || error) {
+    throw new JoinServiceError(
+      await adaptProblemDetails(
+        error ?? response,
+        response.status,
+        fallbackJoinErrorCode,
+        "Ошибка входа во встречу",
+        "Не удалось войти во встречу.",
+      ),
+    );
+  }
+
+  return parseOrThrow((d) => upcomingMeetingCardSchema.array().parse(d), data, "GET /api/v1/meetings/upcoming");
+}
+
+export function fetchJoinReadiness(context: ServerRequestContext): Promise<JoinReadinessPayload>;
+export function fetchJoinReadiness(apiUrl: string): Promise<JoinReadinessPayload>;
+export async function fetchJoinReadiness(
+  contextOrApiUrl: ServerRequestContext | string,
+): Promise<JoinReadinessPayload> {
+  const context = typeof contextOrApiUrl === "string"
+    ? { apiUrl: contextOrApiUrl, headers: {} }
+    : contextOrApiUrl;
+  const response = await fetch(`${context.apiUrl}/health/join-readiness`, {
     method: "GET",
-    headers: baseHeaders(sessionCookie),
+    headers: context.headers,
   });
 
   if (!response.ok) {
-    throw new JoinServiceError(await adaptJoinProblemDetails(response));
+    throw new JoinServiceError(
+      await adaptProblemDetails(
+        response,
+        response.status,
+        fallbackJoinErrorCode,
+        "Ошибка preflight перед входом",
+        "Не удалось получить готовность к входу.",
+      ),
+    );
   }
 
-  return (await response.json()) as UpcomingMeetingCard[];
+  const data = await response.json();
+  return parseOrThrow((payload) => joinReadinessResponseSchema.parse(payload), data, "GET /api/v1/health/join-readiness");
 }
 
-export async function issueAccessToken(
+export function issueAccessToken(context: MutationRequestContext, meetingId: string): Promise<MeetingAccessTokenResponse>;
+export function issueAccessToken(
   sessionCookie: string,
   apiUrl: string,
   csrfToken: string,
   meetingId: string,
+): Promise<MeetingAccessTokenResponse>;
+export async function issueAccessToken(
+  contextOrSessionCookie: MutationRequestContext | string,
+  apiUrlOrMeetingId: string,
+  csrfToken?: string,
+  meetingId?: string,
 ): Promise<MeetingAccessTokenResponse> {
-  const response = await fetch(`${apiUrl}/meetings/${encodeURIComponent(meetingId)}/access-token`, {
-    method: "POST",
-    headers: mutationHeaders(sessionCookie, csrfToken),
+  const context = asMutationRequestContext(
+    contextOrSessionCookie,
+    typeof contextOrSessionCookie === "string" ? apiUrlOrMeetingId : undefined,
+    csrfToken,
+  );
+  const resolvedMeetingId = typeof contextOrSessionCookie === "string" ? meetingId ?? "" : apiUrlOrMeetingId;
+  const client = createApiClient(context.apiUrl);
+  const { data, error, response } = await client.POST("/api/v1/meetings/{meetingId}/access-token", {
+    headers: context.headers,
+    params: { path: { meetingId: resolvedMeetingId } },
   });
 
-  if (!response.ok) {
-    throw new JoinServiceError(await adaptJoinProblemDetails(response));
+  if (!response.ok || error) {
+    throw new JoinServiceError(
+      await adaptProblemDetails(
+        error ?? response,
+        response.status,
+        fallbackJoinErrorCode,
+        "Ошибка входа во встречу",
+        "Не удалось войти во встречу.",
+      ),
+    );
   }
 
-  return (await response.json()) as MeetingAccessTokenResponse;
+  return parseOrThrow((d) => meetingAccessTokenResponseSchema.parse(d), data, "POST /api/v1/meetings/{meetingId}/access-token");
 }

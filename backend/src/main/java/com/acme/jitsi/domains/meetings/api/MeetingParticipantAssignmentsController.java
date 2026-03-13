@@ -3,18 +3,15 @@ package com.acme.jitsi.domains.meetings.api;
 import com.acme.jitsi.domains.meetings.service.Meeting;
 import com.acme.jitsi.domains.meetings.service.MeetingParticipantAssignment;
 import com.acme.jitsi.domains.meetings.service.MeetingParticipantAssignmentService;
-import com.acme.jitsi.domains.profiles.service.UserProfile;
-import com.acme.jitsi.domains.profiles.service.UserProfileService;
-import com.acme.jitsi.domains.rooms.service.Room;
-import com.acme.jitsi.domains.rooms.service.RoomService;
+import com.acme.jitsi.domains.meetings.service.MeetingProfileSnapshot;
+import com.acme.jitsi.domains.meetings.service.MeetingProfilesPort;
+import com.acme.jitsi.domains.meetings.service.MeetingRoomsPort;
 import com.acme.jitsi.security.ProblemResponseFacade;
 import com.acme.jitsi.security.TenantAccessGuard;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -33,22 +30,22 @@ import org.springframework.web.bind.annotation.RestController;
 class MeetingParticipantAssignmentsController {
 
   private final MeetingParticipantAssignmentService assignmentService;
-  private final RoomService roomService;
+  private final MeetingRoomsPort meetingRoomsPort;
   private final TenantAccessGuard tenantAccessGuard;
   private final ProblemResponseFacade problemResponseFacade;
-  private final UserProfileService userProfileService;
+  private final MeetingProfilesPort meetingProfilesPort;
 
   MeetingParticipantAssignmentsController(
       MeetingParticipantAssignmentService assignmentService,
-      RoomService roomService,
+      MeetingRoomsPort meetingRoomsPort,
       TenantAccessGuard tenantAccessGuard,
       ProblemResponseFacade problemResponseFacade,
-      UserProfileService userProfileService) {
+      MeetingProfilesPort meetingProfilesPort) {
     this.assignmentService = assignmentService;
-    this.roomService = roomService;
+    this.meetingRoomsPort = meetingRoomsPort;
     this.tenantAccessGuard = tenantAccessGuard;
     this.problemResponseFacade = problemResponseFacade;
-    this.userProfileService = userProfileService;
+    this.meetingProfilesPort = meetingProfilesPort;
   }
 
   @GetMapping("/meetings/{meetingId}/participants")
@@ -63,12 +60,11 @@ class MeetingParticipantAssignmentsController {
     List<String> subjectIds = assignments.stream()
         .map(MeetingParticipantAssignment::subjectId)
         .toList();
-    Map<String, UserProfile> profilesBySubjectId = userProfileService.findBySubjectIds(subjectIds).stream()
-        .collect(Collectors.toMap(UserProfile::subjectId, Function.identity()));
+    Map<String, MeetingProfileSnapshot> profilesBySubjectId = meetingProfilesPort.findBySubjectIds(subjectIds);
 
     return assignments.stream()
         .map(a -> {
-          UserProfile profile = profilesBySubjectId.get(a.subjectId());
+        MeetingProfileSnapshot profile = profilesBySubjectId.get(a.subjectId());
           if (profile != null) {
             return ParticipantAssignmentResponse.fromDomainWithProfile(
                 a, profile.fullName(), profile.organization(), profile.position());
@@ -175,8 +171,7 @@ class MeetingParticipantAssignmentsController {
    */
   private Meeting validateTenantAccess(String meetingId, OAuth2User principal) {
     Meeting meeting = assignmentService.getMeeting(meetingId);
-    Room room = roomService.getRoom(meeting.roomId());
-    tenantAccessGuard.assertAccess(room.tenantId(), principal);
+    tenantAccessGuard.assertAccess(meetingRoomsPort.getRequiredRoom(meeting.roomId()).tenantId(), principal);
 
     return meeting;
   }

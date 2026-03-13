@@ -1,5 +1,7 @@
 package com.acme.jitsi.domains.invites.api;
 
+import com.acme.jitsi.shared.ErrorCode;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -142,8 +144,8 @@ class InviteExchangeControllerTest {
             .content("{" + "\"inviteToken\":\"invite-exhausted\"}"))
         .andExpect(status().isConflict())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("INVITE_EXHAUSTED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-exhausted"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVITE_EXHAUSTED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-exhausted"));
   }
 
   @Test
@@ -161,8 +163,8 @@ class InviteExchangeControllerTest {
             .content("{" + "\"inviteToken\":\"invite-consumed\"}"))
         .andExpect(status().isConflict())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("INVITE_EXHAUSTED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-consumed"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVITE_EXHAUSTED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-consumed"));
   }
 
       @Test
@@ -174,8 +176,8 @@ class InviteExchangeControllerTest {
         .content("{" + "\"inviteToken\":\"invite-revoked\"}"))
           .andExpect(status().isGone())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-          .andExpect(jsonPath("$.properties.errorCode").value("INVITE_REVOKED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-revoked"));
+          .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVITE_REVOKED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-revoked"));
       }
 
   @Test
@@ -187,8 +189,8 @@ class InviteExchangeControllerTest {
             .content("{" + "\"inviteToken\":\"invite-expired\"}"))
         .andExpect(status().isGone())
       .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("INVITE_EXPIRED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-expired"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVITE_EXPIRED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-expired"));
   }
 
   @Test
@@ -198,21 +200,21 @@ class InviteExchangeControllerTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content("{" + "\"inviteToken\":\"invite-closed\"}"))
         .andExpect(status().isConflict())
-      .andExpect(jsonPath("$.properties.errorCode").value("MEETING_ENDED"));
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.MEETING_ENDED.code()));
 
     mockMvc.perform(post("/api/v1/invites/exchange")
         .with(csrf())
         .contentType(MediaType.APPLICATION_JSON)
         .content("{" + "\"inviteToken\":\"invite-canceled\"}"))
       .andExpect(status().isConflict())
-      .andExpect(jsonPath("$.properties.errorCode").value("MEETING_CANCELED"));
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.MEETING_CANCELED.code()));
 
     mockMvc.perform(post("/api/v1/invites/exchange")
             .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content("{" + "\"inviteToken\":\"invite-missing-meeting\"}"))
         .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.properties.errorCode").value("MEETING_NOT_FOUND"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.MEETING_NOT_FOUND.code()));
   }
 
   @Test
@@ -244,8 +246,8 @@ class InviteExchangeControllerTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content("{" + "\"inviteToken\":\"invite-unknown\"}"))
         .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.properties.errorCode").value("INVALID_INVITE"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-invalid"));
+          .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVITE_NOT_FOUND.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-invalid"));
   }
 
   @Test
@@ -256,8 +258,8 @@ class InviteExchangeControllerTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content("{" + "\"inviteToken\":\"\"}"))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.properties.errorCode").value("INVALID_INVITE"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-blank"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVALID_INVITE.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-blank"));
   }
 
   private String extractToken(String joinUrl) {
@@ -281,3 +283,4 @@ class InviteExchangeControllerTest {
     throw new IllegalStateException("JWT token is missing in joinUrl fragment");
   }
 }
+

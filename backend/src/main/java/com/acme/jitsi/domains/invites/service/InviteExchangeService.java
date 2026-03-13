@@ -1,9 +1,11 @@
 package com.acme.jitsi.domains.invites.service;
 
-import com.acme.jitsi.domains.meetings.service.MeetingTokenIssuer;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
+import com.acme.jitsi.shared.ErrorCode;
+import com.acme.jitsi.shared.observability.FlowObservationFacade;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,37 +17,76 @@ public class InviteExchangeService {
   public record ValidationResult(String meetingId) {
   }
 
-    private final InviteValidationPort inviteValidationService;
-  private final MeetingTokenIssuer meetingAccessTokenService;
+  private final InviteValidationCapability inviteValidationCapability;
+  private final InviteReservationCapability inviteReservationCapability;
+  private final InviteJoinPort inviteJoinPort;
+  private final FlowObservationFacade flowObservationFacade;
 
   InviteExchangeService(
-      InviteValidationPort inviteValidationService,
-      MeetingTokenIssuer meetingAccessTokenService) {
-    this.inviteValidationService = inviteValidationService;
-    this.meetingAccessTokenService = meetingAccessTokenService;
+      InviteValidationCapability inviteValidationCapability,
+      InviteReservationCapability inviteReservationCapability,
+      InviteJoinPort inviteJoinPort) {
+    this(
+        inviteValidationCapability,
+        inviteReservationCapability,
+        inviteJoinPort,
+        FlowObservationFacade.noop());
+  }
+
+  @Autowired
+  InviteExchangeService(
+      InviteValidationCapability inviteValidationCapability,
+      InviteReservationCapability inviteReservationCapability,
+      InviteJoinPort inviteJoinPort,
+      FlowObservationFacade flowObservationFacade) {
+    this.inviteValidationCapability = inviteValidationCapability;
+    this.inviteReservationCapability = inviteReservationCapability;
+    this.inviteJoinPort = inviteJoinPort;
+    this.flowObservationFacade = flowObservationFacade;
   }
 
   public ExchangeResult exchange(String inviteToken, String displayName) {
-    InviteValidationService.InviteReservation reservation = inviteValidationService.reserve(inviteToken);
-    String guestSubject = buildGuestSubject(displayName);
+    return flowObservationFacade.observe("invite.exchange", observation -> {
+      observation.guest(true).rollback("skipped");
 
-    MeetingTokenIssuer.TokenResult tokenResult;
-    try {
-      tokenResult = meetingAccessTokenService.issueGuestToken(reservation.meetingId(), guestSubject);
-    } catch (RuntimeException ex) {
-      inviteValidationService.rollback(reservation);
-      throw ex;
-    }
+      InviteReservation reservation;
+      try {
+        observation.stage("validate");
+        reservation = inviteReservationCapability.reserve(inviteToken);
+      } catch (RuntimeException ex) {
+        classifyReservationFailure(observation, ex);
+        throw ex;
+      }
 
-    return new ExchangeResult(
-        tokenResult.joinUrl(),
-        tokenResult.expiresAt(),
-        tokenResult.role(),
-        reservation.meetingId());
+      String guestSubject = buildGuestSubject(displayName);
+
+      InviteJoinPort.JoinResult tokenResult;
+      try {
+        observation.stage("issue_token");
+        tokenResult = inviteJoinPort.issueGuestJoin(reservation.meetingId(), guestSubject);
+        observation.outcome("success");
+      } catch (RuntimeException ex) {
+        observation.outcome("partial_failure").stage("issue_token");
+        try {
+          inviteReservationCapability.rollback(reservation);
+          observation.rollback("performed");
+        } catch (RuntimeException rollbackEx) {
+          observation.rollback("failed");
+          ex.addSuppressed(rollbackEx);
+        }
+        throw ex;
+      }
+
+      return new ExchangeResult(
+          tokenResult.joinUrl(),
+          tokenResult.expiresAt(),
+          tokenResult.role(),
+          reservation.meetingId());
+    });
   }
 
   public ValidationResult validate(String inviteToken) {
-    InviteValidationService.InviteResolution resolution = inviteValidationService.validate(inviteToken);
+    InviteValidationResult resolution = inviteValidationCapability.validate(inviteToken);
     return new ValidationResult(resolution.meetingId());
   }
 
@@ -54,5 +95,18 @@ public class InviteExchangeService {
       return "guest:" + UUID.randomUUID();
     }
     return "guest:" + displayName.trim().replaceAll("\\s+", "-").toLowerCase(Locale.ROOT) + ":" + UUID.randomUUID();
+  }
+
+  private void classifyReservationFailure(FlowObservationFacade.FlowObservation observation, RuntimeException ex) {
+    observation.rollback("skipped");
+    if (ex instanceof InviteExchangeException inviteExchangeException) {
+      if (ErrorCode.INVITE_EXHAUSTED.code().equals(inviteExchangeException.errorCode())) {
+        observation.outcome("contention").stage("reserve");
+        return;
+      }
+      observation.outcome("validation_failure").stage("validate");
+      return;
+    }
+    observation.outcome("partial_failure").stage("reserve");
   }
 }

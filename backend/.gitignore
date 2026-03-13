@@ -1,5 +1,6 @@
 /build/
 /.gradle/
+/.gradle-tmp-userhome/
 /out/
 /bin/
 *.class

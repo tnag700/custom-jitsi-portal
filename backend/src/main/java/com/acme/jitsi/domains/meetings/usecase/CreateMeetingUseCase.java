@@ -4,13 +4,12 @@ import com.acme.jitsi.domains.meetings.event.MeetingCreatedEvent;
 import com.acme.jitsi.domains.meetings.service.InvalidMeetingDataException;
 import com.acme.jitsi.domains.meetings.service.InvalidMeetingScheduleException;
 import com.acme.jitsi.domains.meetings.service.Meeting;
+import com.acme.jitsi.domains.meetings.service.MeetingConfigSetInvalidException;
 import com.acme.jitsi.domains.meetings.service.MeetingRepository;
+import com.acme.jitsi.domains.meetings.service.MeetingRoomSnapshot;
 import com.acme.jitsi.domains.meetings.service.MeetingRoomInactiveException;
+import com.acme.jitsi.domains.meetings.service.MeetingRoomsPort;
 import com.acme.jitsi.domains.meetings.service.MeetingStatus;
-import com.acme.jitsi.domains.rooms.service.ConfigSetInvalidException;
-import com.acme.jitsi.domains.rooms.service.ConfigSetValidator;
-import com.acme.jitsi.domains.rooms.service.Room;
-import com.acme.jitsi.domains.rooms.service.RoomStatus;
 import com.acme.jitsi.infrastructure.usecase.UseCase;
 import java.time.Clock;
 import java.time.Instant;
@@ -26,17 +25,17 @@ public class CreateMeetingUseCase implements UseCase<CreateMeetingCommand, Meeti
       "title,description,meetingType,startsAt,endsAt,allowGuests,recordingEnabled";
 
   private final MeetingRepository meetingRepository;
-  private final ConfigSetValidator configSetValidator;
+  private final MeetingRoomsPort meetingRoomsPort;
   private final ApplicationEventPublisher eventPublisher;
   private final Clock clock;
 
   public CreateMeetingUseCase(
       MeetingRepository meetingRepository,
-      ConfigSetValidator configSetValidator,
+      MeetingRoomsPort meetingRoomsPort,
       ApplicationEventPublisher eventPublisher,
       Clock clock) {
     this.meetingRepository = meetingRepository;
-    this.configSetValidator = configSetValidator;
+    this.meetingRoomsPort = meetingRoomsPort;
     this.eventPublisher = eventPublisher;
     this.clock = clock;
   }
@@ -44,9 +43,9 @@ public class CreateMeetingUseCase implements UseCase<CreateMeetingCommand, Meeti
   @Override
   @Transactional
   public Meeting execute(CreateMeetingCommand command) {
-    Room room = command.room();
+    MeetingRoomSnapshot room = meetingRoomsPort.getRequiredRoom(command.roomId());
     validateRoomIsActive(room);
-    validateRoomConfigSet(room.configSetId());
+    validateRoomConfigSet(room);
     validateSchedule(command.startsAt(), command.endsAt());
 
     Instant now = Instant.now(clock);
@@ -68,7 +67,7 @@ public class CreateMeetingUseCase implements UseCase<CreateMeetingCommand, Meeti
     Meeting saved = meetingRepository.save(meeting);
 
     eventPublisher.publishEvent(new MeetingCreatedEvent(
-        command.room().roomId(),
+      room.roomId(),
         saved.meetingId(),
         command.actorId(),
         command.traceId(),
@@ -83,15 +82,15 @@ public class CreateMeetingUseCase implements UseCase<CreateMeetingCommand, Meeti
     }
   }
 
-  private void validateRoomIsActive(Room room) {
-    if (room.status() != RoomStatus.ACTIVE) {
+  private void validateRoomIsActive(MeetingRoomSnapshot room) {
+    if (!room.active()) {
       throw new MeetingRoomInactiveException(room.roomId());
     }
   }
 
-  private void validateRoomConfigSet(String configSetId) {
-    if (!configSetValidator.isValid(configSetId)) {
-      throw new ConfigSetInvalidException(configSetId);
+  private void validateRoomConfigSet(MeetingRoomSnapshot room) {
+    if (!room.configSetValid()) {
+      throw new MeetingConfigSetInvalidException(room.configSetId());
     }
   }
 

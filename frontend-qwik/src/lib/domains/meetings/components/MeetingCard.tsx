@@ -13,6 +13,12 @@ interface MeetingCardProps {
 export const MeetingCard = component$<MeetingCardProps>(
   ({ meeting, onEdit$, onCancel$, onParticipants$, onInvites$ }) => {
     const isScheduled = meeting.status === "scheduled";
+    const statusLabel =
+      meeting.status === "scheduled"
+        ? "Запланирована"
+        : meeting.status === "canceled"
+          ? "Отменена"
+          : "Завершена";
 
     const statusClass =
       meeting.status === "scheduled"
@@ -22,12 +28,18 @@ export const MeetingCard = component$<MeetingCardProps>(
           : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
 
     return (
-      <article class="rounded border border-border bg-surface p-4 text-text">
-        <div class="mb-2 flex items-start justify-between gap-2">
+      <article class="relative overflow-visible rounded border border-border bg-surface p-4 pt-5 text-text">
+        <span
+          class={[
+            "absolute -top-2 right-3 inline-block rounded-full px-2 py-0.5 text-xs font-medium shadow-sm",
+            statusClass,
+          ]}
+        >
+          {statusLabel}
+        </span>
+
+        <div class="mb-2 pr-16">
           <h3 class="text-lg font-semibold">{meeting.title}</h3>
-          <span class={["inline-block rounded-full px-2 py-0.5 text-xs font-medium", statusClass]}>
-            {meeting.status}
-          </span>
         </div>
 
         {meeting.description && (

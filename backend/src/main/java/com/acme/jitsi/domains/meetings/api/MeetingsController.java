@@ -1,6 +1,8 @@
 package com.acme.jitsi.domains.meetings.api;
 
 import com.acme.jitsi.domains.meetings.service.Meeting;
+import com.acme.jitsi.domains.meetings.service.MeetingRoomSnapshot;
+import com.acme.jitsi.domains.meetings.service.MeetingRoomsPort;
 import com.acme.jitsi.domains.meetings.service.MeetingService;
 import com.acme.jitsi.domains.meetings.usecase.CancelMeetingCommand;
 import com.acme.jitsi.domains.meetings.usecase.CancelMeetingUseCase;
@@ -8,8 +10,6 @@ import com.acme.jitsi.domains.meetings.usecase.CreateMeetingCommand;
 import com.acme.jitsi.domains.meetings.usecase.CreateMeetingUseCase;
 import com.acme.jitsi.domains.meetings.usecase.UpdateMeetingCommand;
 import com.acme.jitsi.domains.meetings.usecase.UpdateMeetingUseCase;
-import com.acme.jitsi.domains.rooms.service.Room;
-import com.acme.jitsi.domains.rooms.service.RoomService;
 import com.acme.jitsi.infrastructure.idempotency.Idempotent;
 import com.acme.jitsi.security.ProblemResponseFacade;
 import com.acme.jitsi.security.TenantAccessGuard;
@@ -45,7 +45,7 @@ class MeetingsController {
   private final CreateMeetingUseCase createMeetingUseCase;
   private final UpdateMeetingUseCase updateMeetingUseCase;
   private final CancelMeetingUseCase cancelMeetingUseCase;
-  private final RoomService roomService;
+  private final MeetingRoomsPort meetingRoomsPort;
   private final ProblemResponseFacade problemResponseFacade;
   private final TenantAccessGuard tenantAccessGuard;
 
@@ -54,14 +54,14 @@ class MeetingsController {
       CreateMeetingUseCase createMeetingUseCase,
       UpdateMeetingUseCase updateMeetingUseCase,
       CancelMeetingUseCase cancelMeetingUseCase,
-      RoomService roomService,
+      MeetingRoomsPort meetingRoomsPort,
       ProblemResponseFacade problemResponseFacade,
       TenantAccessGuard tenantAccessGuard) {
     this.meetingService = meetingService;
     this.createMeetingUseCase = createMeetingUseCase;
     this.updateMeetingUseCase = updateMeetingUseCase;
     this.cancelMeetingUseCase = cancelMeetingUseCase;
-    this.roomService = roomService;
+    this.meetingRoomsPort = meetingRoomsPort;
     this.problemResponseFacade = problemResponseFacade;
     this.tenantAccessGuard = tenantAccessGuard;
   }
@@ -75,11 +75,11 @@ class MeetingsController {
       HttpServletRequest httpRequest) {
     String traceId = problemResponseFacade.resolveTraceId(httpRequest);
     String subject = principal.getName();
-    Room room = roomService.getRoom(roomId);
+    MeetingRoomSnapshot room = meetingRoomsPort.getRequiredRoom(roomId);
     tenantAccessGuard.assertAccess(room.tenantId(), principal);
 
     Meeting meeting = createMeetingUseCase.execute(new CreateMeetingCommand(
-      room,
+      roomId,
       request.title(),
       request.description(),
       request.meetingType(),
@@ -108,24 +108,18 @@ class MeetingsController {
       @PathVariable("roomId") String roomId,
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "20") int size,
-      @RequestParam(name = "limit", required = false) Integer limit,
-      @RequestParam(name = "offset", required = false) Integer offset,
       @AuthenticationPrincipal OAuth2User principal) {
-    Room room = roomService.getRoom(roomId);
+    MeetingRoomSnapshot room = meetingRoomsPort.getRequiredRoom(roomId);
     tenantAccessGuard.assertAccess(room.tenantId(), principal);
 
-    int resolvedPage = (offset != null && limit != null && limit > 0) ? offset / limit : page;
-    int resolvedSize = (limit != null && limit > 0) ? limit : size;
-    if (resolvedSize <= 0) {
-      resolvedSize = 20;
-    }
+    int resolvedSize = (size <= 0) ? 20 : size;
 
-    List<MeetingResponse> items = meetingService.listMeetings(roomId, resolvedPage, resolvedSize).stream()
+    List<MeetingResponse> items = meetingService.listMeetings(roomId, page, resolvedSize).stream()
         .map(MeetingsController::toResponse)
         .toList();
     long totalElements = meetingService.countMeetings(roomId);
     int totalPages = (int) Math.ceil((double) totalElements / resolvedSize);
-    return new PagedMeetingResponse(items, resolvedPage, resolvedSize, totalElements, totalPages);
+    return new PagedMeetingResponse(items, page, resolvedSize, totalElements, totalPages);
   }
 
   @GetMapping("/meetings/{meetingId}")
@@ -133,7 +127,7 @@ class MeetingsController {
       @PathVariable("meetingId") String meetingId,
       @AuthenticationPrincipal OAuth2User principal) {
     Meeting meeting = meetingService.getMeeting(meetingId);
-    Room room = roomService.getRoom(meeting.roomId());
+    MeetingRoomSnapshot room = meetingRoomsPort.getRequiredRoom(meeting.roomId());
     tenantAccessGuard.assertAccess(room.tenantId(), principal);
     return toResponse(meeting);
   }
@@ -148,7 +142,7 @@ class MeetingsController {
     String subject = principal.getName();
 
     Meeting oldMeeting = meetingService.getMeeting(meetingId);
-    Room room = roomService.getRoom(oldMeeting.roomId());
+    MeetingRoomSnapshot room = meetingRoomsPort.getRequiredRoom(oldMeeting.roomId());
     tenantAccessGuard.assertAccess(room.tenantId(), principal);
 
     Meeting meeting = updateMeetingUseCase.execute(new UpdateMeetingCommand(
@@ -188,7 +182,7 @@ class MeetingsController {
     String subject = principal.getName();
 
     Meeting oldMeeting = meetingService.getMeeting(meetingId);
-    Room room = roomService.getRoom(oldMeeting.roomId());
+    MeetingRoomSnapshot room = meetingRoomsPort.getRequiredRoom(oldMeeting.roomId());
     tenantAccessGuard.assertAccess(room.tenantId(), principal);
 
     Meeting meeting = cancelMeetingUseCase.execute(new CancelMeetingCommand(oldMeeting, subject, traceId));

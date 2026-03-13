@@ -6,9 +6,14 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.acme.jitsi.shared.pipeline.OrderedPipelineConfigurationException;
+import com.acme.jitsi.shared.ErrorCode;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.http.HttpStatus;
 
 class MeetingRoleResolverTest {
@@ -16,6 +21,7 @@ class MeetingRoleResolverTest {
   private static final List<MeetingRoleResolutionPolicy> DEFAULT_POLICIES = List.of(
       new BlockedSubjectMeetingRoleResolutionPolicy(),
       unknownMeetingPolicy(),
+      dbAssignmentPolicy(),
       new ExplicitAssignmentMeetingRoleResolutionPolicy(),
       new UnknownRolePolicyMeetingRoleResolutionPolicy());
 
@@ -31,7 +37,7 @@ class MeetingRoleResolverTest {
         .satisfies(ex -> {
           MeetingTokenException error = (MeetingTokenException) ex;
           assertThat(error.status()).isEqualTo(HttpStatus.FORBIDDEN);
-          assertThat(error.errorCode()).isEqualTo("ACCESS_DENIED");
+          assertThat(error.errorCode()).isEqualTo(ErrorCode.ACCESS_DENIED.code());
         });
   }
 
@@ -61,7 +67,7 @@ class MeetingRoleResolverTest {
         .satisfies(ex -> {
           MeetingTokenException error = (MeetingTokenException) ex;
           assertThat(error.status()).isEqualTo(HttpStatus.FORBIDDEN);
-          assertThat(error.errorCode()).isEqualTo("ACCESS_DENIED");
+          assertThat(error.errorCode()).isEqualTo(ErrorCode.ACCESS_DENIED.code());
         });
   }
 
@@ -84,7 +90,7 @@ class MeetingRoleResolverTest {
         .satisfies(ex -> {
           MeetingTokenException error = (MeetingTokenException) ex;
           assertThat(error.status()).isEqualTo(HttpStatus.CONFLICT);
-          assertThat(error.errorCode()).isEqualTo("ROLE_MISMATCH");
+          assertThat(error.errorCode()).isEqualTo(ErrorCode.ROLE_MISMATCH.code());
         });
   }
 
@@ -101,7 +107,7 @@ class MeetingRoleResolverTest {
         .satisfies(ex -> {
           MeetingTokenException error = (MeetingTokenException) ex;
           assertThat(error.status()).isEqualTo(HttpStatus.FORBIDDEN);
-          assertThat(error.errorCode()).isEqualTo("ACCESS_DENIED");
+          assertThat(error.errorCode()).isEqualTo(ErrorCode.ACCESS_DENIED.code());
         });
   }
 
@@ -117,7 +123,7 @@ class MeetingRoleResolverTest {
         .satisfies(ex -> {
           MeetingTokenException error = (MeetingTokenException) ex;
           assertThat(error.status()).isEqualTo(HttpStatus.NOT_FOUND);
-          assertThat(error.errorCode()).isEqualTo("MEETING_NOT_FOUND");
+          assertThat(error.errorCode()).isEqualTo(ErrorCode.MEETING_NOT_FOUND.code());
         });
   }
 
@@ -146,7 +152,7 @@ class MeetingRoleResolverTest {
         .satisfies(ex -> {
           MeetingTokenException error = (MeetingTokenException) ex;
           assertThat(error.status()).isEqualTo(HttpStatus.CONFLICT);
-          assertThat(error.errorCode()).isEqualTo("ROLE_MISMATCH");
+          assertThat(error.errorCode()).isEqualTo(ErrorCode.ROLE_MISMATCH.code());
         });
   }
 
@@ -159,7 +165,8 @@ class MeetingRoleResolverTest {
     MeetingRoleResolver resolver = new MeetingRoleResolver(properties, List.of(
         new UnknownRolePolicyMeetingRoleResolutionPolicy(),
         new ExplicitAssignmentMeetingRoleResolutionPolicy(),
-      unknownMeetingPolicy(),
+        dbAssignmentPolicy(),
+        unknownMeetingPolicy(),
         new BlockedSubjectMeetingRoleResolutionPolicy()));
 
     assertThatThrownBy(() -> resolver.resolve("meeting-missing", "u-blocked"))
@@ -167,13 +174,80 @@ class MeetingRoleResolverTest {
         .satisfies(ex -> {
           MeetingTokenException error = (MeetingTokenException) ex;
           assertThat(error.status()).isEqualTo(HttpStatus.FORBIDDEN);
-          assertThat(error.errorCode()).isEqualTo("ACCESS_DENIED");
+          assertThat(error.errorCode()).isEqualTo(ErrorCode.ACCESS_DENIED.code());
         });
+  }
+
+  @Test
+  void productionPoliciesHaveStableExecutionOrder() {
+    List<MeetingRoleResolutionPolicy> policies = new java.util.ArrayList<>(List.of(
+        new UnknownRolePolicyMeetingRoleResolutionPolicy(),
+        new ExplicitAssignmentMeetingRoleResolutionPolicy(),
+        dbAssignmentPolicy(),
+        unknownMeetingPolicy(),
+        new BlockedSubjectMeetingRoleResolutionPolicy()));
+
+    AnnotationAwareOrderComparator.sort(policies);
+
+    assertThat(policies)
+        .extracting(policy -> policy.getClass().getSimpleName())
+        .containsExactly(
+            "BlockedSubjectMeetingRoleResolutionPolicy",
+            "UnknownMeetingMeetingRoleResolutionPolicy",
+            "DbParticipantAssignmentMeetingRoleResolutionPolicy",
+            "ExplicitAssignmentMeetingRoleResolutionPolicy",
+            "UnknownRolePolicyMeetingRoleResolutionPolicy");
+  }
+
+  @Test
+  void failsFastWhenPipelineHasNoTerminalPolicy() {
+    MeetingTokenProperties properties = new MeetingTokenProperties();
+    properties.setKnownMeetingIds(List.of("meeting-a"));
+
+    assertThatThrownBy(() -> new MeetingRoleResolver(properties, List.of(
+        new BlockedSubjectMeetingRoleResolutionPolicy(),
+        unknownMeetingPolicy(),
+        dbAssignmentPolicy(),
+        new ExplicitAssignmentMeetingRoleResolutionPolicy())))
+      .isInstanceOf(OrderedPipelineConfigurationException.class)
+        .hasMessageContaining("terminal")
+        .hasMessageContaining("MeetingRoleResolver");
+  }
+
+  @Test
+  void failsFastWhenTerminalPolicyIsNotOrderedLast() {
+    MeetingTokenProperties properties = new MeetingTokenProperties();
+    properties.setKnownMeetingIds(List.of("meeting-a"));
+
+    assertThatThrownBy(() -> new MeetingRoleResolver(properties, List.of(
+        new BlockedSubjectMeetingRoleResolutionPolicy(),
+        unknownMeetingPolicy(),
+      dbAssignmentPolicy(),
+        new ExplicitAssignmentMeetingRoleResolutionPolicy(),
+        new UnknownRolePolicyMeetingRoleResolutionPolicy(),
+        new LatePassThroughPolicy())))
+      .isInstanceOf(OrderedPipelineConfigurationException.class)
+      .hasMessageContaining("terminal step must be ordered last");
   }
 
   private static MeetingRoleResolutionPolicy unknownMeetingPolicy() {
     MeetingRepository meetingRepository = mock(MeetingRepository.class);
     when(meetingRepository.existsById(anyString())).thenReturn(false);
     return new UnknownMeetingMeetingRoleResolutionPolicy(meetingRepository);
+  }
+
+  private static MeetingRoleResolutionPolicy dbAssignmentPolicy() {
+    MeetingParticipantAssignmentRepository assignmentRepository = mock(MeetingParticipantAssignmentRepository.class);
+    when(assignmentRepository.findByMeetingIdAndSubjectId(anyString(), anyString())).thenReturn(Optional.empty());
+    return new DbParticipantAssignmentMeetingRoleResolutionPolicy(assignmentRepository);
+  }
+
+  @org.springframework.core.annotation.Order(500)
+  private static final class LatePassThroughPolicy implements MeetingRoleResolutionPolicy {
+
+    @Override
+    public java.util.Optional<MeetingRole> resolve(MeetingRoleResolutionContext context) {
+      return java.util.Optional.empty();
+    }
   }
 }

@@ -80,6 +80,25 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetailResponse'
+  /api/v1/auth/logout:
+    post:
+      summary: Perform backend-managed RP-initiated logout
+      operationId: logoutAuthSession
+      responses:
+        '302':
+          description: Redirect to provider-managed OIDC logout endpoint
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Invalid or missing CSRF token
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
   /api/v1/auth/refresh:
     post:
       summary: Refresh access token
@@ -427,6 +446,50 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetailResponse'
   /api/v1/rooms/{roomId}/meetings:
+    get:
+      summary: List meetings by room
+      operationId: listMeetings
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paged list of meetings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedMeetingResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
+        '404':
+          description: Room not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetailResponse'
     post:
       summary: Create a meeting in room
       operationId: createMeeting
@@ -890,51 +953,6 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '404':
           description: Active config set not found
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetailResponse'
-  /api/v1/rooms/{roomId}/meetings:
-    get:
-      summary: List meetings by room
-      operationId: listMeetings
-      parameters:
-        - name: roomId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 0
-        - name: size
-          in: query
-          schema:
-            type: integer
-            default: 20
-      responses:
-        '200':
-          description: Paged list of meetings
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PagedMeetingResponse'
-        '401':
-          description: Authentication required
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetailResponse'
-        '403':
-          description: Access denied
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetailResponse'
-        '404':
-          description: Room not found
           content:
             application/problem+json:
               schema:
@@ -1607,6 +1625,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetailResponse'
 components:
+  responses:
+    UnauthorizedError:
+      description: Authentication required
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetailResponse'
+    ForbiddenError:
+      description: Access denied
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetailResponse'
+    NotFoundError:
+      description: Entity not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetailResponse'
   schemas:
     InviteExchangeRequest:
       type: object
@@ -1661,8 +1698,8 @@ components:
         tenant:
           type: string
         claims:
-          type: object
-          additionalProperties:
+          type: array
+          items:
             type: string
       required:
         - id

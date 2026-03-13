@@ -1,5 +1,6 @@
 package com.acme.jitsi.domains.meetings.service;
 
+import com.acme.jitsi.shared.ErrorCode;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
@@ -10,7 +11,7 @@ public class MeetingRoleConflictException extends RuntimeException {
 
   public MeetingRoleConflictException(String message) {
     super(message);
-    this.errorCode = "ROLE_CONFLICT";
+    this.errorCode = ErrorCode.ROLE_CONFLICT.code();
   }
 
   public MeetingRoleConflictException(String message, String errorCode) {

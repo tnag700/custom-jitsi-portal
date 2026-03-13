@@ -34,6 +34,8 @@ public class V14__Align_config_sets_active_unique_index extends BaseJavaMigratio
               ON config_sets(active_env_tenant_key)
             """);
       } else {
+        // Fallback for non-PostgreSQL/H2 engines keeps broad uniqueness semantics.
+        // This preserves compatibility but may still limit multiple DRAFT rows per tenant+environment.
         statement.execute("""
             CREATE UNIQUE INDEX IF NOT EXISTS uq_config_sets_env_tenant_status_deleted
               ON config_sets(environment_type, tenant_id, status, deleted)

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.acme.jitsi.domains.rooms.service.RoomService;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -67,13 +66,13 @@ class ConfiguredUpcomingMeetingsServiceTest {
     when(assignmentRepository.findBySubjectId("u-1")).thenReturn(List.of());
 
     MeetingService meetingService = mock(MeetingService.class);
-    RoomService roomService = mock(RoomService.class);
+    MeetingRoomsPort meetingRoomsPort = mock(MeetingRoomsPort.class);
 
     UpcomingMeetingsReader reader = new ConfiguredUpcomingMeetingsService(
         properties,
       assignmentRepository,
       meetingService,
-      roomService,
+      meetingRoomsPort,
         Clock.fixed(now, ZoneOffset.UTC));
 
     List<UpcomingMeetingCard> cards = reader.listForSubject("u-1");

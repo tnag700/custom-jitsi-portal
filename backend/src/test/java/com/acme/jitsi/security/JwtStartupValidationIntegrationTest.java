@@ -47,7 +47,7 @@ class JwtStartupValidationIntegrationTest {
         .rootCause()
         .satisfies(rootCause -> {
           JwtStartupValidationException exception = (JwtStartupValidationException) rootCause;
-          assertThat(exception.errorCode()).isEqualTo("CONFIG_INCOMPATIBLE");
+          assertThat(exception.errorCode()).isEqualTo(JwtStartupValidationErrorCode.CONFIG_INCOMPATIBLE.name());
           assertThat(exception.getMessage()).contains("Unsupported JWT algorithm");
         });
   }

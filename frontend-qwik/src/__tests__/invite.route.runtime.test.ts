@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+/* eslint-disable @typescript-eslint/await-thenable */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockValidateInviteToken = vi.fn();
@@ -14,7 +17,7 @@ class MockInviteExchangeError extends Error {
 }
 
 vi.mock("@qwik.dev/core", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@qwik.dev/core")>();
+  const actual = await importOriginal();
   const identity = <T>(value: T): T => value;
   return {
     ...actual,
@@ -27,7 +30,7 @@ vi.mock("@qwik.dev/core", async (importOriginal) => {
 });
 
 vi.mock("@qwik.dev/router", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@qwik.dev/router")>();
+  const actual = await importOriginal();
   const identity = <T>(value: T): T => value;
   const stringSchema = () => ({ min: () => ({}) });
   return {

@@ -6,7 +6,12 @@ import com.acme.jitsi.shared.JwtTestProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 
 @SpringBootTest(
     properties = {
@@ -34,8 +39,24 @@ class SecurityFilterChainSmokeTest {
   @Autowired
   private SecurityFilterChain securityFilterChain;
 
+  @Autowired
+  private AuthenticationEntryPoint authenticationEntryPoint;
+
+  @Autowired
+  private AccessDeniedHandler accessDeniedHandler;
+
+  @Autowired
+  private OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService;
+
+  @Autowired
+  private OidcLoginFailureHandler oidcLoginFailureHandler;
+
   @Test
-  void securityFilterChainBeanIsCreated() {
+  void securityFilterChainBeanIsCreatedWithFocusedCollaborators() {
     assertThat(securityFilterChain).isNotNull();
+    assertThat(authenticationEntryPoint).isInstanceOf(JsonSecurityAuthenticationEntryPoint.class);
+    assertThat(accessDeniedHandler).isInstanceOf(JsonSecurityAccessDeniedHandler.class);
+    assertThat(oidcUserService).isInstanceOf(OidcUserEnrichmentService.class);
+    assertThat(oidcLoginFailureHandler).isInstanceOf(OidcLoginFailureHandler.class);
   }
 }

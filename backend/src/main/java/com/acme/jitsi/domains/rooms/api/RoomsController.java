@@ -108,8 +108,6 @@ class RoomsController {
   PagedRoomResponse listRooms(
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "20") int size,
-      @RequestParam(name = "limit", required = false) Integer limit,
-      @RequestParam(name = "offset", required = false) Integer offset,
       @RequestParam(name = "tenantId") String tenantId,
       @AuthenticationPrincipal OAuth2User principal,
       HttpServletRequest httpRequest) {
@@ -118,23 +116,19 @@ class RoomsController {
 
     String traceId = problemResponseFacade.resolveTraceId(httpRequest);
 
-    int resolvedPage = (offset != null && limit != null && limit > 0) ? offset / limit : page;
-    int resolvedSize = (limit != null && limit > 0) ? limit : size;
-        if (resolvedSize <= 0) {
-            resolvedSize = 20;
-        }
+    int resolvedSize = (size <= 0) ? 20 : size;
 
     if (log.isInfoEnabled()) {
       log.info(
           "room_list_requested tenantId={} page={} size={} subject={} traceId={}",
           tenantId,
-          resolvedPage,
+          page,
           resolvedSize,
           principal.getName(),
           traceId);
     }
 
-    List<Room> rooms = roomService.listRooms(tenantId, resolvedPage, resolvedSize);
+    List<Room> rooms = roomService.listRooms(tenantId, page, resolvedSize);
     long totalElements = roomService.countRooms(tenantId);
     int totalPages = (int) Math.ceil((double) totalElements / resolvedSize);
 
@@ -142,7 +136,7 @@ class RoomsController {
         .map(RoomsController::toResponse)
         .toList();
 
-    return new PagedRoomResponse(items, resolvedPage, resolvedSize, totalElements, totalPages);
+    return new PagedRoomResponse(items, page, resolvedSize, totalElements, totalPages);
   }
 
   @GetMapping("/{roomId}")

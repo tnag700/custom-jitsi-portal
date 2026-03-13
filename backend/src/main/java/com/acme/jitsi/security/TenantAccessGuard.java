@@ -20,22 +20,44 @@ public class TenantAccessGuard {
    * @throws AccessDeniedException if the tenant claim is absent or does not match
    *                               {@code tenantId}
    */
-  public void assertAccess(String tenantId, OAuth2User principal) {
+  /**
+   * Resolves the tenant ID from the principal's claims.
+   *
+   * @throws AccessDeniedException if the tenant claim is absent, empty, or blank
+   */
+  public String resolveTenantId(OAuth2User principal) {
     Object tenantIdClaim = resolveTenantClaim(principal);
     if (tenantIdClaim == null) {
       throw new AccessDeniedException("Tenant claim is required");
     }
+    return normalizeTenantClaimValue(tenantIdClaim);
+  }
 
-    String actualTenantId;
-    if (tenantIdClaim instanceof java.util.Collection<?> coll) {
-      actualTenantId = coll.isEmpty() ? "" : coll.iterator().next().toString();
-    } else {
-      actualTenantId = tenantIdClaim.toString();
-    }
-
+  public void assertAccess(String tenantId, OAuth2User principal) {
+    String actualTenantId = resolveTenantId(principal);
     if (!actualTenantId.equals(tenantId)) {
       throw new AccessDeniedException("Requested tenant is not accessible for current principal");
     }
+  }
+
+  private String normalizeTenantClaimValue(Object tenantIdClaim) {
+    if (tenantIdClaim instanceof java.util.Collection<?> coll) {
+      if (coll.isEmpty()) {
+        throw new AccessDeniedException("Tenant claim is required");
+      }
+      return normalizeTenantClaimValue(coll.iterator().next());
+    }
+
+    if (tenantIdClaim == null) {
+      throw new AccessDeniedException("Tenant claim is required");
+    }
+
+    String normalizedTenantId = tenantIdClaim.toString();
+    if (normalizedTenantId.isBlank()) {
+      throw new AccessDeniedException("Tenant claim is required");
+    }
+
+    return normalizedTenantId;
   }
 
   private Object resolveTenantClaim(OAuth2User principal) {

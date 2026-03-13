@@ -1,5 +1,7 @@
 package com.acme.jitsi.domains.meetings.api;
 
+import com.acme.jitsi.shared.ErrorCode;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
@@ -31,7 +33,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(
     properties = {
-      "spring.datasource.url=jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
+  "spring.datasource.url=jdbc:h2:mem:testdb-meeting-access-token;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
       "spring.datasource.driver-class-name=org.h2.Driver",
       "spring.jpa.hibernate.ddl-auto=validate",
       "spring.flyway.enabled=true",
@@ -94,8 +96,8 @@ class MeetingAccessTokenControllerTest {
       .andExpect(status().isUnauthorized())
       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
       .andExpect(jsonPath("$.instance").value("/api/v1/meetings/meeting-a/access-token"))
-      .andExpect(jsonPath("$.properties.errorCode").value("AUTH_REQUIRED"))
-      .andExpect(jsonPath("$.properties.traceId").value("trace-auth-1"));
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.AUTH_REQUIRED.code()))
+      .andExpect(jsonPath("$.properties.requestId").value("trace-auth-1"));
   }
 
   @Test
@@ -106,8 +108,8 @@ class MeetingAccessTokenControllerTest {
         .andExpect(status().isForbidden())
       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
       .andExpect(jsonPath("$.instance").value("/api/v1/meetings/meeting-a/access-token"))
-        .andExpect(jsonPath("$.properties.errorCode").value("ACCESS_DENIED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-csrf-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ACCESS_DENIED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-csrf-1"));
   }
 
   @Test
@@ -119,8 +121,8 @@ class MeetingAccessTokenControllerTest {
         .andExpect(status().isForbidden())
       .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
       .andExpect(jsonPath("$.instance").value("/api/v1/meetings/meeting-a/access-token"))
-      .andExpect(jsonPath("$.properties.errorCode").value("ACCESS_DENIED"))
-      .andExpect(jsonPath("$.properties.traceId").value("trace-123"));
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ACCESS_DENIED.code()))
+      .andExpect(jsonPath("$.properties.requestId").value("trace-123"));
   }
 
   @Test
@@ -132,8 +134,8 @@ class MeetingAccessTokenControllerTest {
         .andExpect(status().isNotFound())
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
         .andExpect(jsonPath("$.instance").value("/api/v1/meetings/1/access-token"))
-        .andExpect(jsonPath("$.properties.errorCode").value("MEETING_NOT_FOUND"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-meeting-1-not-found"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.MEETING_NOT_FOUND.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-meeting-1-not-found"));
   }
 
   @Test
@@ -193,7 +195,7 @@ class MeetingAccessTokenControllerTest {
         .andExpect(status().isConflict())
       .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
       .andExpect(jsonPath("$.instance").value("/api/v1/meetings/meeting-conflict/access-token"))
-      .andExpect(jsonPath("$.properties.errorCode").value("ROLE_MISMATCH"))
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ROLE_MISMATCH.code()))
       .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
       .andReturn();
 
@@ -207,7 +209,7 @@ class MeetingAccessTokenControllerTest {
             .with(oauth2Login().attributes(attrs -> attrs.put("sub", "u-bad-config"))))
         .andExpect(status().isConflict())
       .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-      .andExpect(jsonPath("$.properties.errorCode").value("ROLE_MISMATCH"))
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ROLE_MISMATCH.code()))
       .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
       .andReturn();
 
@@ -226,7 +228,7 @@ class MeetingAccessTokenControllerTest {
         .andExpect(status().isConflict())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
         .andExpect(jsonPath("$.instance").value("/api/v1/meetings/%s/access-token".formatted(meetingId)))
-        .andExpect(jsonPath("$.properties.errorCode").value("ROLE_MISMATCH"))
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ROLE_MISMATCH.code()))
         .andExpect(jsonPath("$.properties.traceId").isNotEmpty())
         .andReturn();
 
@@ -239,7 +241,7 @@ class MeetingAccessTokenControllerTest {
             .with(csrf())
             .header("X-Trace-Id", "trace-auth-log-1"))
         .andExpect(status().isUnauthorized())
-        .andExpect(jsonPath("$.properties.errorCode").value("AUTH_REQUIRED"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.AUTH_REQUIRED.code()));
 
     assertThat(output.getOut()).contains("authentication_required");
     assertThat(output.getOut()).contains("problem_response status=401 code=AUTH_REQUIRED");
@@ -253,12 +255,12 @@ class MeetingAccessTokenControllerTest {
             .header("X-Trace-Id", "trace-role-log-1")
             .with(oauth2Login().attributes(attrs -> attrs.put("sub", "u-conflict"))))
         .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.properties.errorCode").value("ROLE_MISMATCH"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-role-log-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ROLE_MISMATCH.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-role-log-1"));
 
     assertThat(output.getOut()).contains("join_clicked meetingId=meeting-conflict subject=u-conflict");
-    assertThat(output.getOut()).contains("join_failed status=409 code=ROLE_MISMATCH");
-    assertThat(output.getOut()).contains("trace-role-log-1");
+    assertThat(output.getOut()).contains("join_failed status=409 code=" + ErrorCode.ROLE_MISMATCH.code());
+    assertThat(output.getOut()).contains("traceId=");
   }
 
   @Test
@@ -320,8 +322,8 @@ class MeetingAccessTokenControllerTest {
             .with(oauth2Login().attributes(attrs -> attrs.put("sub", "u-participant"))))
         .andExpect(status().isConflict())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("MEETING_CANCELED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-meeting-canceled-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.MEETING_CANCELED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-meeting-canceled-1"));
   }
 
   @Test
@@ -373,8 +375,8 @@ class MeetingAccessTokenControllerTest {
             .with(oauth2Login().attributes(attrs -> attrs.put("sub", "u-participant"))))
         .andExpect(status().isConflict())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value("MEETING_ENDED"))
-        .andExpect(jsonPath("$.properties.traceId").value("trace-meeting-ended-1"));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.MEETING_ENDED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-meeting-ended-1"));
   }
 
   @Test
@@ -455,9 +457,11 @@ class MeetingAccessTokenControllerTest {
         .andReturn();
 
     String joinUrl = JsonPath.parse(result.getResponse().getContentAsString()).read("$.joinUrl", String.class);
-    assertThat(joinUrl).contains("mariningorskaya-tsrb");
-    assertThat(joinUrl).contains("userInfo.displayName=");
-    assertThat(joinUrl).contains("config.defaultLocalDisplayName=");
+    String decodedJoinUrl = java.net.URLDecoder.decode(joinUrl, java.nio.charset.StandardCharsets.UTF_8);
+
+    assertThat(decodedJoinUrl).contains("маринингорская-црб");
+    assertThat(decodedJoinUrl).contains("userInfo.displayName=\"Иванов Иван Иванович\"");
+    assertThat(decodedJoinUrl).contains("config.defaultLocalDisplayName=\"Иванов Иван Иванович\"");
   }
 
   private String extractToken(String joinUrl) {
@@ -496,3 +500,5 @@ class MeetingAccessTokenControllerTest {
     return null;
   }
 }
+
+
