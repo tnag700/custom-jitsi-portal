@@ -1,18 +1,12 @@
 package com.acme.jitsi.infrastructure.idempotency;
 
-import com.acme.jitsi.observability.FakeRedisServer;
-import java.io.IOException;
+import com.acme.jitsi.support.PostgresRedisContainerIntegrationTestSupport;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.concurrent.CountDownLatch;
@@ -44,42 +38,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 @Import(IdempotencyTestController.class)
 @Tag("integration")
-@ActiveProfiles("test")
+@Tag("container")
 @WithMockUser
-class IdempotencyIntegrationTest {
-
-    private static FakeRedisServer redis;
-
-    @BeforeAll
-    static void startFakeRedis() throws IOException {
-        ensureRedisStarted();
-    }
-
-    @AfterAll
-    static void stopFakeRedis() throws IOException {
-        if (redis != null) {
-            redis.close();
-            redis = null;
-        }
-    }
-
-    @DynamicPropertySource
-    static void redisProperties(DynamicPropertyRegistry registry) {
-        ensureRedisStarted();
-        registry.add("spring.data.redis.host", () -> "127.0.0.1");
-        registry.add("spring.data.redis.port", () -> redis.getPort());
-    }
-
-    private static void ensureRedisStarted() {
-        if (redis != null) {
-            return;
-        }
-        try {
-            redis = FakeRedisServer.start();
-        } catch (IOException ioException) {
-            throw new IllegalStateException("Failed to start fake Redis server", ioException);
-        }
-    }
+class IdempotencyIntegrationTest extends PostgresRedisContainerIntegrationTestSupport {
 
     @Autowired
     private MockMvc mockMvc;

@@ -6,13 +6,12 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import com.acme.jitsi.infrastructure.idempotency.IdempotencyTestController;
+import com.acme.jitsi.support.PostgresRedisContainerIntegrationTestSupport;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -28,9 +27,6 @@ import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.RestTemplate;
 
 @SpringBootTest(
@@ -57,45 +53,16 @@ import org.springframework.web.client.RestTemplate;
     IdempotencyTracingIntegrationTest.IdempotencyTracingTestSecurityConfiguration.class
 })
 @Tag("integration")
-@ActiveProfiles("test")
-class IdempotencyTracingIntegrationTest {
+@Tag("container")
+class IdempotencyTracingIntegrationTest extends PostgresRedisContainerIntegrationTestSupport {
 
     private static final String IDEMPOTENT_PATH = "/api/v1/test/idempotent";
     private static final AttributeKey<String> DB_SYSTEM = AttributeKey.stringKey("db.system");
+    private static final AttributeKey<String> DB_OPERATION = AttributeKey.stringKey("db.operation");
+    private static final AttributeKey<String> DB_OPERATION_NAME = AttributeKey.stringKey("db.operation.name");
+    private static final AttributeKey<String> DB_QUERY_TEXT = AttributeKey.stringKey("db.query.text");
     private static final AttributeKey<String> HTTP_REQUEST_METHOD = AttributeKey.stringKey("http.request.method");
     private static final AttributeKey<String> URL_PATH = AttributeKey.stringKey("url.path");
-
-    private static FakeRedisServer redis;
-
-    @BeforeAll
-    static void startFakeRedis() throws IOException {
-        ensureRedisStarted();
-    }
-
-    @AfterAll
-    static void stopFakeRedis() throws IOException {
-        if (redis != null) {
-            redis.close();
-        }
-    }
-
-  @DynamicPropertySource
-  static void redisProperties(DynamicPropertyRegistry registry) {
-        ensureRedisStarted();
-        registry.add("spring.data.redis.host", () -> "127.0.0.1");
-        registry.add("spring.data.redis.port", () -> redis.getPort());
-  }
-
-    private static void ensureRedisStarted() {
-        if (redis != null) {
-            return;
-        }
-        try {
-            redis = FakeRedisServer.start();
-        } catch (IOException ioException) {
-            throw new IllegalStateException("Failed to start fake Redis server", ioException);
-        }
-    }
 
   @Autowired
     private TestSpanExporter testSpanExporter;
@@ -111,7 +78,7 @@ class IdempotencyTracingIntegrationTest {
 
         ResponseEntity<String> response = restTemplate.exchange(
                 RequestEntity.post(URI.create("http://localhost:" + port + IDEMPOTENT_PATH))
-                        .header("Idempotency-Key", "trace-redis-key-1")
+                .header("Idempotency-Key", "trace-redis-key-1")
                         .build(),
                 String.class);
 
@@ -139,9 +106,7 @@ class IdempotencyTracingIntegrationTest {
     assertThat(traceSpans)
         .anySatisfy(span -> assertThat(span.getKind()).isEqualTo(SpanKind.SERVER));
     assertThat(traceSpans)
-        .anySatisfy(span -> assertThat(isRedisSpan(span)).isTrue());
-    assertThat(redis.observedCommands())
-        .anySatisfy(command -> assertThat(command).startsWith("SET idempotency:POST:/api/v1/test/idempotent:trace-redis-key-1"));
+        .anySatisfy(span -> assertThat(matchesIdempotencyRedisMutation(span)).isTrue());
   }
 
   private static boolean isIdempotentServerSpan(SpanData span) {
@@ -160,9 +125,35 @@ class IdempotencyTracingIntegrationTest {
     return "redis".equalsIgnoreCase(span.getAttributes().get(DB_SYSTEM));
   }
 
+    private static boolean matchesIdempotencyRedisMutation(SpanData span) {
+        if (!isRedisSpan(span)) {
+            return false;
+        }
+
+        String operation = firstNonBlank(
+                span.getAttributes().get(DB_OPERATION_NAME),
+                span.getAttributes().get(DB_OPERATION),
+                span.getName());
+        return span.getKind() == SpanKind.CLIENT
+            && operation != null
+            && operation.toUpperCase().contains("SET");
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
     private static String summarizeSpans(List<SpanData> spans) {
         return spans.stream()
                 .map(span -> span.getKind() + "|" + span.getName()
+                                                + "|dbOp=" + span.getAttributes().get(DB_OPERATION)
+                                                + "|dbOpName=" + span.getAttributes().get(DB_OPERATION_NAME)
+                                                + "|dbQuery=" + span.getAttributes().get(DB_QUERY_TEXT)
                         + "|method=" + span.getAttributes().get(HTTP_REQUEST_METHOD)
                         + "|path=" + span.getAttributes().get(URL_PATH)
                         + "|db=" + span.getAttributes().get(DB_SYSTEM)

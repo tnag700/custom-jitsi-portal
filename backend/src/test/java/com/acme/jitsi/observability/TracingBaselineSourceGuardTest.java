@@ -17,6 +17,8 @@ class TracingBaselineSourceGuardTest {
       Path.of("src/test/java/com/acme/jitsi/observability/IdempotencyTracingIntegrationTest.java");
   private static final Path REDIS_TRACING_WIRING_TEST_FILE =
       Path.of("src/test/java/com/acme/jitsi/observability/RedisTracingWiringIntegrationTest.java");
+  private static final Path CONTAINER_SUPPORT_FILE =
+      Path.of("src/test/java/com/acme/jitsi/support/PostgresRedisContainerIntegrationTestSupport.java");
 
   @Test
   void buildAndApplicationConfigDeclareTracingBaselineDependenciesAndProperties() throws IOException {
@@ -25,6 +27,7 @@ class TracingBaselineSourceGuardTest {
     String otlpExportTest = Files.readString(OTLP_EXPORT_TEST_FILE);
     String idempotencyTracingTest = Files.readString(IDEMPOTENCY_TRACING_TEST_FILE);
     String redisTracingWiringTest = Files.readString(REDIS_TRACING_WIRING_TEST_FILE);
+    String containerSupport = Files.readString(CONTAINER_SUPPORT_FILE);
 
     assertThat(buildGradle)
         .contains("spring-boot-starter-data-redis")
@@ -56,11 +59,20 @@ class TracingBaselineSourceGuardTest {
 
     assertThat(idempotencyTracingTest)
         .contains("@AutoConfigureTracing")
-        .contains("FakeRedisServer")
+        .contains("extends PostgresRedisContainerIntegrationTestSupport")
         .contains("TestSpanExporter")
         .contains("/api/v1/test/idempotent")
         .contains("SpanKind.SERVER")
-        .contains("observedCommands");
+        .contains("matchesIdempotencyRedisMutation")
+        .contains("db.operation.name");
+
+    assertThat(containerSupport)
+        .contains("@Testcontainers")
+        .contains("@DynamicPropertySource")
+        .contains("PostgreSQLContainer")
+        .contains("GenericContainer")
+        .contains("postgres:18-alpine")
+        .contains("redis:7-alpine");
 
     assertThat(redisTracingWiringTest)
         .contains("LettuceConnectionFactory")

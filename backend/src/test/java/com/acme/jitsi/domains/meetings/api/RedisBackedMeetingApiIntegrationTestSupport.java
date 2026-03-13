@@ -1,22 +1,7 @@
 package com.acme.jitsi.domains.meetings.api;
 
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.utility.DockerImageName;
+import com.acme.jitsi.support.PostgresRedisContainerIntegrationTestSupport;
 
-abstract class RedisBackedMeetingApiIntegrationTestSupport {
-
-  private static final GenericContainer<?> REDIS = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
-      .withExposedPorts(6379);
-
-  static {
-    REDIS.start();
-  }
-
-  @DynamicPropertySource
-  static void redisProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.data.redis.host", REDIS::getHost);
-    registry.add("spring.data.redis.port", REDIS::getFirstMappedPort);
-  }
+abstract class RedisBackedMeetingApiIntegrationTestSupport
+    extends PostgresRedisContainerIntegrationTestSupport {
 }

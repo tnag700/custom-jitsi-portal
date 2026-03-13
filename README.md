@@ -75,6 +75,15 @@
 - `./gradlew.bat testContainer` - container-backed тесты.
 - `./gradlew.bat generateOpenApiSpec` - генерация runtime OpenAPI snapshot.
 
+Container baseline для backend тестов:
+
+- Канонический baseline для runtime-sensitive сценариев использует published Testcontainers baseline `1.21.4` с `PostgreSQLContainer` для `postgres:18-alpine` и Redis container для `redis:7-alpine` через общий support layer в `backend/src/test/java/com/acme/jitsi/support`.
+- Матрица test taxonomy: `unit / slice / non-container integration / container`.
+- Через `testContainer` должны ехать сценарии, чувствительные к Redis command semantics, TTL/idempotency correctness, Flyway/PostgreSQL semantics и concurrency под реальными backing services.
+- Controller/security/contract tests, которые проверяют только web wiring, ProblemDetail mapping или локальную бизнес-логику без runtime-sensitive persistence/Redis поведения, не должны без причины мигрировать на контейнеры.
+- Для `testContainer` требуется доступный Docker daemon. Типичные failure modes: Docker unavailable, медленный startup image pull, contention при параллельных агентах/джобах.
+- `testUnit`, `testSlice` и `testIntegration` не должны зависеть от Docker.
+
 ### Frontend и контракт
 
 - `npm run openapi:generate` - генерация `openapi.generated.json` из backend runtime-контракта.
