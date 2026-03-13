@@ -48,14 +48,19 @@ import org.springframework.jdbc.core.JdbcTemplate;
     })
 class DatabaseConfigSetValidatorIntegrationTest {
 
-  @Autowired
-  private ConfigSetValidator validator;
+  private final ConfigSetValidator validator;
+  private final ConfigSetRepository repository;
+  private final JdbcTemplate jdbcTemplate;
 
   @Autowired
-  private ConfigSetRepository repository;
-
-  @Autowired
-  private JdbcTemplate jdbcTemplate;
+  DatabaseConfigSetValidatorIntegrationTest(
+      ConfigSetValidator validator,
+      ConfigSetRepository repository,
+      JdbcTemplate jdbcTemplate) {
+    this.validator = validator;
+    this.repository = repository;
+    this.jdbcTemplate = jdbcTemplate;
+  }
 
   @BeforeEach
   void setUp() {

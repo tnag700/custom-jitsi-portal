@@ -1,4 +1,4 @@
-package com.acme.jitsi.domains.observer;
+package com.acme.jitsi.architecture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -137,42 +137,42 @@ class ObserverPatternArchitectureTest {
     }
   }
 
-    @Test
-    void controllersUseVersionedMappingsWithoutHardcodedApiV1Prefix() throws Exception {
-        List<String> controllerClassNames = List.of(
-                "com.acme.jitsi.domains.auth.api.AuthController",
-                "com.acme.jitsi.domains.health.api.HealthController",
-                "com.acme.jitsi.domains.invites.api.InviteExchangeController",
-                "com.acme.jitsi.domains.rooms.api.RoomsController",
-                "com.acme.jitsi.domains.configsets.api.ConfigSetsController",
-                "com.acme.jitsi.domains.meetings.api.MeetingsController",
-                "com.acme.jitsi.domains.meetings.api.UpcomingMeetingsController",
-                "com.acme.jitsi.domains.meetings.api.MeetingInvitesController",
-                "com.acme.jitsi.domains.meetings.api.MeetingParticipantAssignmentsController",
-                "com.acme.jitsi.domains.meetings.api.MeetingAccessTokenController");
+  @Test
+  void controllersUseVersionedMappingsWithoutHardcodedApiV1Prefix() throws Exception {
+    List<String> controllerClassNames = List.of(
+        "com.acme.jitsi.domains.auth.api.AuthController",
+        "com.acme.jitsi.domains.health.api.HealthController",
+        "com.acme.jitsi.domains.invites.api.InviteExchangeController",
+        "com.acme.jitsi.domains.rooms.api.RoomsController",
+        "com.acme.jitsi.domains.configsets.api.ConfigSetsController",
+        "com.acme.jitsi.domains.meetings.api.MeetingsController",
+        "com.acme.jitsi.domains.meetings.api.UpcomingMeetingsController",
+        "com.acme.jitsi.domains.meetings.api.MeetingInvitesController",
+        "com.acme.jitsi.domains.meetings.api.MeetingParticipantAssignmentsController",
+        "com.acme.jitsi.domains.meetings.api.MeetingAccessTokenController");
 
-        for (String className : controllerClassNames) {
-            Class<?> controllerClass = Class.forName(className);
-            RequestMapping requestMapping = controllerClass.getAnnotation(RequestMapping.class);
+    for (String className : controllerClassNames) {
+      Class<?> controllerClass = Class.forName(className);
+      RequestMapping requestMapping = controllerClass.getAnnotation(RequestMapping.class);
 
-            assertNotNull(requestMapping, className + " must declare @RequestMapping at class level");
+      assertNotNull(requestMapping, className + " must declare @RequestMapping at class level");
 
-            for (String mappedPath : requestMapping.value()) {
-                assertFalse(
-                        mappedPath.contains("/api/v1"),
-                        className + " must not hardcode '/api/v1' in @RequestMapping");
-            }
+      for (String mappedPath : requestMapping.value()) {
+        assertFalse(
+            mappedPath.contains("/api/v1"),
+            className + " must not hardcode '/api/v1' in @RequestMapping");
+      }
 
-              String version = requestMapping.version();
-              assertFalse(
-                  version == null || version.isBlank(),
-                  className + " must declare version attribute in @RequestMapping");
-              assertEquals(
-                  "v1",
-                  version,
-                  className + " must use version 'v1' in @RequestMapping");
-        }
+      String version = requestMapping.version();
+      assertFalse(
+          version == null || version.isBlank(),
+          className + " must declare version attribute in @RequestMapping");
+      assertEquals(
+          "v1",
+          version,
+          className + " must use version 'v1' in @RequestMapping");
     }
+  }
 
   private static void assertListenerMethodIsAsyncAfterCommit(
       String listenerTypeName,

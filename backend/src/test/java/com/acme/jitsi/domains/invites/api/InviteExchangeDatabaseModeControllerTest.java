@@ -52,11 +52,16 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 class InviteExchangeDatabaseModeControllerTest {
 
-  @Autowired
-  private MockMvc mockMvc;
+  private final MockMvc mockMvc;
+  private final MeetingInviteRepository meetingInviteRepository;
 
   @Autowired
-  private MeetingInviteRepository meetingInviteRepository;
+  InviteExchangeDatabaseModeControllerTest(
+      MockMvc mockMvc,
+      MeetingInviteRepository meetingInviteRepository) {
+    this.mockMvc = mockMvc;
+    this.meetingInviteRepository = meetingInviteRepository;
+  }
 
   @Test
   void oneInviteLinkWithUsageLimitThree_allowsThreeGuests_thenExhausted() throws Exception {
