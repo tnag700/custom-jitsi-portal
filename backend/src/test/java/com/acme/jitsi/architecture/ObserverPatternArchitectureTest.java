@@ -97,6 +97,14 @@ class ObserverPatternArchitectureTest {
         "com.acme.jitsi.domains.configsets.infrastructure.ConfigSetAuditListener",
         "onRollbackCompleted",
         "com.acme.jitsi.domains.configsets.event.ConfigSetRollbackCompletedEvent");
+    assertListenerMethodIsAsyncAfterCommit(
+        "com.acme.jitsi.domains.auth.service.AuthRefreshSecurityEventListener",
+        "onAuthRefreshSecurityEvent",
+        "com.acme.jitsi.domains.auth.service.AuthRefreshSecurityEvent");
+    assertListenerMethodIsAsyncAfterCommit(
+        "com.acme.jitsi.domains.meetings.listener.MeetingJoinObservabilityListener",
+        "onMeetingJoinObserved",
+        "com.acme.jitsi.domains.meetings.event.MeetingJoinObservedEvent");
   }
 
   @Test

@@ -92,7 +92,8 @@ public class SecurityConfig {
       ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
       @Value("${app.frontend.origin:http://localhost:3000}") String frontendOrigin,
       OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService,
-      OidcLoginFailureHandler oidcLoginFailureHandler) throws Exception {
+      OidcLoginFailureHandler oidcLoginFailureHandler,
+      OidcLoginSuccessHandler oidcLoginSuccessHandler) throws Exception {
     http.cors(Customizer.withDefaults());
     http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()));
     http.headers(headers -> headers
@@ -118,8 +119,7 @@ public class SecurityConfig {
     if (clientRegistrationRepositoryProvider.getIfAvailable() != null) {
       configured.oauth2Login(oauth -> oauth
           .userInfoEndpoint(userInfo -> userInfo.oidcUserService(oidcUserService))
-          .successHandler(
-              (request, response, authentication) -> response.sendRedirect(frontendOrigin + "/auth/continue"))
+          .successHandler(oidcLoginSuccessHandler)
           .failureHandler(oidcLoginFailureHandler));
     }
 

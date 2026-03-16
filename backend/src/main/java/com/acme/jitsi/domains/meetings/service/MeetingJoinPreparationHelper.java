@@ -59,6 +59,18 @@ final class MeetingJoinPreparationHelper {
     return resolveRoomPathSegment(meetingId).toLowerCase(Locale.ROOT);
   }
 
+  String resolveAuditRoomId(String meetingId) {
+    try {
+      Meeting meeting = meetingService.getMeeting(meetingId);
+      if (meeting != null && meeting.roomId() != null && !meeting.roomId().isBlank()) {
+        return meeting.roomId();
+      }
+    } catch (RuntimeException ignored) {
+      // Fall back to meetingId to preserve auditability when the meeting lookup is unavailable.
+    }
+    return meetingId;
+  }
+
   private String resolveRoomPathSegment(String meetingId) {
     return encodePathSegment(resolveRawRoomName(meetingId));
   }

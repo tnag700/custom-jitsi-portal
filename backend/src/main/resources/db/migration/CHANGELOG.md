@@ -7,7 +7,7 @@
 - SQL-миграции: `backend/src/main/resources/db/migration/`
 - Java-миграции: `backend/src/main/java/db/migration/`
 
-## Список миграций V1-V17
+## Список миграций V1-V19
 
 | Version | File | Type | Summary |
 |---|---|---|---|
@@ -28,6 +28,8 @@
 | V15 | `V15__Create_config_set_rollouts_table.sql` | SQL | Создает таблицу rollout-операций config sets. |
 | V16 | `V16__Create_config_set_compatibility_checks_table.sql` | SQL | Создает таблицу compatibility checks. |
 | V17 | `V17__Create_user_profiles_table.sql` | SQL | Создает таблицу user profiles. |
+| V18 | `V18__Create_event_publication_table.sql` | SQL | Создает таблицу публикации modulith-событий. |
+| V19 | `V19__Create_auth_audit_events_table.sql` | SQL | Создает аудит-таблицу auth/token событий. |
 
 ## V10: Add single host partial index (Java migration)
 

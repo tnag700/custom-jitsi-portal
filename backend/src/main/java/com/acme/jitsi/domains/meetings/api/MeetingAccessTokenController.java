@@ -1,5 +1,7 @@
 package com.acme.jitsi.domains.meetings.api;
 
+import com.acme.jitsi.domains.meetings.service.MeetingJoinObservabilityPublisher;
+import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
 import com.acme.jitsi.domains.meetings.service.MeetingTokenIssuer;
 import com.acme.jitsi.security.ProblemResponseFacade;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,12 +21,15 @@ class MeetingAccessTokenController {
   private static final Logger log = LoggerFactory.getLogger(MeetingAccessTokenController.class);
 
   private final MeetingTokenIssuer meetingAccessTokenService;
+  private final MeetingJoinObservabilityPublisher meetingJoinObservabilityPublisher;
   private final ProblemResponseFacade problemResponseFacade;
 
   MeetingAccessTokenController(
       MeetingTokenIssuer meetingAccessTokenService,
+      MeetingJoinObservabilityPublisher meetingJoinObservabilityPublisher,
       ProblemResponseFacade problemResponseFacade) {
     this.meetingAccessTokenService = meetingAccessTokenService;
+    this.meetingJoinObservabilityPublisher = meetingJoinObservabilityPublisher;
     this.problemResponseFacade = problemResponseFacade;
   }
 
@@ -34,29 +39,83 @@ class MeetingAccessTokenController {
       @AuthenticationPrincipal OAuth2User principal,
       HttpServletRequest request) {
     String traceId = problemResponseFacade.resolveTraceId(request);
+    String requestId = problemResponseFacade.resolveRequestId(request);
     String subject = principal.getName();
     long startedAt = System.nanoTime();
     if (log.isInfoEnabled()) {
       log.info(
-        "join_clicked meetingId={} subject={} path={} traceId={}",
+        "join_clicked meetingId={} subject={} path={} traceId={} requestId={}",
         meetingId,
         subject,
         request.getRequestURI(),
-        traceId);
+        traceId,
+        requestId);
     }
 
-    MeetingTokenIssuer.TokenResult token = meetingAccessTokenService.issueToken(meetingId, principal.getName());
-    long durationMs = (System.nanoTime() - startedAt) / 1_000_000L;
-    if (log.isInfoEnabled()) {
-      log.info(
-        "join_succeeded meetingId={} subject={} role={} durationMs={} traceId={}",
-        meetingId,
-        subject,
-        token.role(),
-        durationMs,
-        traceId);
-    }
+    try {
+      MeetingTokenIssuer.TokenResult token = meetingAccessTokenService.issueToken(meetingId, principal.getName());
+      long durationMs = (System.nanoTime() - startedAt) / 1_000_000L;
+      meetingJoinObservabilityPublisher.publishSuccess(
+          meetingId,
+          token.roomId(),
+          subject,
+          token.role(),
+          traceId,
+          durationMs);
+      if (log.isInfoEnabled()) {
+        log.info(
+        "meeting_join_event eventType=MEETING_JOIN_SUCCEEDED result=success meetingId={} roomId={} subjectId={} role={} durationMs={} traceId={} requestId={}",
+            meetingId,
+            token.roomId(),
+            subject,
+            token.role(),
+            durationMs,
+        traceId,
+        requestId);
+      }
 
-    return new MeetingAccessTokenResponse(token.joinUrl(), token.expiresAt(), token.role());
+      return new MeetingAccessTokenResponse(token.joinUrl(), token.expiresAt(), token.role());
+    } catch (MeetingTokenException ex) {
+      long durationMs = (System.nanoTime() - startedAt) / 1_000_000L;
+      String reasonCategory = classifyReasonCategory(ex.errorCode());
+      meetingJoinObservabilityPublisher.publishFailure(
+          meetingId,
+          subject,
+          traceId,
+          durationMs,
+          ex.errorCode());
+      if (log.isWarnEnabled()) {
+        log.warn(
+        "meeting_join_event eventType=MEETING_JOIN_FAILED result=fail meetingId={} subjectId={} errorCode={} reasonCategory={} durationMs={} traceId={} requestId={}",
+            meetingId,
+            subject,
+            ex.errorCode(),
+            reasonCategory,
+            durationMs,
+        traceId,
+        requestId);
+      }
+      throw ex;
+    }
+  }
+
+  private String classifyReasonCategory(String errorCode) {
+    if ("ROLE_MISMATCH".equals(errorCode)
+        || "ROLE_CONFLICT".equals(errorCode)
+        || "MEETING_ROLE_CONFLICT".equals(errorCode)) {
+      return "ROLE";
+    }
+    if ("CONFIG_INCOMPATIBLE".equals(errorCode)) {
+      return "CONFIG";
+    }
+    if ("TOKEN_INVALID".equals(errorCode)
+        || "TOKEN_REVOKED".equals(errorCode)
+        || "AUTH_REQUIRED".equals(errorCode)) {
+      return "TOKEN";
+    }
+    if ("ACCESS_DENIED".equals(errorCode)) {
+      return "SSO";
+    }
+    return "UNKNOWN";
   }
 }

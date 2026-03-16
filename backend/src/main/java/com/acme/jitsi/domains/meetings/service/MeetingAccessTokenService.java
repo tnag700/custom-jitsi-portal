@@ -86,7 +86,8 @@ public class MeetingAccessTokenService implements MeetingTokenIssuer {
                 joinPreparationHelper.buildJoinUrl(
                     meetingId, accessTokenResult.accessToken(), displayName),
                 accessTokenResult.expiresAt(),
-                accessTokenResult.role()));
+            accessTokenResult.role(),
+            joinPreparationHelper.resolveAuditRoomId(meetingId)));
   }
 
   @Override
@@ -103,7 +104,8 @@ public class MeetingAccessTokenService implements MeetingTokenIssuer {
                 joinPreparationHelper.buildJoinUrl(
                     meetingId, accessTokenResult.accessToken(), displayName),
                 accessTokenResult.expiresAt(),
-                accessTokenResult.role()));
+            accessTokenResult.role(),
+            joinPreparationHelper.resolveAuditRoomId(meetingId)));
   }
 
   @Override

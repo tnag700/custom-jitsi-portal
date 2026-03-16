@@ -39,7 +39,7 @@ final class OidcLoginFailureHandler implements AuthenticationFailureHandler {
     String causeMessage = cause == null ? "" : cause.getMessage();
     if (log.isWarnEnabled()) {
       log.warn(
-          "oidc_login_failure code={} path={} traceId={} exceptionType={} exceptionMessage={} causeType={} causeMessage={}",
+          "sso_login_event eventType=SSO_LOGIN_FAILED result=fail errorCode={} path={} traceId={} exceptionType={} exceptionMessage={} causeType={} causeMessage={}",
           ErrorCode.ACCESS_DENIED.code(),
           request.getRequestURI(),
           traceId,

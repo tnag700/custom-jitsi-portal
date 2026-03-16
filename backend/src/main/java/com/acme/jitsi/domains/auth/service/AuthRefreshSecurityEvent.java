@@ -8,5 +8,6 @@ public record AuthRefreshSecurityEvent(
     String tokenId,
     String subject,
     String meetingId,
+    String traceId,
     Instant occurredAt) {
 }

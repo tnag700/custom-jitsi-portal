@@ -1,7 +1,7 @@
 package com.acme.jitsi.domains.auth.service;
 
 import java.time.Clock;
-import java.time.Instant;
+import org.slf4j.MDC;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +23,7 @@ public class RefreshSecurityEventPublisher {
         tokenId,
         subject,
         meetingId,
+        MDC.get("traceId"),
         clock.instant()));
   }
 }

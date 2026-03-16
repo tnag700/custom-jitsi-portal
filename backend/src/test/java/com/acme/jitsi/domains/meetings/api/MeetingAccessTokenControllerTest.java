@@ -16,6 +16,7 @@ import com.nimbusds.jwt.SignedJWT;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -87,6 +88,11 @@ class MeetingAccessTokenControllerTest {
 
   @Autowired
   private JdbcTemplate jdbcTemplate;
+
+  @org.junit.jupiter.api.BeforeEach
+  void setUp() {
+    jdbcTemplate.execute("DELETE FROM meeting_audit_events");
+  }
 
   @Test
   void unauthenticatedRequestReturns401() throws Exception {
@@ -259,8 +265,53 @@ class MeetingAccessTokenControllerTest {
         .andExpect(jsonPath("$.properties.requestId").value("trace-role-log-1"));
 
     assertThat(output.getOut()).contains("join_clicked meetingId=meeting-conflict subject=u-conflict");
+    assertThat(output.getOut()).contains("eventType=MEETING_JOIN_FAILED");
+    assertThat(output.getOut()).contains("result=fail");
+    assertThat(output.getOut()).contains("reasonCategory=ROLE");
     assertThat(output.getOut()).contains("join_failed status=409 code=" + ErrorCode.ROLE_MISMATCH.code());
     assertThat(output.getOut()).contains("traceId=");
+  }
+
+  @Test
+  void successfulJoinWritesCanonicalStructuredEventAndAuditEntry(CapturedOutput output) throws Exception {
+    mockMvc.perform(post("/api/v1/meetings/meeting-b/access-token")
+            .with(csrf())
+            .header("X-Trace-Id", "trace-join-success-1")
+            .with(oauth2Login().attributes(attrs -> attrs.put("sub", "u-host"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.role").value("host"));
+
+    assertThat(output.getOut()).contains("eventType=MEETING_JOIN_SUCCEEDED");
+    assertThat(output.getOut()).contains("result=success");
+    assertThat(output.getOut()).contains("meetingId=meeting-b");
+    assertThat(output.getOut()).contains("subjectId=u-host");
+    assertThat(output.getOut()).contains("trace-join-success-1");
+
+    Integer count = awaitCount(
+        "SELECT COUNT(*) FROM meeting_audit_events WHERE action_type = ? AND meeting_id = ? AND subject_id = ?",
+        "join_success",
+        "meeting-b",
+        "u-host");
+
+    assertThat(count).isEqualTo(1);
+  }
+
+  private Integer awaitCount(String sql, Object... args) {
+    long deadline = System.nanoTime() + Duration.ofSeconds(3).toNanos();
+    Integer count = 0;
+    while (System.nanoTime() < deadline) {
+      count = jdbcTemplate.queryForObject(sql, Integer.class, args);
+      if (count != null && count > 0) {
+        return count;
+      }
+      try {
+        Thread.sleep(50);
+      } catch (InterruptedException ex) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError("Interrupted while waiting for meeting audit event", ex);
+      }
+    }
+    return count;
   }
 
   @Test
@@ -324,6 +375,14 @@ class MeetingAccessTokenControllerTest {
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
         .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.MEETING_CANCELED.code()))
         .andExpect(jsonPath("$.properties.requestId").value("trace-meeting-canceled-1"));
+
+    Integer count = awaitCount(
+      "SELECT COUNT(*) FROM meeting_audit_events WHERE action_type = ? AND meeting_id = ? AND subject_id = ?",
+      "join_failed",
+      meetingId,
+      "u-participant");
+
+    assertThat(count).isEqualTo(1);
   }
 
   @Test

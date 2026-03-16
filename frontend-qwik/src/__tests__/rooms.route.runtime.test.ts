@@ -95,6 +95,16 @@ function createCtx(overrides?: Partial<RouteCtx>): RouteCtx {
   };
 }
 
+function mockCsrfBootstrap(requestToken = "csrf-request-1", cookieToken = "csrf-cookie-1") {
+  return vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    ok: true,
+    headers: {
+      getSetCookie: () => [`XSRF-TOKEN=${cookieToken}; Path=/; SameSite=Lax`],
+    },
+    json: async () => ({ token: requestToken, headerName: "X-XSRF-TOKEN" }),
+  } as Response);
+}
+
 describe("rooms route runtime", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -128,6 +138,7 @@ describe("rooms route runtime", () => {
 
   it("useCreateRoom returns success payload", async () => {
     vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("idem-1");
+    mockCsrfBootstrap();
     const room = { roomId: "r1", name: "Room 1" };
     mockCreateRoom.mockResolvedValue(room);
 
@@ -139,12 +150,12 @@ describe("rooms route runtime", () => {
       expect.objectContaining({
         apiUrl: "http://localhost:8080/api/v1",
         sessionCookie: "sess-1",
-        csrfToken: "csrf-1",
-        csrfCookieToken: "csrf-1",
+        csrfToken: "csrf-request-1",
+        csrfCookieToken: "csrf-cookie-1",
         idempotencyKey: "idem-1",
         headers: expect.objectContaining({
-          Cookie: "JSESSIONID=sess-1; XSRF-TOKEN=csrf-1",
-          "X-XSRF-TOKEN": "csrf-1",
+          Cookie: "JSESSIONID=sess-1; XSRF-TOKEN=csrf-cookie-1",
+          "X-XSRF-TOKEN": "csrf-request-1",
           "Idempotency-Key": "idem-1",
           "Content-Type": "application/json",
         }),
@@ -156,6 +167,7 @@ describe("rooms route runtime", () => {
 
   it("useUpdateRoom maps RoomServiceError to fail(400)", async () => {
     vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("idem-1");
+    mockCsrfBootstrap();
     mockUpdateRoom.mockRejectedValue(
       new MockRoomServiceError({ title: "Bad request", detail: "room invalid", errorCode: "VALIDATION_ERROR" }),
     );
@@ -179,6 +191,7 @@ describe("rooms route runtime", () => {
 
   it("useUpdateRoom strips roomId from payload and returns success", async () => {
     vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("idem-1");
+    mockCsrfBootstrap();
     const room = { roomId: "r1", name: "Updated" };
     mockUpdateRoom.mockResolvedValue(room);
 
@@ -190,12 +203,12 @@ describe("rooms route runtime", () => {
       expect.objectContaining({
         apiUrl: "http://localhost:8080/api/v1",
         sessionCookie: "sess-1",
-        csrfToken: "csrf-1",
-        csrfCookieToken: "csrf-1",
+        csrfToken: "csrf-request-1",
+        csrfCookieToken: "csrf-cookie-1",
         idempotencyKey: "idem-1",
         headers: expect.objectContaining({
-          Cookie: "JSESSIONID=sess-1; XSRF-TOKEN=csrf-1",
-          "X-XSRF-TOKEN": "csrf-1",
+          Cookie: "JSESSIONID=sess-1; XSRF-TOKEN=csrf-cookie-1",
+          "X-XSRF-TOKEN": "csrf-request-1",
           "Idempotency-Key": "idem-1",
           "Content-Type": "application/json",
         }),
@@ -208,6 +221,7 @@ describe("rooms route runtime", () => {
 
   it("useCloseRoom maps unknown errors to fail(500)", async () => {
     vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("idem-1");
+    mockCsrfBootstrap();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     mockCloseRoom.mockRejectedValue(new Error("boom"));
 
@@ -230,6 +244,7 @@ describe("rooms route runtime", () => {
 
   it("useDeleteRoom returns success on delete", async () => {
     vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("idem-1");
+    mockCsrfBootstrap();
     mockDeleteRoom.mockResolvedValue(undefined);
 
     const mod = await import("~/routes/rooms/index");
@@ -240,12 +255,12 @@ describe("rooms route runtime", () => {
       expect.objectContaining({
         apiUrl: "http://localhost:8080/api/v1",
         sessionCookie: "sess-1",
-        csrfToken: "csrf-1",
-        csrfCookieToken: "csrf-1",
+        csrfToken: "csrf-request-1",
+        csrfCookieToken: "csrf-cookie-1",
         idempotencyKey: "idem-1",
         headers: expect.objectContaining({
-          Cookie: "JSESSIONID=sess-1; XSRF-TOKEN=csrf-1",
-          "X-XSRF-TOKEN": "csrf-1",
+          Cookie: "JSESSIONID=sess-1; XSRF-TOKEN=csrf-cookie-1",
+          "X-XSRF-TOKEN": "csrf-request-1",
           "Idempotency-Key": "idem-1",
           "Content-Type": "application/json",
         }),
@@ -257,6 +272,7 @@ describe("rooms route runtime", () => {
 
   it("useDeleteRoom maps RoomServiceError to fail(400)", async () => {
     vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("idem-1");
+    mockCsrfBootstrap();
     mockDeleteRoom.mockRejectedValue(
       new MockRoomServiceError({
         title: "Conflict",

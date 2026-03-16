@@ -74,7 +74,7 @@ public class AuthRefreshService {
     }
 
     refreshTokenStore.revoke(tokenId);
-    securityEventPublisher.publish("REFRESH_REVOKED", ErrorCode.TOKEN_REVOKED.code(), tokenId, "", "");
+    securityEventPublisher.publish("TOKEN_REFRESH_REVOKED", ErrorCode.TOKEN_REVOKED.code(), tokenId, "", "");
   }
 
   public RefreshResult refresh(String serializedRefreshToken) {
@@ -139,6 +139,18 @@ public class AuthRefreshService {
       }
 
       observation.outcome("success");
+    securityEventPublisher.publish(
+      "TOKEN_ISSUED",
+      null,
+      rotationResult.nextState().tokenId(),
+      knownState.subject(),
+      knownState.meetingId());
+    securityEventPublisher.publish(
+      "TOKEN_REFRESHED",
+      null,
+      rotationResult.nextState().tokenId(),
+      knownState.subject(),
+      knownState.meetingId());
       return new RefreshResult(
           accessTokenResult.accessToken(),
           rotationResult.refreshToken(),
