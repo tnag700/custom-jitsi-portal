@@ -41,6 +41,52 @@ interface JoinPageRuntimeConfig {
   publicApiUrl: string;
 }
 
+function createInvalidJoinUrlError(detail: string): JoinErrorPayload {
+  return {
+    title: "Небезопасный redirect отклонен",
+    detail,
+    errorCode: "JOIN_RESPONSE_INVALID",
+  };
+}
+
+function resolveExpectedJoinOrigin(publicJoinUrl: string | null | undefined): string | null {
+  if (!publicJoinUrl) {
+    return null;
+  }
+  try {
+    const url = new URL(publicJoinUrl);
+    return url.protocol === "https:" ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
+
+function redirectToJoinUrl(
+  payload: unknown,
+  expectedOrigin: string | null,
+): JoinErrorPayload | null {
+  if (!payload || typeof payload !== "object" || !("joinUrl" in payload) || typeof payload.joinUrl !== "string") {
+    return createInvalidJoinUrlError("Backend вернул ответ без корректного joinUrl.");
+  }
+
+  try {
+    const url = new URL(payload.joinUrl);
+    if (url.protocol !== "https:") {
+      return createInvalidJoinUrlError("Backend вернул joinUrl с небезопасной схемой.");
+    }
+    if (url.username || url.password) {
+      return createInvalidJoinUrlError("Backend вернул joinUrl с недопустимыми credentials.");
+    }
+    if (expectedOrigin && url.origin !== expectedOrigin) {
+      return createInvalidJoinUrlError("Backend вернул joinUrl вне разрешенного origin.");
+    }
+    window.location.assign(url.toString());
+    return null;
+  } catch {
+    return createInvalidJoinUrlError("Backend вернул синтаксически некорректный joinUrl.");
+  }
+}
+
 export const useUpcomingMeetings = routeLoader$(async ({ sharedMap, cookie }) => {
   const requestContext = buildServerRequestContext({ sharedMap, cookie });
   try {
@@ -177,8 +223,12 @@ export default component$(() => {
     clipboardCopied.value = false;
     const result = await joinAction.submit({ meetingId });
     const payload = result?.value;
-    if (typeof window !== "undefined" && payload && typeof payload === "object" && "joinUrl" in payload && typeof payload.joinUrl === "string") {
-      window.location.assign(payload.joinUrl);
+    if (typeof window !== "undefined" && payload) {
+      const redirectError = redirectToJoinUrl(payload, resolveExpectedJoinOrigin(readinessSnapshot.value.publicJoinUrl));
+      if (redirectError) {
+        joinError.value = redirectError;
+        clipboardCopied.value = false;
+      }
     }
   });
 
@@ -198,8 +248,12 @@ export default component$(() => {
       clipboardCopied.value = false;
       const result = await joinAction.submit({ meetingId: joiningMeetingId.value });
       const payload = result?.value;
-      if (typeof window !== "undefined" && payload && typeof payload === "object" && "joinUrl" in payload && typeof payload.joinUrl === "string") {
-        window.location.assign(payload.joinUrl);
+      if (typeof window !== "undefined" && payload) {
+        const redirectError = redirectToJoinUrl(payload, resolveExpectedJoinOrigin(readinessSnapshot.value.publicJoinUrl));
+        if (redirectError) {
+          joinError.value = redirectError;
+          clipboardCopied.value = false;
+        }
       }
     }
   });

@@ -8,6 +8,7 @@ import com.acme.jitsi.domains.rooms.service.Room;
 import com.acme.jitsi.domains.rooms.service.RoomNameConflictException;
 import com.acme.jitsi.domains.rooms.service.RoomRepository;
 import com.acme.jitsi.infrastructure.usecase.UseCase;
+import com.acme.jitsi.shared.validation.TextInputNormalizer;
 import java.time.Clock;
 import java.time.Instant;
 import org.springframework.context.ApplicationEventPublisher;
@@ -80,7 +81,7 @@ public class UpdateRoomUseCase implements UseCase<UpdateRoomCommand, Room> {
       return existingName;
     }
 
-    String normalizedName = requestedName.trim();
+    String normalizedName = TextInputNormalizer.normalizeNullable(requestedName);
     if (normalizedName.isEmpty()) {
       throw new InvalidRoomDataException("Room name must not be blank");
     }
@@ -91,7 +92,7 @@ public class UpdateRoomUseCase implements UseCase<UpdateRoomCommand, Room> {
     if (requestedDescription == null) {
       return existingDescription;
     }
-    return requestedDescription.isBlank() ? null : requestedDescription.trim();
+    return TextInputNormalizer.normalizeOptional(requestedDescription);
   }
 
   private boolean isNameChanged(String normalizedName, String existingName) {

@@ -209,4 +209,24 @@ describe("join.service runtime: issueAccessToken", () => {
       issueAccessToken("sess", "http://localhost:8080/api/v1", "csrf", "m-1"),
     ).rejects.toBeInstanceOf(JoinServiceError);
   });
+
+  it("rejects non-HTTPS joinUrl payloads as invalid response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({ joinUrl: "http://meet.example.com/room", expiresAt: "2026-03-03T10:00:00Z", role: "ATTENDEE" }, 200),
+    );
+
+    await expect(
+      issueAccessToken("sess", "http://localhost:8080/api/v1", "csrf", "m-1"),
+    ).rejects.toMatchObject({ payload: { errorCode: "JOIN_RESPONSE_INVALID" } });
+  });
+
+  it("rejects joinUrl payloads with credentials as invalid response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({ joinUrl: "https://user:pass@meet.example.com/room", expiresAt: "2026-03-03T10:00:00Z", role: "ATTENDEE" }, 200),
+    );
+
+    await expect(
+      issueAccessToken("sess", "http://localhost:8080/api/v1", "csrf", "m-1"),
+    ).rejects.toMatchObject({ payload: { errorCode: "JOIN_RESPONSE_INVALID" } });
+  });
 });

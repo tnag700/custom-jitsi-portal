@@ -6,6 +6,7 @@ import com.acme.jitsi.domains.profiles.service.UserProfile;
 import com.acme.jitsi.domains.profiles.service.ProfileValidationException;
 import com.acme.jitsi.domains.profiles.service.UserProfileRepository;
 import com.acme.jitsi.infrastructure.usecase.UseCase;
+import com.acme.jitsi.shared.validation.TextInputNormalizer;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
@@ -87,7 +88,7 @@ public class UpsertMyProfileUseCase implements UseCase<UpsertProfileCommand, Use
       throw new ProfileValidationException(fieldName + " is required");
     }
 
-    String normalized = value.trim();
+    String normalized = TextInputNormalizer.normalizeRequired(value);
     if (normalized.length() < minLength || normalized.length() > maxLength) {
       throw new ProfileValidationException(
           fieldName + " must be between " + minLength + " and " + maxLength + " characters");

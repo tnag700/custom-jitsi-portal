@@ -117,6 +117,25 @@ class SecurityConfigRouteMatrixTest {
   }
 
   @Test
+  void baselineSecurityHeadersArePresentOnPublicApiResponses() throws Exception {
+    mockMvc.perform(get("/api/v1/health"))
+        .andExpect(status().isOk())
+        .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+        .andExpect(header().string("X-Frame-Options", "DENY"))
+        .andExpect(header().string("Referrer-Policy", "no-referrer"))
+        .andExpect(header().string("Permissions-Policy", "camera=(), microphone=(), geolocation=()"))
+        .andExpect(header().string(
+            "Content-Security-Policy",
+            org.hamcrest.Matchers.containsString("default-src 'none'")))
+        .andExpect(header().string(
+            "Content-Security-Policy",
+            org.hamcrest.Matchers.containsString("frame-ancestors 'none'")))
+        .andExpect(header().string(
+            "Content-Security-Policy",
+            org.hamcrest.Matchers.containsString("object-src 'none'")));
+  }
+
+  @Test
   void errorEndpointRemainsPermitAllInsteadOfBeingInterceptedBySecurity() throws Exception {
     mockMvc.perform(get("/error")
             .accept(MediaType.APPLICATION_JSON)

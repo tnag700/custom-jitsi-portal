@@ -8,6 +8,7 @@ import com.acme.jitsi.domains.meetings.service.MeetingFinalizedException;
 import com.acme.jitsi.domains.meetings.service.MeetingRepository;
 import com.acme.jitsi.domains.meetings.service.MeetingStatus;
 import com.acme.jitsi.infrastructure.usecase.UseCase;
+import com.acme.jitsi.shared.validation.TextInputNormalizer;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -110,14 +111,10 @@ public class UpdateMeetingUseCase implements UseCase<UpdateMeetingCommand, Meeti
     if (value == null || value.isBlank()) {
       throw new InvalidMeetingDataException(message);
     }
-    return value.trim();
+    return TextInputNormalizer.normalizeRequired(value);
   }
 
   private String normalizeOptional(String value) {
-    if (value == null) {
-      return null;
-    }
-    String trimmed = value.trim();
-    return trimmed.isEmpty() ? null : trimmed;
+    return TextInputNormalizer.normalizeOptional(value);
   }
 }

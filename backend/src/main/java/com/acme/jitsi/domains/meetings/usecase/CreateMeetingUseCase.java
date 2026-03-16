@@ -11,6 +11,7 @@ import com.acme.jitsi.domains.meetings.service.MeetingRoomInactiveException;
 import com.acme.jitsi.domains.meetings.service.MeetingRoomsPort;
 import com.acme.jitsi.domains.meetings.service.MeetingStatus;
 import com.acme.jitsi.infrastructure.usecase.UseCase;
+import com.acme.jitsi.shared.validation.TextInputNormalizer;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
@@ -98,14 +99,10 @@ public class CreateMeetingUseCase implements UseCase<CreateMeetingCommand, Meeti
     if (value == null || value.isBlank()) {
       throw new InvalidMeetingDataException(message);
     }
-    return value.trim();
+    return TextInputNormalizer.normalizeRequired(value);
   }
 
   private String normalizeOptional(String value) {
-    if (value == null) {
-      return null;
-    }
-    String trimmed = value.trim();
-    return trimmed.isEmpty() ? null : trimmed;
+    return TextInputNormalizer.normalizeOptional(value);
   }
 }

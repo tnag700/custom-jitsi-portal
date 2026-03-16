@@ -9,6 +9,7 @@ import com.acme.jitsi.domains.rooms.service.RoomNameConflictException;
 import com.acme.jitsi.domains.rooms.service.RoomRepository;
 import com.acme.jitsi.domains.rooms.service.RoomStatus;
 import com.acme.jitsi.infrastructure.usecase.UseCase;
+import com.acme.jitsi.shared.validation.TextInputNormalizer;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
@@ -38,17 +39,22 @@ public class CreateRoomUseCase implements UseCase<CreateRoomCommand, Room> {
   @Override
   @Transactional
   public Room execute(CreateRoomCommand command) {
-    validateRequiredFields(command.name(), command.tenantId(), command.configSetId());
-    validateConfigSet(command.configSetId());
-    validateNameUniqueness(command.name(), command.tenantId(), null);
+    String normalizedName = TextInputNormalizer.normalizeRequired(command.name());
+    String normalizedDescription = TextInputNormalizer.normalizeOptional(command.description());
+    String normalizedTenantId = TextInputNormalizer.normalizeRequired(command.tenantId());
+    String normalizedConfigSetId = TextInputNormalizer.normalizeRequired(command.configSetId());
+
+    validateRequiredFields(normalizedName, normalizedTenantId, normalizedConfigSetId);
+    validateConfigSet(normalizedConfigSetId);
+    validateNameUniqueness(normalizedName, normalizedTenantId, null);
 
     Instant now = Instant.now(clock);
     Room room = new Room(
         UUID.randomUUID().toString(),
-        command.name(),
-        command.description(),
-        command.tenantId(),
-        command.configSetId(),
+      normalizedName,
+      normalizedDescription,
+      normalizedTenantId,
+      normalizedConfigSetId,
         RoomStatus.ACTIVE,
         now,
         now);

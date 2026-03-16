@@ -93,6 +93,24 @@ class InviteExchangeServiceTest {
     assertThat(inviteReservationCapability.lastRolledBackReservation).isNull();
   }
 
+  @Test
+  void exchangeRejectsBlankDisplayNameInsteadOfSilentlyUsingIt() {
+    assertThatThrownBy(() -> service.exchange("invite-token", "   "))
+        .isInstanceOf(InviteExchangeException.class)
+        .hasMessage("displayName must be between 2 and 80 characters.");
+
+    verifyNoInteractions(inviteJoinPort);
+  }
+
+  @Test
+  void exchangeRejectsDisplayNameWithControlCharacters() {
+    assertThatThrownBy(() -> service.exchange("invite-token", "Guest\nUser"))
+        .isInstanceOf(InviteExchangeException.class)
+        .hasMessage("displayName must not contain control characters.");
+
+    verifyNoInteractions(inviteJoinPort);
+  }
+
   private static final class FakeInviteValidationCapability implements InviteValidationCapability {
 
     private InviteValidationResult result;

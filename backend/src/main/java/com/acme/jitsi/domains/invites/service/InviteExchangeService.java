@@ -4,8 +4,10 @@ import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
 import com.acme.jitsi.shared.ErrorCode;
+import com.acme.jitsi.shared.validation.TextInputNormalizer;
 import com.acme.jitsi.shared.observability.FlowObservationFacade;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -91,10 +93,34 @@ public class InviteExchangeService {
   }
 
   private String buildGuestSubject(String displayName) {
-    if (displayName == null || displayName.isBlank()) {
+    String normalizedDisplayName = normalizeGuestDisplayName(displayName);
+    if (normalizedDisplayName == null) {
       return "guest:" + UUID.randomUUID();
     }
-    return "guest:" + displayName.trim().replaceAll("\\s+", "-").toLowerCase(Locale.ROOT) + ":" + UUID.randomUUID();
+    return "guest:"
+        + normalizedDisplayName.replaceAll("\\s+", "-").toLowerCase(Locale.ROOT)
+        + ":"
+        + UUID.randomUUID();
+  }
+
+  private String normalizeGuestDisplayName(String displayName) {
+    String normalized = TextInputNormalizer.normalizeNullable(displayName);
+    if (normalized == null) {
+      return null;
+    }
+    if (normalized.isEmpty() || normalized.length() < 2 || normalized.length() > 80) {
+      throw new InviteExchangeException(
+          HttpStatus.BAD_REQUEST,
+          ErrorCode.INVALID_INVITE.code(),
+          "displayName must be between 2 and 80 characters.");
+    }
+    if (TextInputNormalizer.containsControlCharacters(normalized)) {
+      throw new InviteExchangeException(
+          HttpStatus.BAD_REQUEST,
+          ErrorCode.INVALID_INVITE.code(),
+          "displayName must not contain control characters.");
+    }
+    return normalized;
   }
 
   private void classifyReservationFailure(FlowObservationFacade.FlowObservation observation, RuntimeException ex) {

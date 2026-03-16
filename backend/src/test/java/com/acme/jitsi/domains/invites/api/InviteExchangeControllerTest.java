@@ -262,6 +262,30 @@ class InviteExchangeControllerTest {
         .andExpect(jsonPath("$.properties.requestId").value("trace-blank"));
   }
 
+        @Test
+        void blankDisplayNameReturnsStableValidationErrorCode() throws Exception {
+          mockMvc.perform(post("/api/v1/invites/exchange")
+          .with(csrf())
+          .header("X-Trace-Id", "trace-display-blank")
+          .contentType(MediaType.APPLICATION_JSON)
+          .content("{" + "\"inviteToken\":\"invite-valid\",\"displayName\":\"   \"}"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVALID_INVITE.code()))
+          .andExpect(jsonPath("$.properties.requestId").value("trace-display-blank"));
+        }
+
+        @Test
+        void controlCharactersInDisplayNameReturnStableValidationErrorCode() throws Exception {
+          mockMvc.perform(post("/api/v1/invites/exchange")
+          .with(csrf())
+          .header("X-Trace-Id", "trace-display-control")
+          .contentType(MediaType.APPLICATION_JSON)
+          .content("{" + "\"inviteToken\":\"invite-valid\",\"displayName\":\"Guest\\nUser\"}"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVALID_INVITE.code()))
+          .andExpect(jsonPath("$.properties.requestId").value("trace-display-control"));
+        }
+
   private String extractToken(String joinUrl) {
     URI uri = URI.create(joinUrl);
     String fragment = uri.getFragment();

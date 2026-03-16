@@ -16,6 +16,8 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -23,6 +25,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+  private static final String BASELINE_CSP =
+      "default-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'";
+
+  private static final String PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=()";
 
   private static final String[] PUBLIC_ENDPOINTS = {
     "/error",
@@ -88,6 +95,14 @@ public class SecurityConfig {
       OidcLoginFailureHandler oidcLoginFailureHandler) throws Exception {
     http.cors(Customizer.withDefaults());
     http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()));
+    http.headers(headers -> headers
+      .contentTypeOptions(Customizer.withDefaults())
+      .frameOptions(frameOptions -> frameOptions.deny())
+      .referrerPolicy(referrerPolicy ->
+        referrerPolicy.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+      .contentSecurityPolicy(contentSecurityPolicy ->
+        contentSecurityPolicy.policyDirectives(BASELINE_CSP))
+      .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy", PERMISSIONS_POLICY)));
     http.requestCache(cache -> cache.disable());
     http.authorizeHttpRequests(auth -> auth
         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()

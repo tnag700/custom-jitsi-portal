@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
+import com.acme.jitsi.shared.validation.TextInputNormalizer;
 
 record CreateMeetingRequest(
     @NotBlank(message = "Meeting title is required")
@@ -19,6 +20,12 @@ record CreateMeetingRequest(
     Instant endsAt,
     Boolean allowGuests,
     Boolean recordingEnabled) {
+
+  CreateMeetingRequest {
+    title = TextInputNormalizer.normalizeRequired(title);
+    description = TextInputNormalizer.normalizeOptional(description);
+    meetingType = TextInputNormalizer.normalizeRequired(meetingType);
+  }
 
   boolean resolvedAllowGuests() {
     return Boolean.TRUE.equals(allowGuests);

@@ -113,8 +113,17 @@ export const upcomingMeetingCardSchema = z.object({
   joinAvailability: z.enum(["available", "scheduled"]),
 });
 
+const httpsJoinUrlSchema = z.string().url().refine((value) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.username === "" && url.password === "";
+  } catch {
+    return false;
+  }
+}, "joinUrl must be an HTTPS URL without credentials");
+
 export const meetingAccessTokenResponseSchema = z.object({
-  joinUrl: z.string(),
+  joinUrl: httpsJoinUrlSchema,
   expiresAt: z.string(),
   role: z.string(),
 });

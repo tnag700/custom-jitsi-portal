@@ -98,6 +98,13 @@ describe("Join Flow Guard: route integration (AC: 1, 2, 3, 4, 5, 6)", () => {
     const tsx = readSrc("routes/index.tsx");
     expect(tsx).toContain("if (!canStartJoin(joinAction.isRunning))");
   });
+
+  it("routes/index.tsx should reject unsafe joinUrl before redirect", () => {
+    const tsx = readSrc("routes/index.tsx");
+    expect(tsx).toContain("redirectToJoinUrl(");
+    expect(tsx).toContain("JOIN_RESPONSE_INVALID");
+    expect(tsx).toContain("url.origin !== expectedOrigin");
+  });
 });
 
 describe("Join Flow Guard: concurrency protection (M3 fix)", () => {

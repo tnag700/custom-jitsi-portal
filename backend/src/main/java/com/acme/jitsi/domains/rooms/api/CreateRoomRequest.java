@@ -2,6 +2,7 @@ package com.acme.jitsi.domains.rooms.api;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import com.acme.jitsi.shared.validation.TextInputNormalizer;
 
 record CreateRoomRequest(
     @NotBlank(message = "Room name is required")
@@ -13,4 +14,11 @@ record CreateRoomRequest(
     String tenantId,
     @NotBlank(message = "Config set ID is required")
     String configSetId) {
+
+    CreateRoomRequest {
+        name = TextInputNormalizer.normalizeRequired(name);
+        description = TextInputNormalizer.normalizeOptional(description);
+        tenantId = TextInputNormalizer.normalizeRequired(tenantId);
+        configSetId = TextInputNormalizer.normalizeRequired(configSetId);
+    }
 }
