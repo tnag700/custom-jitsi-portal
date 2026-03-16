@@ -9,6 +9,7 @@ import com.acme.jitsi.domains.configsets.event.ConfigSetRolloutCompletedEvent;
 import com.acme.jitsi.domains.configsets.event.ConfigSetUpdatedEvent;
 import com.acme.jitsi.domains.configsets.service.ConfigSetAuditLog;
 import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -16,6 +17,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 class ConfigSetAuditListener {
+
+  static final String DURABLE_ROLLOUT_COMPLETED_LISTENER_ID = "configsets.audit.rollout.completed";
 
   private final ConfigSetAuditLog auditLog;
   private final MeterRegistry meterRegistry;
@@ -81,8 +84,7 @@ class ConfigSetAuditListener {
     recordMetrics("deactivate");
   }
 
-  @Async
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+  @ApplicationModuleListener(id = DURABLE_ROLLOUT_COMPLETED_LISTENER_ID)
   public void onRolloutCompleted(ConfigSetRolloutCompletedEvent event) {
     auditLog.record(
         "CONFIG_SET_ROLLOUT_COMPLETED",

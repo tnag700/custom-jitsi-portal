@@ -78,22 +78,23 @@ describe("Shared UI Guard: centralized typing and a11y contracts (AC: 1, 3)", ()
 });
 
 describe("Shared UI Guard: AppDialog (AC: 1, 4)", () => {
-  it("AppDialog.tsx should contain Modal import and component$", () => {
+  it("AppDialog.tsx should implement a local dialog wrapper with component$", () => {
     const tsx = readSrc("lib/shared/ui/AppDialog.tsx");
-    expect(tsx).toContain("@qwik-ui/headless");
-    expect(tsx).toContain("Modal");
     expect(tsx).toContain("component$");
+    expect(tsx).toContain('role="dialog"');
+    expect(tsx).toContain('aria-modal="true"');
   });
 
-  it("AppDialog.tsx should use design tokens and Modal.Title", () => {
+  it("AppDialog.tsx should use design tokens and explicit title/description a11y wiring", () => {
     const tsx = readSrc("lib/shared/ui/AppDialog.tsx");
     expect(tsx).toContain("bg-surface");
     expect(tsx).toContain("rounded-xl");
     expect(tsx).toContain("shadow-xl");
-    expect(tsx).toContain("ModalTitle");
+    expect(tsx).toContain("app-dialog-title");
+    expect(tsx).toContain("app-dialog-description");
   });
 
-  it("AppDialog.tsx should include trigger and close labels for accessibility and i18n flexibility", () => {
+  it("AppDialog.tsx should include trigger and close labels plus custom close handling", () => {
     const tsx = readSrc("lib/shared/ui/AppDialog.tsx");
     expect(tsx).toContain("showTrigger = true");
     expect(tsx).toContain("triggerLabel");
@@ -102,8 +103,9 @@ describe("Shared UI Guard: AppDialog (AC: 1, 4)", () => {
     expect(tsx).toContain("sharedFocusVisibleAttrs");
     expect(tsx).toContain("aria-label={triggerLabel}");
     expect(tsx).toContain("showTrigger");
-    expect(tsx).toContain("ModalClose");
     expect(tsx).toContain("bind:show");
+    expect(tsx).toContain("closeOnBackdropClick");
+    expect(tsx).toContain("window.requestAnimationFrame");
   });
 });
 

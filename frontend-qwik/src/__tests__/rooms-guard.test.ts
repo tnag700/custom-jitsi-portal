@@ -35,7 +35,7 @@ describe("Rooms Guard: service (AC: 1, 3-6)", () => {
   it("rooms.service.ts should include Idempotency-Key support in mutation headers", () => {
     const ts = readSrc("lib/domains/rooms/rooms.service.ts");
     expect(ts).toContain("idempotencyKey");
-    expect(ts).toContain("createMutationHeaders");
+    expect(ts).toContain("asMutationRequestContext");
   });
 });
 
@@ -92,12 +92,13 @@ describe("Rooms Guard: route (AC: 1-7)", () => {
     expect(ts).toContain("const roomIdSchema = z.object");
   });
 
-  it("routes/rooms/rooms-page.tsx should use Form actions and ApiErrorAlert for confirmation errors", () => {
+  it("routes/rooms/rooms-page.tsx should wire RoomForm actions and confirmation slots with ApiErrorAlert", () => {
     const tsx = readSrc("routes/rooms/rooms-page.tsx");
-    expect(tsx).toContain("<Form action={closeAction}>");
-    expect(tsx).toContain("<Form action={deleteAction}>");
+    expect(tsx).toContain("<Form q:slot=\"actions\" action={closeAction}>");
+    expect(tsx).toContain("<Form q:slot=\"actions\" action={deleteAction}>");
     expect(tsx).toContain("action={createAction}");
     expect(tsx).toContain("action={updateAction}");
+    expect(tsx).toContain("AppDialog");
     expect(tsx).toContain("ApiErrorAlert");
     expect(tsx).toContain("Ошибка закрытия комнаты");
     expect(tsx).toContain("Ошибка удаления комнаты");

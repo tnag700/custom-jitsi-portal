@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -88,7 +89,7 @@ class ObserverPatternArchitectureTest {
         "com.acme.jitsi.domains.configsets.infrastructure.ConfigSetAuditListener",
         "onDeactivated",
         "com.acme.jitsi.domains.configsets.event.ConfigSetDeactivatedEvent");
-    assertListenerMethodIsAsyncAfterCommit(
+    assertListenerMethodIsDurableModuleListener(
         "com.acme.jitsi.domains.configsets.infrastructure.ConfigSetAuditListener",
         "onRolloutCompleted",
         "com.acme.jitsi.domains.configsets.event.ConfigSetRolloutCompletedEvent");
@@ -196,4 +197,21 @@ class ObserverPatternArchitectureTest {
         transactionalEventListener.fallbackExecution(),
         listenerTypeName + "#" + methodName + " must enable fallbackExecution");
   }
+
+    private static void assertListenerMethodIsDurableModuleListener(
+            String listenerTypeName,
+            String methodName,
+            String eventTypeName) throws Exception {
+        Class<?> listenerType = Class.forName(listenerTypeName);
+        Class<?> eventType = Class.forName(eventTypeName);
+        Method method = listenerType.getDeclaredMethod(methodName, eventType);
+
+        ApplicationModuleListener annotation = method.getAnnotation(ApplicationModuleListener.class);
+        assertNotNull(annotation,
+                listenerTypeName + "#" + methodName + " must be annotated with @ApplicationModuleListener");
+        assertEquals(
+                "configsets.audit.rollout.completed",
+                annotation.id(),
+                listenerTypeName + "#" + methodName + " must use the dedicated durable pilot listener id");
+    }
 }

@@ -3,9 +3,15 @@ package com.acme.jitsi.security;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(
+  prefix = "app.security.jwt-startup-validation",
+  name = "enabled",
+  havingValue = "true",
+  matchIfMissing = true)
 class JwtStartupValidationBootstrap implements InitializingBean {
 
   private final JwtStartupValidationPolicy validationPolicy;

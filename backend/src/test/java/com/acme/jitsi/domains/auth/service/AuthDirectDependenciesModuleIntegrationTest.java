@@ -3,7 +3,7 @@ package com.acme.jitsi.domains.auth.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import com.acme.jitsi.domains.TestDomainModuleApplication;
+import com.acme.jitsi.domains.DomainModuleTestApplication;
 import com.acme.jitsi.domains.meetings.service.MeetingTokenIssuer;
 import com.acme.jitsi.security.DefaultJwtAlgorithmPolicy;
 import com.acme.jitsi.security.JwtAlgorithmPolicy;
@@ -35,7 +35,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.modulith.test.ApplicationModuleTest;
 import org.springframework.modulith.test.ApplicationModuleTest.BootstrapMode;
@@ -50,16 +49,18 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @ApplicationModuleTest(
+  module = "auth",
   mode = BootstrapMode.DIRECT_DEPENDENCIES,
-  classes = TestDomainModuleApplication.class,
+  classes = DomainModuleTestApplication.class,
   verifyAutomatically = false)
 @SpringBootTest(classes = {
-  TestDomainModuleApplication.class,
+  DomainModuleTestApplication.class,
   AuthDirectDependenciesModuleIntegrationTest.ModuleTestConfig.class
 }, properties = {
     "spring.main.web-application-type=none",
     "app.auth.refresh.atomic-store=in-memory",
     "app.auth.refresh.idle-ttl-minutes=60",
+    "app.security.jwt-startup-validation.enabled=false",
   "app.meetings.token.signing-secret=01234567890123456789012345678901",
     "app.meetings.token.issuer=https://portal.example.test",
     "app.meetings.token.audience=jitsi-meet",
@@ -180,6 +181,7 @@ class AuthDirectDependenciesModuleIntegrationTest extends MeetingsModuleScaffold
     }
 
     @Bean
+    @Primary
     JwtAlgorithmPolicy jwtAlgorithmPolicy() {
       return new DefaultJwtAlgorithmPolicy();
     }

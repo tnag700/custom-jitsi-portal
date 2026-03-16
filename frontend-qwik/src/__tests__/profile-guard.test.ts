@@ -71,14 +71,16 @@ describe("Profile Guard: route integration (AC: 1, 2, 3, 4, 5, 6)", () => {
     expect(tsx).toContain("upsertMyProfile");
   });
 
-  it("routes/profile/index.tsx should handle CSRF token", () => {
+  it("routes/profile/index.tsx should build mutation context instead of inlining CSRF header logic", () => {
     const tsx = readSrc("routes/profile/index.tsx");
-    expect(tsx).toContain("XSRF-TOKEN");
+    expect(tsx).toContain("buildMutationRequestContext");
+    expect(tsx).toContain("buildServerRequestContext");
   });
 
-  it("routes/profile/index.tsx should trim payload and auto-reset success message", () => {
+  it("routes/profile/index.tsx should validate with profileFormSchema and surface success via toast", () => {
     const tsx = readSrc("routes/profile/index.tsx");
     expect(tsx).toContain("profileFormSchema");
-    expect(tsx).toContain("setTimeout");
+    expect(tsx).toContain("showToast$");
+    expect(tsx).toContain("Профиль сохранён");
   });
 });

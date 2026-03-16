@@ -42,7 +42,7 @@ describe("Auth service behavior", () => {
             displayName: "Dev Admin",
             email: "dev@acme.local",
             tenant: "acme",
-            claims: ["host", "moderator", 123],
+            claims: ["host", "moderator", "participant"],
           }),
           { status: 200 },
         );
@@ -56,7 +56,7 @@ describe("Auth service behavior", () => {
       displayName: "Dev Admin",
       email: "dev@acme.local",
       tenant: "acme",
-      claims: ["host", "moderator"],
+      claims: ["host", "moderator", "participant"],
     });
   });
 

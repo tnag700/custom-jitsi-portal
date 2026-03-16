@@ -112,7 +112,17 @@ describe("rooms route runtime", () => {
     const mod = await import("~/routes/rooms/index");
     const result = await mod.useRooms({ sharedMap: createCtx().sharedMap, cookie: createCtx().cookie } as never);
 
-    expect(mockFetchRooms).toHaveBeenCalledWith("sess-1", "http://localhost:8080/api/v1", "tenant-a");
+    expect(mockFetchRooms).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apiUrl: "http://localhost:8080/api/v1",
+        sessionCookie: "sess-1",
+        csrfToken: "csrf-1",
+        headers: expect.objectContaining({
+          Cookie: "JSESSIONID=sess-1",
+        }),
+      }),
+      "tenant-a",
+    );
     expect(result).toEqual(payload);
   });
 
@@ -126,11 +136,20 @@ describe("rooms route runtime", () => {
     const result = await mod.useCreateRoom({ name: "Room 1", timezone: "UTC" }, ctx as never);
 
     expect(mockCreateRoom).toHaveBeenCalledWith(
-      "sess-1",
-      "http://localhost:8080/api/v1",
-      "csrf-1",
-      "idem-1",
-      expect.objectContaining({ tenantId: "tenant-a", name: "Room 1" }),
+      expect.objectContaining({
+        apiUrl: "http://localhost:8080/api/v1",
+        sessionCookie: "sess-1",
+        csrfToken: "csrf-1",
+        csrfCookieToken: "csrf-1",
+        idempotencyKey: "idem-1",
+        headers: expect.objectContaining({
+          Cookie: "JSESSIONID=sess-1; XSRF-TOKEN=csrf-1",
+          "X-XSRF-TOKEN": "csrf-1",
+          "Idempotency-Key": "idem-1",
+          "Content-Type": "application/json",
+        }),
+      }),
+      expect.objectContaining({ tenantId: "tenant-a", name: "Room 1", timezone: "UTC" }),
     );
     expect(result).toEqual({ success: true, room });
   });
@@ -168,10 +187,19 @@ describe("rooms route runtime", () => {
     const result = await mod.useUpdateRoom({ roomId: "r1", name: "Updated", timezone: "UTC" }, ctx as never);
 
     expect(mockUpdateRoom).toHaveBeenCalledWith(
-      "sess-1",
-      "http://localhost:8080/api/v1",
-      "csrf-1",
-      "idem-1",
+      expect.objectContaining({
+        apiUrl: "http://localhost:8080/api/v1",
+        sessionCookie: "sess-1",
+        csrfToken: "csrf-1",
+        csrfCookieToken: "csrf-1",
+        idempotencyKey: "idem-1",
+        headers: expect.objectContaining({
+          Cookie: "JSESSIONID=sess-1; XSRF-TOKEN=csrf-1",
+          "X-XSRF-TOKEN": "csrf-1",
+          "Idempotency-Key": "idem-1",
+          "Content-Type": "application/json",
+        }),
+      }),
       "r1",
       { name: "Updated", timezone: "UTC" },
     );
@@ -180,6 +208,7 @@ describe("rooms route runtime", () => {
 
   it("useCloseRoom maps unknown errors to fail(500)", async () => {
     vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("idem-1");
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
     mockCloseRoom.mockRejectedValue(new Error("boom"));
 
     const mod = await import("~/routes/rooms/index");
@@ -207,7 +236,22 @@ describe("rooms route runtime", () => {
     const ctx = createCtx();
     const result = await mod.useDeleteRoom({ roomId: "r1" }, ctx as never);
 
-    expect(mockDeleteRoom).toHaveBeenCalledWith("sess-1", "http://localhost:8080/api/v1", "csrf-1", "idem-1", "r1");
+    expect(mockDeleteRoom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apiUrl: "http://localhost:8080/api/v1",
+        sessionCookie: "sess-1",
+        csrfToken: "csrf-1",
+        csrfCookieToken: "csrf-1",
+        idempotencyKey: "idem-1",
+        headers: expect.objectContaining({
+          Cookie: "JSESSIONID=sess-1; XSRF-TOKEN=csrf-1",
+          "X-XSRF-TOKEN": "csrf-1",
+          "Idempotency-Key": "idem-1",
+          "Content-Type": "application/json",
+        }),
+      }),
+      "r1",
+    );
     expect(result).toEqual({ success: true });
   });
 

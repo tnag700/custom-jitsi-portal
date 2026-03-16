@@ -11,7 +11,7 @@ class RefreshTokenStoreConfiguration {
 
   @Bean
   @Primary
-  RefreshTokenStore refreshTokenStore(
+  static RefreshTokenStore refreshTokenStore(
       AuthRefreshProperties properties,
       RefreshTokenStoreResolver refreshTokenStoreResolver,
       ObjectProvider<StringRedisTemplate> redisTemplateProvider) {

@@ -10,6 +10,7 @@ import com.acme.jitsi.domains.configsets.service.ConfigSetRepository;
 import com.acme.jitsi.domains.configsets.service.ConfigSetStatus;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
@@ -21,16 +22,22 @@ class ActiveConfigSetStartupValidator implements InitializingBean {
   private final ConfigSetCompatibilityStateService compatibilityStateService;
 
   ActiveConfigSetStartupValidator(
-      ConfigSetRepository configSetRepository,
-      ConfigSetDryRunValidator configSetDryRunValidator,
-      ConfigSetCompatibilityStateService compatibilityStateService) {
-    this.configSetRepository = configSetRepository;
-    this.configSetDryRunValidator = configSetDryRunValidator;
-    this.compatibilityStateService = compatibilityStateService;
+      ObjectProvider<ConfigSetRepository> configSetRepository,
+      ObjectProvider<ConfigSetDryRunValidator> configSetDryRunValidator,
+      ObjectProvider<ConfigSetCompatibilityStateService> compatibilityStateService) {
+    this.configSetRepository = configSetRepository.getIfAvailable();
+    this.configSetDryRunValidator = configSetDryRunValidator.getIfAvailable();
+    this.compatibilityStateService = compatibilityStateService.getIfAvailable();
   }
 
   @Override
   public void afterPropertiesSet() {
+    if (configSetRepository == null
+        || configSetDryRunValidator == null
+        || compatibilityStateService == null) {
+      return;
+    }
+
     UUID traceUuid = UUID.randomUUID();
     String traceId = traceUuid.toString();
     for (ConfigSet activeConfigSet : configSetRepository.findByStatus(ConfigSetStatus.ACTIVE)) {

@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.acme.jitsi.domains.TestDomainModuleApplication;
+import com.acme.jitsi.domains.DomainModuleTestApplication;
 import com.acme.jitsi.domains.invites.service.InviteMeetingStatePort;
 import com.acme.jitsi.domains.invites.service.InviteReservation;
 import com.acme.jitsi.domains.invites.service.InviteValidationPort;
@@ -34,17 +34,18 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.modulith.test.ApplicationModuleTest;
 import org.springframework.modulith.test.ApplicationModuleTest.BootstrapMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @ApplicationModuleTest(
+  module = "invites",
   mode = BootstrapMode.DIRECT_DEPENDENCIES,
-  classes = TestDomainModuleApplication.class,
+  classes = DomainModuleTestApplication.class,
   verifyAutomatically = false)
 @SpringBootTest(classes = {
-  TestDomainModuleApplication.class,
+  DomainModuleTestApplication.class,
   InvitesDirectDependenciesModuleIntegrationTest.ModuleTestConfig.class
 }, properties = {
     "spring.main.web-application-type=none",
@@ -55,7 +56,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
     "app.meetings.token.algorithm=HS256",
     "app.meetings.token.ttl-minutes=20",
     "app.meetings.token.role-claim-name=role",
-    "app.meetings.token.join-url-template=https://meet.example/%s#jwt=%s"
+    "app.meetings.token.join-url-template=https://meet.example/%s#jwt=%s",
+    "app.security.jwt-startup-validation.enabled=false"
 })
 @Tag("integration")
 class InvitesDirectDependenciesModuleIntegrationTest extends MeetingsModuleScaffoldingMocksSupport {
@@ -161,6 +163,7 @@ class InvitesDirectDependenciesModuleIntegrationTest extends MeetingsModuleScaff
   @TestConfiguration
   static class ModuleTestConfig {
     @Bean
+    @Primary
     JwtAlgorithmPolicy jwtAlgorithmPolicy() {
       return new DefaultJwtAlgorithmPolicy();
     }

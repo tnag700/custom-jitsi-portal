@@ -238,6 +238,8 @@ describe("shared route server helpers", () => {
   });
 
   it("mapRouteActionError maps unknown errors to fail(500) fallback payload", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
     const fail = vi.fn((status: number, payload: unknown) => ({ failed: true, status, payload }));
 
     const result = mapRouteActionError(new Error("boom"), RoomServiceError, fail, "MEETING_UNKNOWN");

@@ -3,7 +3,7 @@ package com.acme.jitsi.domains.configsets.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import com.acme.jitsi.domains.TestDomainModuleApplication;
+import com.acme.jitsi.domains.DomainModuleTestApplication;
 import com.acme.jitsi.domains.configsets.event.ConfigSetCreatedEvent;
 import com.acme.jitsi.domains.configsets.service.ConfigSetAuditLog;
 import com.acme.jitsi.domains.configsets.service.ConfigSetCompatibilityCheckRepository;
@@ -34,22 +34,25 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.modulith.test.ApplicationModuleTest;
 import org.springframework.modulith.test.ApplicationModuleTest.BootstrapMode;
 import org.springframework.modulith.test.PublishedEvents;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @ApplicationModuleTest(
+  module = "configsets",
   mode = BootstrapMode.STANDALONE,
-  classes = TestDomainModuleApplication.class,
+  classes = DomainModuleTestApplication.class,
   verifyAutomatically = false)
-@SpringBootTest(properties = {
-  "spring.main.web-application-type=none",
+@SpringBootTest(classes = {
+  DomainModuleTestApplication.class,
+  ConfigSetsStandaloneModuleIntegrationTest.ModuleTestConfig.class
+}, properties = {
+    "spring.main.web-application-type=none",
   "APP_CONFIG_SETS_ENCRYPTION_KEY=0123456789ABCDEF0123456789ABCDEF",
-  "spring.main.allow-bean-definition-overriding=true"
+    "app.meetings.token.signing-secret=false",
+    "app.security.jwt-startup-validation.enabled=false"
 })
-@Import(ConfigSetsStandaloneModuleIntegrationTest.ModuleTestConfig.class)
 @Tag("integration")
 class ConfigSetsStandaloneModuleIntegrationTest {
 
@@ -138,9 +141,10 @@ class ConfigSetsStandaloneModuleIntegrationTest {
         .toList()).isEmpty();
   }
 
-  @TestConfiguration
+  @TestConfiguration(proxyBeanMethods = false)
   static class ModuleTestConfig {
     @Bean
+    @org.springframework.context.annotation.Primary
     JwtAlgorithmPolicy jwtAlgorithmPolicy() {
       return new DefaultJwtAlgorithmPolicy();
     }

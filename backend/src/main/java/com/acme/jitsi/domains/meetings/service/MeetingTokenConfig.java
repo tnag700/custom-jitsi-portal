@@ -6,6 +6,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import java.nio.charset.StandardCharsets;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -22,20 +23,37 @@ class MeetingTokenConfig {
     this.algorithmPolicy = algorithmPolicy;
   }
 
-  private SecretKey signingKey(MeetingTokenProperties properties) {
+  private static SecretKey signingKey(
+      MeetingTokenProperties properties,
+      JwtAlgorithmPolicy algorithmPolicy) {
     return new SecretKeySpec(
         properties.signingSecret().getBytes(StandardCharsets.UTF_8),
         algorithmPolicy.resolveJcaAlgorithmForSecret(properties.algorithm()));
   }
 
-  @Bean
   JwtEncoder meetingJwtEncoder(MeetingTokenProperties properties) {
-    return new NimbusJwtEncoder(new ImmutableSecret<SecurityContext>(signingKey(properties)));
+    return meetingJwtEncoderBean(properties, algorithmPolicy);
   }
 
-  @Bean
   JwtDecoder meetingJwtDecoder(MeetingTokenProperties properties) {
-    return NimbusJwtDecoder.withSecretKey(signingKey(properties))
+    return meetingJwtDecoderBean(properties, algorithmPolicy);
+  }
+
+  @Bean("meetingJwtEncoder")
+  @ConditionalOnProperty(prefix = "app.meetings.token", name = "signing-secret")
+  static JwtEncoder meetingJwtEncoderBean(
+      MeetingTokenProperties properties,
+      JwtAlgorithmPolicy algorithmPolicy) {
+    return new NimbusJwtEncoder(
+        new ImmutableSecret<SecurityContext>(signingKey(properties, algorithmPolicy)));
+  }
+
+  @Bean("meetingJwtDecoder")
+  @ConditionalOnProperty(prefix = "app.meetings.token", name = "signing-secret")
+  static JwtDecoder meetingJwtDecoderBean(
+      MeetingTokenProperties properties,
+      JwtAlgorithmPolicy algorithmPolicy) {
+    return NimbusJwtDecoder.withSecretKey(signingKey(properties, algorithmPolicy))
         .macAlgorithm(algorithmPolicy.resolveMacAlgorithmForSecret(properties.algorithm()))
         .build();
   }

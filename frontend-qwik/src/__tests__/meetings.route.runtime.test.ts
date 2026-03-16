@@ -302,6 +302,7 @@ describe("meetings route runtime", () => {
   });
 
   it("useRevokeInvite maps unknown errors to fail(500)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
     mockRevokeInvite.mockRejectedValue(new Error("boom"));
 
     const mod = await import("~/routes/meetings/index");
@@ -339,6 +340,7 @@ describe("meetings route runtime", () => {
 
   it("meeting actions cover success and service-error branches", async () => {
     vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("idem-1");
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
     mockCreateMeeting.mockResolvedValue({ meetingId: "m1" });
     mockUpdateMeeting.mockRejectedValue(
       new MockMeetingServiceError({ title: "bad", detail: "update err", errorCode: "VALIDATION_ERROR" }),

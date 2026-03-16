@@ -127,6 +127,8 @@ vi.mock("@qwik-ui/headless", async () => {
 
 describe("shared ui runtime smoke", () => {
   it("AppDialog wires bind:show, trigger labels and semantic slots", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
     const { AppDialog } = await import("~/lib/shared/ui/AppDialog");
     const show = { value: true };
 

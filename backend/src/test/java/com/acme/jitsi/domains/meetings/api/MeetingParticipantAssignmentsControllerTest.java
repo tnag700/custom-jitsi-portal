@@ -13,10 +13,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.acme.jitsi.domains.meetings.event.MeetingParticipantAssignedEvent;
 import com.acme.jitsi.domains.meetings.event.MeetingParticipantRemovedEvent;
 import com.acme.jitsi.domains.meetings.event.MeetingParticipantRoleChangedEvent;
+import com.acme.jitsi.support.TestDomainModuleApplication;
 import com.acme.jitsi.shared.ErrorCode;
 import com.acme.jitsi.shared.JwtTestProperties;
 import com.jayway.jsonpath.JsonPath;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,9 +34,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 @SpringBootTest(
-    properties = {
+  classes = TestDomainModuleApplication.class,
+  properties = {
       "spring.datasource.url=jdbc:h2:mem:testdb-participants;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
       "spring.datasource.driver-class-name=org.h2.Driver",
+      "spring.main.allow-bean-definition-overriding=true",
       "spring.jpa.hibernate.ddl-auto=validate",
       "spring.flyway.enabled=true",
       "management.health.redis.enabled=false",
@@ -151,21 +155,19 @@ class MeetingParticipantAssignmentsControllerTest {
         .andExpect(jsonPath("$.meetingId").value(meetingId))
         .andExpect(jsonPath("$.assignedBy").value("admin-user"));
 
-      long eventCount = applicationEvents.stream(MeetingParticipantAssignedEvent.class)
-          .filter(e -> e.meetingId().equals(meetingId)
-              && e.roomId().equals(roomId)
-              && e.actorId().equals("admin-user")
-            && !e.traceId().isBlank()
-              && e.subjectId().equals("user-host-1")
-              && e.changedFields().equals("subjectId:user-host-1;role:none->host"))
-          .count();
-      assertEquals(1, eventCount);
+      var assignedEvents = applicationEvents.stream(MeetingParticipantAssignedEvent.class)
+        .filter(e -> e.meetingId().equals(meetingId)
+          && e.roomId().equals(roomId)
+          && e.actorId().equals("admin-user")
+          && !e.traceId().isBlank()
+          && e.subjectId().equals("user-host-1")
+          && e.changedFields().contains("subjectId:user-host-1")
+          && e.changedFields().contains("role:none->host"))
+        .toList();
+      assertEquals(1, assignedEvents.size());
 
-            Integer auditCount = jdbcTemplate.queryForObject(
-              "SELECT COUNT(*) FROM meeting_audit_events WHERE action_type = ?",
-              Integer.class,
-              "assign");
-            assertEquals(1, auditCount);
+      Integer auditCount = awaitAuditCount(assignedEvents.getFirst().traceId(), "assign");
+      assertEquals(1, auditCount);
   }
 
   @Test
@@ -225,21 +227,19 @@ class MeetingParticipantAssignmentsControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.role").value("moderator"));
 
-          long eventCount = applicationEvents.stream(MeetingParticipantRoleChangedEvent.class)
-              .filter(e -> e.meetingId().equals(meetingId)
-                  && e.roomId().equals(roomId)
-                  && e.actorId().equals("admin-user")
-                && !e.traceId().isBlank()
-                  && e.subjectId().equals("user-update-1")
-                  && e.changedFields().equals("subjectId:user-update-1;role:participant->moderator"))
-              .count();
-          assertEquals(1, eventCount);
+      var updatedEvents = applicationEvents.stream(MeetingParticipantRoleChangedEvent.class)
+        .filter(e -> e.meetingId().equals(meetingId)
+          && e.roomId().equals(roomId)
+          && e.actorId().equals("admin-user")
+          && !e.traceId().isBlank()
+          && e.subjectId().equals("user-update-1")
+          && e.changedFields().contains("subjectId:user-update-1")
+          && e.changedFields().contains("role:participant->moderator"))
+        .toList();
+      assertEquals(1, updatedEvents.size());
 
-                Integer auditCount = jdbcTemplate.queryForObject(
-                  "SELECT COUNT(*) FROM meeting_audit_events WHERE action_type = ?",
-                  Integer.class,
-                  "update");
-                assertEquals(1, auditCount);
+      Integer auditCount = awaitAuditCount(updatedEvents.getFirst().traceId(), "update");
+      assertEquals(1, auditCount);
   }
 
   @Test
@@ -475,7 +475,7 @@ class MeetingParticipantAssignmentsControllerTest {
                 """))
         .andExpect(status().isForbidden())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-              .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TENANT_ACCESS_DENIED.code()));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TENANT_ACCESS_DENIED.code()));
   }
 
   @Test
@@ -534,4 +534,26 @@ class MeetingParticipantAssignmentsControllerTest {
     assertNull(JsonPath.parse(response).read("$[" + noProfileIdx + "].organization"));
     assertNull(JsonPath.parse(response).read("$[" + noProfileIdx + "].position"));
   }
+
+  private Integer awaitAuditCount(String traceId, String actionType) throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+    while (System.nanoTime() < deadline) {
+      Integer auditCount = jdbcTemplate.queryForObject(
+          "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ? AND action_type = ?",
+          Integer.class,
+          traceId,
+          actionType);
+      if (auditCount != null && auditCount > 0) {
+        return auditCount;
+      }
+      Thread.sleep(25);
+    }
+
+    return jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM meeting_audit_events WHERE trace_id = ? AND action_type = ?",
+        Integer.class,
+        traceId,
+        actionType);
+  }
+
 }

@@ -20,9 +20,11 @@ import com.acme.jitsi.domains.configsets.service.ConfigSetRepository;
 import com.acme.jitsi.domains.configsets.service.ConfigSetStatus;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -54,9 +56,9 @@ class ActiveConfigSetStartupValidatorTest {
       .thenReturn(result);
 
     ActiveConfigSetStartupValidator validator = new ActiveConfigSetStartupValidator(
-        configSetRepository,
-      configSetDryRunValidator,
-      compatibilityStateService);
+        provider(configSetRepository),
+        provider(configSetDryRunValidator),
+        provider(compatibilityStateService));
 
     assertThatThrownBy(validator::afterPropertiesSet)
         .isInstanceOf(JwtStartupValidationException.class)
@@ -70,9 +72,9 @@ class ActiveConfigSetStartupValidatorTest {
     when(configSetRepository.findByStatus(ConfigSetStatus.ACTIVE)).thenReturn(List.of());
 
     ActiveConfigSetStartupValidator validator = new ActiveConfigSetStartupValidator(
-        configSetRepository,
-      configSetDryRunValidator,
-      compatibilityStateService);
+        provider(configSetRepository),
+        provider(configSetDryRunValidator),
+        provider(compatibilityStateService));
 
     assertThatCode(validator::afterPropertiesSet).doesNotThrowAnyException();
     verifyNoInteractions(configSetDryRunValidator);
@@ -92,9 +94,9 @@ class ActiveConfigSetStartupValidatorTest {
         .thenReturn(result);
 
     ActiveConfigSetStartupValidator validator = new ActiveConfigSetStartupValidator(
-        configSetRepository,
-      configSetDryRunValidator,
-      compatibilityStateService);
+      provider(configSetRepository),
+      provider(configSetDryRunValidator),
+      provider(compatibilityStateService));
 
     assertThatCode(validator::afterPropertiesSet).doesNotThrowAnyException();
     verify(compatibilityStateService).record(configSet.configSetId(), result);
@@ -120,5 +122,11 @@ class ActiveConfigSetStartupValidatorTest {
         ConfigSetStatus.ACTIVE,
         Instant.parse("2026-01-01T00:00:00Z"),
         Instant.parse("2026-01-01T00:00:00Z"));
+  }
+
+  private <T> ObjectProvider<T> provider(T bean) {
+    ObjectProvider<T> provider = Mockito.mock(ObjectProvider.class);
+    when(provider.getIfAvailable()).thenReturn(bean);
+    return provider;
   }
 }

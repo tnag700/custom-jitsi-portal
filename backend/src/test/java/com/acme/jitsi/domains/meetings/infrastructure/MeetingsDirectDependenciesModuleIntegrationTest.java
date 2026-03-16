@@ -3,7 +3,7 @@ package com.acme.jitsi.domains.meetings.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import com.acme.jitsi.domains.TestDomainModuleApplication;
+import com.acme.jitsi.domains.DomainModuleTestApplication;
 import com.acme.jitsi.domains.meetings.event.MeetingCreatedEvent;
 import com.acme.jitsi.domains.meetings.service.MeetingAuditLog;
 import com.acme.jitsi.domains.meetings.service.MeetingInviteRepository;
@@ -40,28 +40,31 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.modulith.test.ApplicationModuleTest;
 import org.springframework.modulith.test.ApplicationModuleTest.BootstrapMode;
 import org.springframework.modulith.test.PublishedEvents;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @ApplicationModuleTest(
+  module = "meetings",
   mode = BootstrapMode.DIRECT_DEPENDENCIES,
-  classes = TestDomainModuleApplication.class,
+  classes = DomainModuleTestApplication.class,
   verifyAutomatically = false)
-@SpringBootTest(properties = {
-  "spring.main.web-application-type=none",
-  "spring.main.allow-bean-definition-overriding=true",
+@SpringBootTest(classes = {
+  DomainModuleTestApplication.class,
+  MeetingsDirectDependenciesModuleIntegrationTest.ModuleTestConfig.class
+}, properties = {
+    "spring.main.web-application-type=none",
     "app.meetings.token.signing-secret=01234567890123456789012345678901",
     "app.meetings.token.issuer=https://portal.example.test",
     "app.meetings.token.audience=jitsi-meet",
     "app.meetings.token.algorithm=HS256",
     "app.meetings.token.ttl-minutes=20",
     "app.meetings.token.role-claim-name=role",
-    "app.meetings.token.join-url-template=https://meet.example/%s#jwt=%s"
+    "app.meetings.token.join-url-template=https://meet.example/%s#jwt=%s",
+    "app.security.jwt-startup-validation.enabled=false"
 })
-@Import(MeetingsDirectDependenciesModuleIntegrationTest.ModuleTestConfig.class)
 @Tag("integration")
 class MeetingsDirectDependenciesModuleIntegrationTest {
 
@@ -172,9 +175,10 @@ class MeetingsDirectDependenciesModuleIntegrationTest {
         .toList()).isEmpty();
   }
 
-  @TestConfiguration
+  @TestConfiguration(proxyBeanMethods = false)
   static class ModuleTestConfig {
     @Bean
+    @Primary
     JwtAlgorithmPolicy jwtAlgorithmPolicy() {
       return new DefaultJwtAlgorithmPolicy();
     }

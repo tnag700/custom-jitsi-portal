@@ -1,6 +1,11 @@
 spring:
   application:
     name: jitsi-backend
+  modulith:
+    events:
+      jdbc:
+        schema-initialization:
+          enabled: false
   doc:
     api-docs:
       version: openapi_3_1
