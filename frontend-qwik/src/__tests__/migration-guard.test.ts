@@ -95,6 +95,14 @@ describe("Story 14.1 Guard: framework and infrastructure baseline", () => {
     expect(serverEntry).toContain('typeof notFoundMiddleware === "function"');
     expect(serverEntry).toContain("Invalid Qwik router middleware export");
   });
+
+  it("Qwik routes should define CSP via route plugin and @nonce", () => {
+    const plugin = readProject("src/routes/plugin@csp.ts");
+    expect(plugin).toContain('sharedMap.set("@nonce", nonce)');
+    expect(plugin).toContain('"Content-Security-Policy"');
+    expect(plugin).toContain("buildDocumentContentSecurityPolicy");
+    expect(plugin).toContain("shouldApplyDocumentSecurityHeaders");
+  });
 });
 
 describe("Migration Guard: Legacy Svelte/SvelteKit patterns MUST be absent", () => {

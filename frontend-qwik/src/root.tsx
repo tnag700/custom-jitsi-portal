@@ -23,15 +23,6 @@ export default component$(() => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
-        <script
-          dangerouslySetInnerHTML={`
-            document.documentElement.classList.toggle('dark',
-              document.cookie.includes('theme=dark') ||
-              (!/theme=/.test(document.cookie) && window.matchMedia('(prefers-color-scheme: dark)').matches)
-            );
-          `}
-        />
-
         <DocumentHeadTags />
 
         <link rel="canonical" href={url.href} />
