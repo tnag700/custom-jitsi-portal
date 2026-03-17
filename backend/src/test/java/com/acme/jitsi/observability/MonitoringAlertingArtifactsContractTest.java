@@ -32,6 +32,7 @@ class MonitoringAlertingArtifactsContractTest {
         .contains("JitsiConfigCompatibilityBroken")
         .contains("JitsiJoinReadinessBlocked")
       .contains("__MONITORING_GRAFANA_BASE_URL__")
+        .contains("__MONITORING_RUNBOOK_URL__")
         .contains("dashboard:")
         .contains("runbook:")
         .contains("sli_window:")
@@ -40,7 +41,8 @@ class MonitoringAlertingArtifactsContractTest {
         .doesNotContain("meetingId")
         .doesNotContain("roomId")
       .doesNotContain("ip_address")
-      .doesNotContain("dashboard: http://localhost:3001");
+      .doesNotContain("dashboard: http://localhost:3001")
+      .doesNotContain("runbook: docs/runbook.md#phase-1-alerting");
 
     assertThat(Files.readString(alertmanagerTemplate))
         .contains("send_resolved: true")
@@ -59,7 +61,8 @@ class MonitoringAlertingArtifactsContractTest {
         .contains("alertmanager:")
       .contains("mock-alert-receiver:")
       .contains("MONITORING_ENVIRONMENT")
-      .contains("MONITORING_GRAFANA_BASE_URL");
+      .contains("MONITORING_GRAFANA_BASE_URL")
+      .contains("MONITORING_RUNBOOK_URL");
   }
 
   @Test
