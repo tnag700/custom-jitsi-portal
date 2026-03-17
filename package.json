@@ -1,10 +1,17 @@
 {
   "scripts": {
+    "frontend:install": "npm --prefix frontend-qwik install",
     "frontend:dev": "npm --prefix frontend-qwik run dev",
     "frontend:build": "npm --prefix frontend-qwik run build",
     "frontend:preview": "npm --prefix frontend-qwik run preview",
     "frontend:start": "npm --prefix frontend-qwik run start",
     "frontend:verify:ssr": "npm --prefix frontend-qwik run verify:ssr",
+    "prod:up": "npm run stack:up",
+    "prod:down": "npm run stack:down",
+    "prod:up:monitoring": "npm run stack:up:monitoring",
+    "prod:down:monitoring": "npm run stack:down:monitoring",
+    "prod:config": "npm run stack:config",
+    "prod:config:monitoring": "npm run stack:config:monitoring",
     "stack:up": "docker compose up --build",
     "stack:up:monitoring": "docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up --build",
     "stack:down": "docker compose down",

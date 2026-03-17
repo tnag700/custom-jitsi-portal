@@ -42,15 +42,15 @@
    - скопируйте `.env.example` в `.env`;
    - заполните значения для `SPRING_DATASOURCE_PASSWORD`, `POSTGRES_PASSWORD`, `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD`.
 2. Frontend dev-режим без контейнеров (из корня):
-   - `npm install`
+   - `npm run frontend:install`
    - `npm run frontend:dev`
 3. Локальная production-like проверка frontend (из корня):
    - `npm run frontend:build`
    - `npm run frontend:start`
 4. Полная локальная среда в контейнерах (из корня):
-   - `npm run stack:up`
+   - `npm run prod:up`
 5. Полная локальная среда + monitoring overlay (из корня):
-   - `npm run stack:up:monitoring`
+   - `npm run prod:up:monitoring`
 
 Docker Compose теперь следует воспринимать как production-like сценарий локальной проверки: frontend и backend собираются из исходников внутри Docker, без требования заранее готовить локальные `dist/` или `build/libs/` артефакты.
 
@@ -80,20 +80,22 @@ Docker Compose теперь следует воспринимать как produ
 
 Используйте этот режим, когда нужна prod-like интеграция frontend, backend, Postgres, Redis, Keycloak и Jitsi.
 
-- `npm run stack:up`
-- `npm run stack:down`
+- `npm run prod:up`
+- `npm run prod:down`
+
+Технические aliases `stack:*` сохранены как низкоуровневые обёртки над Docker Compose, но для повседневной работы ориентируйтесь на `prod:*`.
 
 ### 4. Full stack с monitoring
 
 Используйте этот режим, когда нужно локально проверить observability и alerting поверх основного контура.
 
-- `npm run stack:up:monitoring`
-- `npm run stack:down:monitoring`
+- `npm run prod:up:monitoring`
+- `npm run prod:down:monitoring`
 
 Для предварительной валидации compose-конфигурации:
 
-- `npm run stack:config`
-- `npm run stack:config:monitoring`
+- `npm run prod:config`
+- `npm run prod:config:monitoring`
 
 ## Основные адреса локальной среды
 
@@ -115,11 +117,18 @@ Docker Compose теперь следует воспринимать как produ
 
 ### Root-скрипты запуска
 
+- `npm run frontend:install` - установка зависимостей frontend-qwik из корня репозитория.
 - `npm run frontend:dev` - frontend dev server на Vite/Qwik SSR.
 - `npm run frontend:build` - production build frontend.
 - `npm run frontend:start` - запуск production SSR frontend поверх собранного `dist/`.
 - `npm run frontend:preview` - локальный preview production-бандла frontend.
 - `npm run frontend:verify:ssr` - production build + smoke-проверка SSR/resumability.
+- `npm run prod:up` - основной production-like сценарий контейнерного запуска.
+- `npm run prod:down` - остановка основного production-like контейнерного сценария.
+- `npm run prod:up:monitoring` - production-like контейнерный запуск с monitoring overlay.
+- `npm run prod:down:monitoring` - остановка production-like контейнерного сценария с monitoring overlay.
+- `npm run prod:config` - проверка итоговой compose-конфигурации production-like контура.
+- `npm run prod:config:monitoring` - проверка compose-конфигурации production-like контура с monitoring overlay.
 - `npm run stack:up` - поднять полный контейнерный контур.
 - `npm run stack:up:monitoring` - поднять полный контейнерный контур с monitoring overlay.
 - `npm run stack:down` - остановить основной compose-контур.
