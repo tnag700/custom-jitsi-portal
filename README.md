@@ -31,8 +31,6 @@
 
 - `backend/` - REST API, доменные модули, безопасность, миграции, архитектурные и интеграционные тесты.
 - `frontend-qwik/` - SSR-веб-клиент, маршруты, shared API client, UI и frontend-тесты.
-- `docs/` - проектная и архитектурная документация.
-- `_bmad-output/` - артефакты планирования и реализации.
 - `openapi.yaml` - канонический контракт API.
 - `openapi.generated.json` - повторяемо сгенерированный runtime-снимок OpenAPI.
 - `docker-compose.yml` - локальный запуск frontend, backend, Keycloak, Postgres, Redis и Jitsi stack.

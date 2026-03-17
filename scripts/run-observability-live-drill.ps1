@@ -23,6 +23,7 @@ param(
   [int]$JoinSuccessRequestsPerCycle = 1,
   [int]$JoinFailureRequestsPerCycle = 1,
   [int]$RefreshPairsPerCycle = 1,
+  [switch]$KeepArtifacts,
   [string]$SigningSecret = ""
 )
 
@@ -383,8 +384,68 @@ function Invoke-RefreshPair {
   }
 }
 
+function Remove-ObservabilityArtifacts {
+  param(
+    [string]$MeetingId,
+    [string]$RoomId,
+    [hashtable]$Headers,
+    [string]$CookieJar
+  )
+
+  $cleanup = [ordered]@{
+    attempted = $false
+    meetingCanceled = $false
+    roomDeleted = $false
+  }
+
+  if ([string]::IsNullOrWhiteSpace($MeetingId) -and [string]::IsNullOrWhiteSpace($RoomId)) {
+    return [pscustomobject]$cleanup
+  }
+
+  $cleanup.attempted = $true
+
+  if (-not [string]::IsNullOrWhiteSpace($MeetingId)) {
+    $cancelResponse = Invoke-CurlJsonRequest -Uri "$BackendUrl/api/v1/meetings/$MeetingId/cancel" -Method 'POST' -CookieJar $CookieJar -Headers (
+      Merge-Hashtables $Headers @{
+        'X-Trace-Id' = (New-TraceId 'trace-cleanup-meeting')
+      }
+    )
+
+    if ($cancelResponse.StatusCode -in @(200, 404, 409)) {
+      $cleanup.meetingCanceled = $cancelResponse.StatusCode -eq 200 -or $cancelResponse.StatusCode -eq 409
+    } else {
+      throw "Cleanup cancel for meeting $MeetingId returned unexpected status $($cancelResponse.StatusCode): $($cancelResponse.RawBody)"
+    }
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($RoomId)) {
+    $deleteResponse = Invoke-CurlJsonRequest -Uri "$BackendUrl/api/v1/rooms/$RoomId" -Method 'DELETE' -CookieJar $CookieJar -Headers (
+      Merge-Hashtables $Headers @{
+        'X-Trace-Id' = (New-TraceId 'trace-cleanup-room')
+      }
+    )
+
+    if ($deleteResponse.StatusCode -in @(204, 404)) {
+      $cleanup.roomDeleted = $deleteResponse.StatusCode -eq 204
+    } else {
+      throw "Cleanup delete for room $RoomId returned unexpected status $($deleteResponse.StatusCode): $($deleteResponse.RawBody)"
+    }
+  }
+
+  [pscustomobject]$cleanup
+}
+
 Write-Step "Logging in through Keycloak"
 $cookieJar = Join-Path $env:TEMP ("jitsi-observability-drill-" + [guid]::NewGuid().ToString('N') + '.txt')
+$baseHeaders = @{}
+$createdRoomId = $null
+$createdMeetingId = $null
+$cleanupResult = [pscustomobject]@{
+  attempted = $false
+  meetingCanceled = $false
+  roomDeleted = $false
+}
+$cleanupCompleted = $false
 try {
   if ($WaitForAlertState -ne 'none') {
     Write-Step "Resetting mock alert receiver before smoke verification"
@@ -413,7 +474,6 @@ try {
   $me = (Invoke-CurlJsonRequest -Uri "$BackendUrl/api/v1/auth/me" -CookieJar $cookieJar).Body
   $csrf = (Invoke-CurlJsonRequest -Uri "$BackendUrl/api/v1/auth/csrf" -CookieJar $cookieJar).Body
 
-  $baseHeaders = @{}
   $baseHeaders[$csrf.headerName] = $csrf.token
 
   Write-Step "Creating room, meeting, and participant assignment"
@@ -432,6 +492,8 @@ try {
   if ($roomResponse.StatusCode -ne 201) {
     throw "Создание room завершилось со статусом $($roomResponse.StatusCode): $($roomResponse.RawBody)"
   }
+
+  $createdRoomId = $roomResponse.Body.roomId
 
   $startsAt = (Get-Date).ToUniversalTime().AddMinutes(5).ToString('o')
   $endsAt = (Get-Date).ToUniversalTime().AddMinutes(65).ToString('o')
@@ -454,6 +516,8 @@ try {
   if ($meetingResponse.StatusCode -ne 201) {
     throw "Создание meeting завершилось со статусом $($meetingResponse.StatusCode): $($meetingResponse.RawBody)"
   }
+
+  $createdMeetingId = $meetingResponse.Body.meetingId
 
   $assignmentResponse = Invoke-CurlJsonRequest -Uri "$BackendUrl/api/v1/meetings/$($meetingResponse.Body.meetingId)/participants" -Method 'POST' -CookieJar $cookieJar -Headers (
     Merge-Hashtables $baseHeaders @{
@@ -548,6 +612,12 @@ try {
     $resolvedNotification = Wait-ForAlertNotification -ExpectedAlertName $AlertName -ExpectedStatus 'resolved' -TimeoutSeconds $AlertWaitTimeoutSeconds -PollIntervalSeconds $AlertPollIntervalSeconds
   }
 
+  if (-not $KeepArtifacts) {
+    Write-Step "Cleaning up synthetic room and meeting"
+    $cleanupResult = Remove-ObservabilityArtifacts -MeetingId $createdMeetingId -RoomId $createdRoomId -Headers $baseHeaders -CookieJar $cookieJar
+    $cleanupCompleted = $true
+  }
+
   [pscustomobject]@{
     user = $me.displayName
     userId = $me.id
@@ -600,7 +670,20 @@ try {
       firingNotificationReceivedAt = if ($null -ne $firingNotification) { $firingNotification.receivedAt } else { $null }
       resolvedNotificationReceivedAt = if ($null -ne $resolvedNotification) { $resolvedNotification.receivedAt } else { $null }
     }
+    cleanup = [ordered]@{
+      keepArtifacts = [bool]$KeepArtifacts
+      attempted = $cleanupResult.attempted
+      meetingCanceled = $cleanupResult.meetingCanceled
+      roomDeleted = $cleanupResult.roomDeleted
+    }
   } | ConvertTo-Json -Depth 6
 } finally {
+  if (-not $KeepArtifacts -and -not $cleanupCompleted) {
+    try {
+      $cleanupResult = Remove-ObservabilityArtifacts -MeetingId $createdMeetingId -RoomId $createdRoomId -Headers $baseHeaders -CookieJar $cookieJar
+    } catch {
+      Write-Warning "Cleanup of observability artifacts failed: $($_.Exception.Message)"
+    }
+  }
   Remove-Item $cookieJar -ErrorAction SilentlyContinue
 }
