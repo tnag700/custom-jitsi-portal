@@ -117,6 +117,15 @@ class SecurityConfigRouteMatrixTest {
   }
 
   @Test
+  void prometheusEndpointIsNotPublicWhenAdvancedMonitoringIsDisabled() throws Exception {
+    mockMvc.perform(get("/actuator/prometheus"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.instance").value("/actuator/prometheus"))
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.AUTH_REQUIRED.code()));
+  }
+
+  @Test
   void baselineSecurityHeadersArePresentOnPublicApiResponses() throws Exception {
     mockMvc.perform(get("/api/v1/health"))
         .andExpect(status().isOk())

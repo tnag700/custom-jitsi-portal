@@ -1,6 +1,7 @@
 package com.acme.jitsi.security;
 
 import java.util.List;
+import java.util.ArrayList;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -93,7 +94,8 @@ public class SecurityConfig {
       @Value("${app.frontend.origin:http://localhost:3000}") String frontendOrigin,
       OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService,
       OidcLoginFailureHandler oidcLoginFailureHandler,
-      OidcLoginSuccessHandler oidcLoginSuccessHandler) throws Exception {
+      OidcLoginSuccessHandler oidcLoginSuccessHandler,
+      @Value("${app.features.advanced-monitoring:false}") boolean advancedMonitoring) throws Exception {
     http.cors(Customizer.withDefaults());
     http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()));
     http.headers(headers -> headers
@@ -105,8 +107,13 @@ public class SecurityConfig {
         contentSecurityPolicy.policyDirectives(BASELINE_CSP))
       .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy", PERMISSIONS_POLICY)));
     http.requestCache(cache -> cache.disable());
+    List<String> publicEndpoints = new ArrayList<>(List.of(PUBLIC_ENDPOINTS));
+    if (advancedMonitoring) {
+      publicEndpoints.add("/actuator/prometheus");
+    }
+
     http.authorizeHttpRequests(auth -> auth
-        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+        .requestMatchers(publicEndpoints.toArray(String[]::new)).permitAll()
         .requestMatchers(AUTHENTICATED_ENDPOINTS).authenticated()
         .requestMatchers(ADMIN_ENDPOINTS).hasRole("admin")
         .anyRequest().denyAll());

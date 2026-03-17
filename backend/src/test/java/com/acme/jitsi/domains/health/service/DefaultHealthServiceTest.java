@@ -87,4 +87,31 @@ class DefaultHealthServiceTest {
     assertThat(response.traceId()).isEqualTo("trace-join");
     assertThat(response.systemChecks()).hasSize(2);
   }
+
+  @Test
+  void getJoinReadinessReturnsDegradedWhenOnlyWarningChecksExist() {
+    when(compatibilityStateService.findLatestIncompatibleActive()).thenReturn(Optional.empty());
+    when(meetingJoinConfigurationReadinessService.inspect()).thenReturn(
+        new MeetingJoinConfigurationReadiness(
+            "http://meet.example.test/",
+            List.of(
+                new MeetingJoinConfigurationReadiness.ConfigurationCheck(
+                    "join-url",
+                    "warn",
+                    "Join URL uses HTTP",
+                    "TLS is not configured",
+                    List.of("enable HTTPS"),
+                    "JOIN_URL_NOT_HTTPS",
+                    false))));
+
+    DefaultHealthService service = new DefaultHealthService(
+        compatibilityStateService,
+        meetingJoinConfigurationReadinessService);
+
+    var response = service.getJoinReadiness("trace-warn");
+
+    assertThat(response.status()).isEqualTo("degraded");
+    assertThat(response.publicJoinUrl()).isEqualTo("http://meet.example.test/");
+    assertThat(response.systemChecks()).hasSize(2);
+  }
 }

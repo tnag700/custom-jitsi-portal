@@ -1,0 +1,89 @@
+services:
+  backend:
+    environment:
+      - APP_FEATURES_ADVANCED_MONITORING=true
+      - MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,prometheus
+
+  prometheus:
+    image: prom/prometheus:v3.3.1
+    entrypoint:
+      - /bin/sh
+    command:
+      - -ec
+      - |
+        escape_replacement() {
+          printf '%s' "$1" | sed -e 's/[&|\\]/\\&/g'
+        }
+        monitoring_environment_escaped="$(escape_replacement "${MONITORING_ENVIRONMENT:-local}")"
+        monitoring_service_escaped="$(escape_replacement "${MONITORING_SERVICE_NAME:-jitsi-backend}")"
+        grafana_base_url_escaped="$(escape_replacement "${MONITORING_GRAFANA_BASE_URL:-http://localhost:3001}")"
+        sed \
+          -e "s|__MONITORING_ENVIRONMENT__|$monitoring_environment_escaped|g" \
+          -e "s|__MONITORING_SERVICE_NAME__|$monitoring_service_escaped|g" \
+          /etc/prometheus/prometheus.yml.template > /tmp/prometheus.yml
+        sed \
+          -e "s|__MONITORING_GRAFANA_BASE_URL__|$grafana_base_url_escaped|g" \
+          /etc/prometheus/alert-rules.yml.template > /tmp/alert-rules.yml
+        exec /bin/prometheus --config.file=/tmp/prometheus.yml --storage.tsdb.retention.time=7d
+    environment:
+      - MONITORING_ENVIRONMENT=${MONITORING_ENVIRONMENT:-local}
+      - MONITORING_SERVICE_NAME=${MONITORING_SERVICE_NAME:-jitsi-backend}
+      - MONITORING_GRAFANA_BASE_URL=${MONITORING_GRAFANA_BASE_URL:-http://localhost:3001}
+    volumes:
+      - ./pilot/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml.template:ro
+      - ./pilot/monitoring/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml.template:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    entrypoint:
+      - /bin/sh
+    command:
+      - -ec
+      - |
+        escape_replacement() {
+          printf '%s' "$1" | sed -e 's/[&|\\]/\\&/g'
+        }
+        alertmanager_webhook_url_escaped="$(escape_replacement "${ALERTMANAGER_WEBHOOK_URL:-http://mock-alert-receiver:9080/alerts}")"
+        sed -e "s|__ALERTMANAGER_WEBHOOK_URL__|$alertmanager_webhook_url_escaped|g" /etc/alertmanager/alertmanager.yml.template > /tmp/alertmanager.yml
+        exec /bin/alertmanager --config.file=/tmp/alertmanager.yml --log.level=info
+    environment:
+      - ALERTMANAGER_WEBHOOK_URL=${ALERTMANAGER_WEBHOOK_URL:-http://mock-alert-receiver:9080/alerts}
+    volumes:
+      - ./pilot/monitoring/alertmanager/alertmanager.yml.template:/etc/alertmanager/alertmanager.yml.template:ro
+    ports:
+      - "9093:9093"
+    depends_on:
+      - mock-alert-receiver
+
+  mock-alert-receiver:
+    image: node:22-alpine
+    working_dir: /workspace
+    command:
+      - node
+      - /workspace/pilot/monitoring/mock-alert-receiver/server.mjs
+    environment:
+      - ALERT_RECEIVER_PORT=9080
+    volumes:
+      - ./:/workspace:ro
+    ports:
+      - "9080:9080"
+
+  grafana:
+    image: grafana/grafana-oss:11.5.2
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./pilot/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./pilot/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+      - alertmanager

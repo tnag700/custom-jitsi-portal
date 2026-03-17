@@ -1,5 +1,6 @@
 package com.acme.jitsi.domains.auth.service;
 
+import com.acme.jitsi.shared.observability.PhaseOneMonitoringMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,7 @@ class AuthRefreshSecurityEventListener {
   AuthRefreshSecurityEventListener(AuthAuditLog authAuditLog, MeterRegistry meterRegistry) {
     this.authAuditLog = authAuditLog;
     this.meterRegistry = meterRegistry;
+    PhaseOneMonitoringMetrics.registerAuthRefreshMeters(meterRegistry);
   }
 
   @Async
@@ -37,7 +39,7 @@ class AuthRefreshSecurityEventListener {
         null,
         null);
 
-    recordMetrics(event.eventType());
+    recordMetrics(event, failure);
 
     if (failure) {
       if (log.isWarnEnabled()) {
@@ -73,7 +75,8 @@ class AuthRefreshSecurityEventListener {
     return event.errorCode() != null && !event.errorCode().isBlank();
   }
 
-  private void recordMetrics(String eventType) {
+  private void recordMetrics(AuthRefreshSecurityEvent event, boolean failure) {
+    String eventType = PhaseOneMonitoringMetrics.normalizeEventType(event.eventType());
     meterRegistry.counter(
         "jitsi.audit.events.total",
         "domain",
@@ -86,5 +89,13 @@ class AuthRefreshSecurityEventListener {
         "auth",
         "action",
         eventType.toLowerCase()).increment();
+    meterRegistry.counter(
+      PhaseOneMonitoringMetrics.AUTH_REFRESH_EVENTS_TOTAL,
+      PhaseOneMonitoringMetrics.TAG_EVENT_TYPE,
+      eventType,
+      PhaseOneMonitoringMetrics.TAG_RESULT,
+      failure ? "fail" : "success",
+      PhaseOneMonitoringMetrics.TAG_ERROR_CODE,
+      PhaseOneMonitoringMetrics.normalizeErrorCode(event.errorCode())).increment();
   }
 }

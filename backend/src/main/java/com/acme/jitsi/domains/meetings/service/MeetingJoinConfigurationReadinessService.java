@@ -3,6 +3,7 @@ package com.acme.jitsi.domains.meetings.service;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -80,6 +81,21 @@ public class MeetingJoinConfigurationReadinessService {
       URI joinUri = URI.create(resolved);
       String publicJoinUrl = joinUri.getScheme() + "://" + joinUri.getAuthority() + "/";
 
+      if (!isHttpsScheme(joinUri.getScheme())) {
+        return new JoinUrlInspection(
+            publicJoinUrl,
+            new MeetingJoinConfigurationReadiness.ConfigurationCheck(
+                "join-url",
+                "warn",
+                "Публичный адрес встречи доступен только без HTTPS",
+                "Join URL настроен, но использует небезопасную схему " + joinUri.getScheme() + ".",
+                List.of(
+                    "Переключить public join URL на HTTPS",
+                    "Проверить reverse proxy, сертификаты и app.meetings.token.join-url-template"),
+                "JOIN_URL_NOT_HTTPS",
+                false));
+      }
+
       return new JoinUrlInspection(
           publicJoinUrl,
           new MeetingJoinConfigurationReadiness.ConfigurationCheck(
@@ -106,6 +122,10 @@ public class MeetingJoinConfigurationReadinessService {
 
   private boolean isBlank(String value) {
     return value == null || value.isBlank();
+  }
+
+  private boolean isHttpsScheme(String scheme) {
+    return scheme != null && "https".equals(scheme.toLowerCase(Locale.ROOT));
   }
 
   private record JoinUrlInspection(

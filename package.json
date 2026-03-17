@@ -1,5 +1,9 @@
 {
   "scripts": {
+    "observability:drill": "pwsh -File scripts/run-observability-live-drill.ps1",
+    "observability:drill:extended": "pwsh -File scripts/run-observability-live-drill.ps1 -Cycles 6 -CycleIntervalSeconds 10 -JoinSuccessRequestsPerCycle 3 -JoinFailureRequestsPerCycle 3 -RefreshPairsPerCycle 2 -PrometheusWaitSeconds 25",
+    "observability:alerting:validate": "pwsh -File scripts/validate-observability-alerting.ps1",
+    "observability:alerting:smoke": "pwsh -File scripts/run-observability-live-drill.ps1 -Cycles 1 -JoinSuccessRequestsPerCycle 1 -JoinFailureRequestsPerCycle 0 -RefreshPairsPerCycle 2 -PrometheusWaitSeconds 20 -WaitForAlertState cycle -AlertName JitsiAuthRefreshReuseSpike -AlertWarmupSeconds 20 -AlertPollIntervalSeconds 5 -AlertWaitTimeoutSeconds 180 -QuietWindowSeconds 135",
     "openapi:generate": "node scripts/generate-openapi.mjs",
     "openapi:check": "node scripts/check-openapi.mjs",
     "frontend:api-types:check": "node scripts/check-frontend-api-types.mjs"
