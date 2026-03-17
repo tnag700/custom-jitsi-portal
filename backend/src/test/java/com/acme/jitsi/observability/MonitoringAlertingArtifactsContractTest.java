@@ -62,7 +62,9 @@ class MonitoringAlertingArtifactsContractTest {
       .contains("mock-alert-receiver:")
       .contains("MONITORING_ENVIRONMENT")
       .contains("MONITORING_GRAFANA_BASE_URL")
-      .contains("MONITORING_RUNBOOK_URL");
+      .contains("MONITORING_RUNBOOK_URL")
+      .contains("docs/runbook.md#phase-1-alerting")
+      .doesNotContain("github.com/tnag700/custom-jitsi-portal");
   }
 
   @Test

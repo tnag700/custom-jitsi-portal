@@ -44,6 +44,26 @@ function Assert-NotContains {
   }
 }
 
+function Resolve-MonitoringAnnotationValue {
+  param(
+    [string]$Value,
+    [string]$DefaultValue,
+    [string]$Name
+  )
+
+  $resolved = if ([string]::IsNullOrWhiteSpace($Value)) {
+    $DefaultValue
+  } else {
+    $Value.Trim()
+  }
+
+  if ($resolved.Contains("`r") -or $resolved.Contains("`n")) {
+    throw "$Name must be a single-line value."
+  }
+
+  $resolved
+}
+
 function Write-RenderedTemplate {
   param(
     [string]$TemplatePath,
@@ -133,6 +153,7 @@ $grafanaBaseUrl = if ($env:MONITORING_GRAFANA_BASE_URL) {
 } else {
   'http://localhost:3001'
 }
+$runbookUrl = Resolve-MonitoringAnnotationValue -Value $env:MONITORING_RUNBOOK_URL -DefaultValue 'docs/runbook.md#phase-1-alerting' -Name 'MONITORING_RUNBOOK_URL'
 
 Write-Step 'Running promtool check rules'
 try {
@@ -142,6 +163,7 @@ try {
   }
   Write-RenderedTemplate -TemplatePath $alertRulesPath -OutputPath $renderedAlertRulesPath -Replacements @{
     '__MONITORING_GRAFANA_BASE_URL__' = $grafanaBaseUrl
+    '__MONITORING_RUNBOOK_URL__' = $runbookUrl
   }
   & docker run --rm --entrypoint /bin/promtool -v "${prometheusMount}:/etc/prometheus:ro" prom/prometheus:v3.3.1 check rules /etc/prometheus/alert-rules.rendered.yml
   if ($LASTEXITCODE -ne 0) {

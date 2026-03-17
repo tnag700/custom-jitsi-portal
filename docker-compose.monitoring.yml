@@ -17,7 +17,7 @@ services:
         monitoring_environment_escaped="$(escape_replacement "${MONITORING_ENVIRONMENT:-local}")"
         monitoring_service_escaped="$(escape_replacement "${MONITORING_SERVICE_NAME:-jitsi-backend}")"
         grafana_base_url_escaped="$(escape_replacement "${MONITORING_GRAFANA_BASE_URL:-http://localhost:3001}")"
-        runbook_url_escaped="$(escape_replacement "${MONITORING_RUNBOOK_URL:-https://github.com/tnag700/custom-jitsi-portal/blob/main/docs/runbook.md#phase-1-alerting}")"
+        runbook_url_escaped="$(escape_replacement "${MONITORING_RUNBOOK_URL:-docs/runbook.md#phase-1-alerting}")"
         sed \
           -e "s|__MONITORING_ENVIRONMENT__|$monitoring_environment_escaped|g" \
           -e "s|__MONITORING_SERVICE_NAME__|$monitoring_service_escaped|g" \
@@ -31,7 +31,7 @@ services:
       - MONITORING_ENVIRONMENT=${MONITORING_ENVIRONMENT:-local}
       - MONITORING_SERVICE_NAME=${MONITORING_SERVICE_NAME:-jitsi-backend}
       - MONITORING_GRAFANA_BASE_URL=${MONITORING_GRAFANA_BASE_URL:-http://localhost:3001}
-      - MONITORING_RUNBOOK_URL=${MONITORING_RUNBOOK_URL:-https://github.com/tnag700/custom-jitsi-portal/blob/main/docs/runbook.md#phase-1-alerting}
+      - MONITORING_RUNBOOK_URL=${MONITORING_RUNBOOK_URL:-docs/runbook.md#phase-1-alerting}
     volumes:
       - ./pilot/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml.template:ro
       - ./pilot/monitoring/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml.template:ro
