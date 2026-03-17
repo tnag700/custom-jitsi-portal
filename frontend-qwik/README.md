@@ -43,7 +43,7 @@ npm run qwik add # or `yarn qwik add`
 Development mode uses [Vite's development server](https://vitejs.dev/). The `dev` command will server-side render (SSR) the output during development.
 
 ```shell
-npm start # or `yarn start`
+npm run dev
 ```
 
 > Note: during dev mode, Vite may request a significant number of `.js` files. This does not represent a Qwik production build.
@@ -63,3 +63,23 @@ The production build will generate client and server modules by running both cli
 ```shell
 npm run build # or `yarn build`
 ```
+
+To run the built production SSR app locally, start the Express entry after the build completes:
+
+```shell
+npm run start
+```
+
+If you want an automated local production smoke-check, use:
+
+```shell
+npm run verify:ssr
+```
+
+## Command Map
+
+- `npm run dev` - Vite/Qwik SSR development server.
+- `npm run build` - production build for client and server bundles.
+- `npm run start` - run the built production SSR server from `dist/`.
+- `npm run preview` - preview the production build via Vite preview.
+- `npm run verify:ssr` - build and run the local SSR/resumability smoke-check.

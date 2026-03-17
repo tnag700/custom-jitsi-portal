@@ -41,16 +41,59 @@
 1. Подготовьте окружение:
    - скопируйте `.env.example` в `.env`;
    - заполните значения для `SPRING_DATASOURCE_PASSWORD`, `POSTGRES_PASSWORD`, `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD`.
-2. Backend (`backend/`):
-   - `./gradlew.bat build`
-   - `./gradlew.bat test`
-3. Frontend (`frontend-qwik/`):
+2. Frontend dev-режим без контейнеров (из корня):
    - `npm install`
-   - `npm run dev`
-4. Полная локальная среда (из корня):
-   - `docker compose up --build`
-5. Локальный monitoring stack поверх основной среды (из корня):
-   - `docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up --build`
+   - `npm run frontend:dev`
+3. Локальная production-like проверка frontend (из корня):
+   - `npm run frontend:build`
+   - `npm run frontend:start`
+4. Полная локальная среда в контейнерах (из корня):
+   - `npm run stack:up`
+5. Полная локальная среда + monitoring overlay (из корня):
+   - `npm run stack:up:monitoring`
+
+Docker Compose теперь следует воспринимать как production-like сценарий локальной проверки: frontend и backend собираются из исходников внутри Docker, без требования заранее готовить локальные `dist/` или `build/libs/` артефакты.
+
+## Сценарии запуска
+
+### 1. Frontend dev build
+
+Используйте этот режим, когда нужен быстрый цикл разработки UI на Vite dev server.
+
+- `npm run frontend:dev`
+
+Это эквивалент `npm --prefix frontend-qwik run dev`. Режим использует Vite SSR dev server и не отражает production-поведение загрузки ассетов.
+
+### 2. Frontend production build локально
+
+Используйте этот режим, когда нужно проверить реальный SSR-бандл frontend без полного Docker-окружения.
+
+- `npm run frontend:build`
+- `npm run frontend:start`
+
+Полезные варианты:
+
+- `npm run frontend:preview` - локальный preview production-бандла через Vite preview.
+- `npm run frontend:verify:ssr` - build + smoke-проверка SSR/resumability.
+
+### 3. Full stack в контейнерах
+
+Используйте этот режим, когда нужна prod-like интеграция frontend, backend, Postgres, Redis, Keycloak и Jitsi.
+
+- `npm run stack:up`
+- `npm run stack:down`
+
+### 4. Full stack с monitoring
+
+Используйте этот режим, когда нужно локально проверить observability и alerting поверх основного контура.
+
+- `npm run stack:up:monitoring`
+- `npm run stack:down:monitoring`
+
+Для предварительной валидации compose-конфигурации:
+
+- `npm run stack:config`
+- `npm run stack:config:monitoring`
 
 ## Основные адреса локальной среды
 
@@ -69,6 +112,20 @@
 - Grafana: `http://localhost:3001`
 
 ## Команды разработки
+
+### Root-скрипты запуска
+
+- `npm run frontend:dev` - frontend dev server на Vite/Qwik SSR.
+- `npm run frontend:build` - production build frontend.
+- `npm run frontend:start` - запуск production SSR frontend поверх собранного `dist/`.
+- `npm run frontend:preview` - локальный preview production-бандла frontend.
+- `npm run frontend:verify:ssr` - production build + smoke-проверка SSR/resumability.
+- `npm run stack:up` - поднять полный контейнерный контур.
+- `npm run stack:up:monitoring` - поднять полный контейнерный контур с monitoring overlay.
+- `npm run stack:down` - остановить основной compose-контур.
+- `npm run stack:down:monitoring` - остановить compose-контур вместе с monitoring overlay.
+- `npm run stack:config` - развернуть и проверить итоговую compose-конфигурацию.
+- `npm run stack:config:monitoring` - развернуть и проверить compose-конфигурацию с monitoring overlay.
 
 ### Backend
 

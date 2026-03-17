@@ -1,5 +1,16 @@
 {
   "scripts": {
+    "frontend:dev": "npm --prefix frontend-qwik run dev",
+    "frontend:build": "npm --prefix frontend-qwik run build",
+    "frontend:preview": "npm --prefix frontend-qwik run preview",
+    "frontend:start": "npm --prefix frontend-qwik run start",
+    "frontend:verify:ssr": "npm --prefix frontend-qwik run verify:ssr",
+    "stack:up": "docker compose up --build",
+    "stack:up:monitoring": "docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up --build",
+    "stack:down": "docker compose down",
+    "stack:down:monitoring": "docker compose -f docker-compose.yml -f docker-compose.monitoring.yml down",
+    "stack:config": "docker compose config",
+    "stack:config:monitoring": "docker compose -f docker-compose.yml -f docker-compose.monitoring.yml config",
     "observability:drill": "pwsh -File scripts/run-observability-live-drill.ps1",
     "observability:drill:extended": "pwsh -File scripts/run-observability-live-drill.ps1 -Cycles 6 -CycleIntervalSeconds 10 -JoinSuccessRequestsPerCycle 3 -JoinFailureRequestsPerCycle 3 -RefreshPairsPerCycle 2 -PrometheusWaitSeconds 25",
     "observability:alerting:validate": "pwsh -File scripts/validate-observability-alerting.ps1",
