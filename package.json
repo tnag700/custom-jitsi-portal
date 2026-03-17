@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "stack:validate": "pwsh -File scripts/validate-dev-stack-config.ps1",
     "frontend:install": "npm --prefix frontend-qwik install",
     "frontend:dev": "npm --prefix frontend-qwik run dev",
     "frontend:build": "npm --prefix frontend-qwik run build",
@@ -12,8 +13,8 @@
     "prod:down:monitoring": "npm run stack:down:monitoring",
     "prod:config": "npm run stack:config",
     "prod:config:monitoring": "npm run stack:config:monitoring",
-    "stack:up": "docker compose up --build",
-    "stack:up:monitoring": "docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up --build",
+    "stack:up": "npm run stack:validate && docker compose up --build",
+    "stack:up:monitoring": "npm run stack:validate && docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up --build",
     "stack:down": "docker compose down",
     "stack:down:monitoring": "docker compose -f docker-compose.yml -f docker-compose.monitoring.yml down",
     "stack:config": "docker compose config",

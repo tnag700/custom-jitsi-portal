@@ -51,6 +51,12 @@
    - `npm run prod:up`
 5. Полная локальная среда + monitoring overlay (из корня):
    - `npm run prod:up:monitoring`
+6. Проверка dev-конфигурации перед пересборкой стека:
+   - `npm run stack:validate`
+
+Важно: Postgres-данные в Docker Compose сохраняются в volume `pgdata`. Если раньше среда запускалась с некорректным маппингом volume и после перезапуска пропадали профили или другие данные, пересоздайте stack после исправления compose-конфигурации, чтобы Postgres начал писать в `/var/lib/postgresql/data`.
+
+Важно: `npm run prod:up` и `npm run prod:up:monitoring` теперь сначала валидируют dev-конфигурацию. Проверка останавливает запуск, если в `pilot/keycloak/realm/jitsi-dev-realm.json` у seeded users нет явных `id` или если в `docker-compose.yml` снова появится некорректный Postgres volume mount.
 
 Docker Compose теперь следует воспринимать как production-like сценарий локальной проверки: frontend и backend собираются из исходников внутри Docker, без требования заранее готовить локальные `dist/` или `build/libs/` артефакты.
 
