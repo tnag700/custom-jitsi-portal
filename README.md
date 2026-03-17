@@ -6,7 +6,7 @@
 - backend API на Spring Boot 4;
 - frontend на Qwik City с SSR;
 - локальная инфраструктура и интеграции через Docker Compose;
-- контрактно-ориентированная разработка с OpenAPI, архитектурными правилами и observability.
+- observability и alerting-сценарии для локального self-hosted контура.
 
 ## Зачем этот проект
 
@@ -23,7 +23,7 @@
 - Security/SSO: Spring Security, OAuth2 client/resource server, Keycloak.
 - Frontend: Qwik City, Vite 7, TypeScript 5.9, ESLint 9, Vitest 3.
 - API contract: `openapi.yaml` и сгенерированный `openapi.generated.json`.
-- Observability: Spring Boot Actuator, OpenTelemetry, JDBC/Redis tracing.
+- Observability: Spring Boot Actuator, OpenTelemetry, Prometheus, Alertmanager, Grafana.
 - Architecture governance: ArchUnit, PMD, CPD.
 - Local environment: Docker Compose.
 
@@ -51,6 +51,8 @@
    - `npm run dev`
 4. Полная локальная среда (из корня):
    - `docker compose up --build`
+5. Локальный monitoring stack поверх основной среды (из корня):
+   - `docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up --build`
 
 ## Основные адреса локальной среды
 
@@ -61,6 +63,12 @@
 - Keycloak: `http://localhost:8081`
 - Jitsi Web: `https://localhost:8443`
 - Jitsi Web HTTP: `http://localhost:8000`
+
+Если поднят monitoring overlay через `docker-compose.monitoring.yml`:
+- Prometheus: `http://localhost:9090`
+- Alertmanager: `http://localhost:9093`
+- Mock alert receiver: `http://localhost:9080/notifications`
+- Grafana: `http://localhost:3001`
 
 ## Команды разработки
 
@@ -75,38 +83,12 @@
 - `./gradlew.bat testContainer` - container-backed тесты.
 - `./gradlew.bat generateOpenApiSpec` - генерация runtime OpenAPI snapshot.
 
-Container baseline для backend тестов:
+### Root-скрипты observability
 
-- Канонический baseline для runtime-sensitive сценариев использует published Testcontainers baseline `1.21.4` с `PostgreSQLContainer` для `postgres:18-alpine` и Redis container для `redis:7-alpine` через общий support layer в `backend/src/test/java/com/acme/jitsi/support`.
-- Матрица test taxonomy: `unit / slice / non-container integration / container`.
-- Через `testContainer` должны ехать сценарии, чувствительные к Redis command semantics, TTL/idempotency correctness, Flyway/PostgreSQL semantics и concurrency под реальными backing services.
-- Controller/security/contract tests, которые проверяют только web wiring, ProblemDetail mapping или локальную бизнес-логику без runtime-sensitive persistence/Redis поведения, не должны без причины мигрировать на контейнеры.
-- Для `testContainer` требуется доступный Docker daemon. Типичные failure modes: Docker unavailable, медленный startup image pull, contention при параллельных агентах/джобах.
-- `testUnit`, `testSlice` и `testIntegration` не должны зависеть от Docker.
-
-### Frontend и контракт
-
-- `npm run openapi:generate` - генерация `openapi.generated.json` из backend runtime-контракта.
-- `npm run openapi:check` - проверка дрейфа OpenAPI артефакта.
-- `npm --prefix frontend-qwik run generate:api` - генерация frontend API types.
-- `npm run frontend:api-types:check` - проверка актуальности frontend API types.
-- `npm --prefix frontend-qwik run lint`
-- `npm --prefix frontend-qwik run test`
-- `npm --prefix frontend-qwik run test:coverage`
-- `npm --prefix frontend-qwik run verify:architecture`
-
-## Quality gates
-
-- Backend:
-  - JUnit 5 тесты разных уровней;
-  - JaCoCo coverage report;
-  - PMD blocking profile и CPD duplicate detection;
-  - ArchUnit правила на слои и доменные границы;
-  - контрактные тесты для OpenAPI и Problem Details.
-- Frontend:
-  - ESLint и архитектурные lint-проверки;
-  - Vitest;
-  - типобезопасная генерация API-клиента из OpenAPI.
+- `npm run observability:alerting:validate` - валидация Prometheus и Alertmanager артефактов.
+- `npm run observability:drill` - одиночный synthetic drill для backend и alerting-контура.
+- `npm run observability:drill:extended` - расширенный drill с несколькими traffic cycles.
+- `npm run observability:alerting:smoke` - smoke-проверка полного firing/resolved цикла для alerting.
 
 ## Текущее состояние
 
