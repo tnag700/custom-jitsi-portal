@@ -7,7 +7,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
-import org.springframework.modulith.core.ApplicationModule;
 import org.springframework.modulith.core.ApplicationModules;
 
 class BackendModulithVerificationTest {
@@ -26,7 +25,7 @@ class BackendModulithVerificationTest {
   void modelsOnlyBusinessDomainModules() {
     TreeSet<String> moduleNames = ApplicationModules.of(DomainModuleTopology.class)
         .stream()
-        .map(ApplicationModule::getName)
+      .map(module -> module.getIdentifier().toString())
         .collect(Collectors.toCollection(TreeSet::new));
 
     assertThat(moduleNames)

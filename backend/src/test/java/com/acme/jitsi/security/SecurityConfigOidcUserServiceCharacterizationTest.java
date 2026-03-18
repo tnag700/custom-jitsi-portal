@@ -60,7 +60,7 @@ class SecurityConfigOidcUserServiceCharacterizationTest {
       any(OidcIdToken.class),
       eq("https://issuer.example.test"),
       eq("jitsi-backend"));
-    ArgumentCaptor<Map<String, Object>> claimsCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Map<String, Object>> claimsCaptor = mapCaptor();
     verify(roleAuthoritiesMapper).mapAuthorities(eq(delegateUser), claimsCaptor.capture());
     assertThat(claimsCaptor.getValue())
       .containsEntry("roles", List.of("admin"))
@@ -86,7 +86,7 @@ class SecurityConfigOidcUserServiceCharacterizationTest {
 
     OidcUser user = service.loadUser(oidcUserRequest("not-a-jwt"));
 
-    ArgumentCaptor<Map<String, Object>> claimsCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Map<String, Object>> claimsCaptor = mapCaptor();
     verify(roleAuthoritiesMapper).mapAuthorities(eq(delegateUser), claimsCaptor.capture());
     assertThat(claimsCaptor.getValue()).isEmpty();
     assertThat(user.getUserInfo().getClaims()).containsOnlyKeys("email");
@@ -157,5 +157,10 @@ class SecurityConfigOidcUserServiceCharacterizationTest {
 
   private String signedTokenWithRoles() {
     return "eyJhbGciOiJIUzI1NiJ9.eyJ0ZW5hbnRJZCI6InRlbmFudC0xIiwicm9sZXMiOlsiYWRtaW4iXX0.c2lnbmF0dXJl";
+  }
+
+  @SuppressWarnings("unchecked")
+  private static ArgumentCaptor<Map<String, Object>> mapCaptor() {
+    return (ArgumentCaptor<Map<String, Object>>) (ArgumentCaptor<?>) ArgumentCaptor.forClass(Map.class);
   }
 }

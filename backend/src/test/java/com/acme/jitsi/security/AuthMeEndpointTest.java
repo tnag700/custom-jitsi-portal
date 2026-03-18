@@ -9,7 +9,10 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.web.client.DefaultResponseErrorHandler;
@@ -57,13 +60,11 @@ class AuthMeEndpointTest {
 
   @Test
   void unauthenticatedRequestToAuthMeReturns401WithSafeErrorPayload() {
-    ResponseEntity<Map> response = restTemplate.getForEntity(
-        "http://localhost:" + port + "/api/v1/auth/me",
-        Map.class);
+    ResponseEntity<Map<String, Object>> response = getForMap("/api/v1/auth/me");
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     assertThat(response.getBody()).isNotNull();
-    Map<String, Object> properties = (Map<String, Object>) response.getBody().get("properties");
+    Map<String, Object> properties = castMap(response.getBody().get("properties"));
     assertThat(properties).isNotNull();
     assertThat(properties.get("errorCode")).isEqualTo(ErrorCode.AUTH_REQUIRED.code());
     assertThat((String) properties.get("traceId")).isNotBlank();
@@ -79,6 +80,20 @@ class AuthMeEndpointTest {
         String.class);
 
     assertThat(response.getStatusCode()).isNotEqualTo(HttpStatus.FORBIDDEN);
+  }
+
+  private ResponseEntity<Map<String, Object>> getForMap(String path) {
+    return restTemplate.exchange(
+        "http://localhost:" + port + path,
+        HttpMethod.GET,
+        HttpEntity.EMPTY,
+        new ParameterizedTypeReference<>() {
+        });
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> castMap(Object value) {
+    return (Map<String, Object>) value;
   }
 }
 

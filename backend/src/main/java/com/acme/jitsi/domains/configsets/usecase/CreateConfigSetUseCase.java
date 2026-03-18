@@ -2,7 +2,6 @@ package com.acme.jitsi.domains.configsets.usecase;
 
 import com.acme.jitsi.domains.configsets.event.ConfigSetCreatedEvent;
 import com.acme.jitsi.domains.configsets.service.ConfigSet;
-import com.acme.jitsi.domains.configsets.service.ConfigSetInvalidDataException;
 import com.acme.jitsi.domains.configsets.service.ConfigSetNameConflictException;
 import com.acme.jitsi.domains.configsets.service.ConfigSetRepository;
 import com.acme.jitsi.domains.configsets.service.ConfigSetStatus;

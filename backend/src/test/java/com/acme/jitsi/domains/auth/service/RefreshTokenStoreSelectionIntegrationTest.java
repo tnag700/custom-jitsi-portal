@@ -11,8 +11,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 
 class RefreshTokenStoreSelectionIntegrationTest {
 
-  private final RefreshTokenStoreConfiguration configuration = new RefreshTokenStoreConfiguration();
-
   @Test
   void selectsInMemoryStoreWhenModeIsInMemory() {
     AuthRefreshProperties properties = new AuthRefreshProperties();
@@ -21,7 +19,7 @@ class RefreshTokenStoreSelectionIntegrationTest {
     ObjectProvider<StringRedisTemplate> provider = redisProvider(null);
     RefreshTokenStoreResolver resolver = new RefreshTokenStoreResolver(new StoreSelectionStrategyFactory(), new RedisRefreshTokenStore(provider));
 
-    RefreshTokenStore store = configuration.refreshTokenStore(
+    RefreshTokenStore store = RefreshTokenStoreConfiguration.refreshTokenStore(
         properties,
         resolver,
         provider);
@@ -37,7 +35,7 @@ class RefreshTokenStoreSelectionIntegrationTest {
     ObjectProvider<StringRedisTemplate> provider = redisProvider(null);
     RefreshTokenStoreResolver resolver = new RefreshTokenStoreResolver(new StoreSelectionStrategyFactory(), new RedisRefreshTokenStore(provider));
 
-    RefreshTokenStore store = configuration.refreshTokenStore(
+    RefreshTokenStore store = RefreshTokenStoreConfiguration.refreshTokenStore(
         properties,
         resolver,
         provider);
@@ -53,7 +51,7 @@ class RefreshTokenStoreSelectionIntegrationTest {
     ObjectProvider<StringRedisTemplate> provider = redisProvider(mock(StringRedisTemplate.class));
     RefreshTokenStoreResolver resolver = new RefreshTokenStoreResolver(new StoreSelectionStrategyFactory(), new RedisRefreshTokenStore(provider));
 
-    RefreshTokenStore store = configuration.refreshTokenStore(
+    RefreshTokenStore store = RefreshTokenStoreConfiguration.refreshTokenStore(
         properties,
         resolver,
         provider);

@@ -154,7 +154,7 @@ class MeetingInvitesControllerBulkTest {
                   "duplicatePolicy": "SKIP_EXISTING"
                 }
                 """))
-        .andExpect(status().isUnprocessableEntity())
+                .andExpect(status().is(422))
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
         .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.BULK_INVITE_VALIDATION_FAILED.code()))
         .andExpect(jsonPath("$.properties.summary.total").value(2))

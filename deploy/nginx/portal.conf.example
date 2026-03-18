@@ -1,0 +1,106 @@
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    '' close;
+}
+
+upstream frontend_upstream {
+    server frontend:3000;
+}
+
+upstream backend_upstream {
+    server backend:8080;
+}
+
+upstream keycloak_upstream {
+    server keycloak:8080;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name mgorka-conf.top auth.mgorka-conf.top;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name mgorka-conf.top;
+
+    ssl_certificate /etc/letsencrypt/live/mgorka-conf.top/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/mgorka-conf.top/privkey.pem;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:portal_ssl:10m;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+    add_header X-Frame-Options DENY always;
+
+    client_max_body_size 10m;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port 443;
+
+    location /api/ {
+        proxy_pass http://backend_upstream;
+        proxy_http_version 1.1;
+        proxy_read_timeout 60s;
+    }
+
+    location = /actuator/health {
+        allow 127.0.0.1;
+        allow ::1;
+        deny all;
+        proxy_pass http://backend_upstream;
+        proxy_http_version 1.1;
+    }
+
+    location / {
+        proxy_pass http://frontend_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_read_timeout 60s;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name auth.mgorka-conf.top;
+
+    ssl_certificate /etc/letsencrypt/live/auth.mgorka-conf.top/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/auth.mgorka-conf.top/privkey.pem;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:auth_ssl:10m;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port 443;
+
+    location / {
+        proxy_pass http://keycloak_upstream;
+        proxy_http_version 1.1;
+        proxy_read_timeout 60s;
+    }
+}
+
+# Jitsi note:
+# - expose UDP 10000 directly to jitsi-jvb on the host firewall/router
+# - if you also proxy meet.mgorka-conf.top through nginx, validate Jitsi websocket and BOSH paths separately
