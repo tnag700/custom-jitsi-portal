@@ -79,7 +79,7 @@ class SecurityConfigProblemHandlersCharacterizationTest {
     assertThat(payload).containsEntry("status", 401);
     assertThat(payload).containsEntry("detail", "Authentication is required to access this resource.");
     assertThat(payload).containsEntry("instance", "/api/v1/rooms");
-    assertThat(castMap(payload.get("properties")))
+    assertThat((Map<String, Object>) payload.get("properties"))
         .containsEntry("errorCode", "AUTH_REQUIRED")
         .containsEntry("traceId", "trace-auth-1");
   }
@@ -148,9 +148,4 @@ class SecurityConfigProblemHandlersCharacterizationTest {
     ObjectMapper mapper = jsonMapper;
     return mapper.readValue(content, Map.class);
   }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> castMap(Object value) {
-        return (Map<String, Object>) value;
-    }
 }

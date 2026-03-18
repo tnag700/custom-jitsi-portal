@@ -18,12 +18,9 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -69,29 +66,17 @@ class ActuatorHealthTest {
 
   @Test
   void actuatorHealthIsAvailable() {
-    ResponseEntity<Map<String, Object>> response = getForMap("/actuator/health");
+    ResponseEntity<Map> response = restTemplate.getForEntity(
+      "http://localhost:" + port + "/actuator/health",
+      Map.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isNotNull();
     assertThat(response.getBody().get("status")).isEqualTo("UP");
-    Map<String, Object> components = castMap(response.getBody().get("components"));
+    Map components = (Map) response.getBody().get("components");
     assertThat(components).isNotNull();
-    Map<String, Object> db = castMap(components.get("db"));
+    Map db = (Map) components.get("db");
     assertThat(db).isNotNull();
     assertThat(db.get("status")).isEqualTo("UP");
-  }
-
-  private ResponseEntity<Map<String, Object>> getForMap(String path) {
-    return restTemplate.exchange(
-        "http://localhost:" + port + path,
-        HttpMethod.GET,
-        HttpEntity.EMPTY,
-        new ParameterizedTypeReference<>() {
-        });
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Map<String, Object> castMap(Object value) {
-    return (Map<String, Object>) value;
   }
 }

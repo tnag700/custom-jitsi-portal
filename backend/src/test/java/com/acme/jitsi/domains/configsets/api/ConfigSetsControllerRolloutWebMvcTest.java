@@ -40,10 +40,10 @@ import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -187,7 +187,7 @@ class ConfigSetsControllerRolloutWebMvcTest {
             .header("Idempotency-Key", "idem-rollback-2")
             .param("tenantId", "tenant-1")
             .param("environmentType", "DEV"))
-        .andExpect(status().is(422))
+        .andExpect(status().isUnprocessableEntity())
       .andExpect(jsonPath("$.errorCode").value(ErrorCode.CONFIG_SET_ROLLBACK_NOT_ALLOWED.code()))
         .andExpect(jsonPath("$.traceId").value("trace-1"));
   }
@@ -215,7 +215,7 @@ class ConfigSetsControllerRolloutWebMvcTest {
             .with(oauth2Login().attributes(attrs -> attrs.put("tenantId", "tenant-1")))
             .header("Idempotency-Key", "idem-rollout-2")
             .param("tenantId", "tenant-1"))
-      .andExpect(status().is(422))
+        .andExpect(status().isUnprocessableEntity())
         .andExpect(jsonPath("$.errorCode").value(ErrorCode.CONFIG_INCOMPATIBLE.code()))
         .andExpect(jsonPath("$.traceId").value("trace-1"));
   }

@@ -1,6 +1,8 @@
 package com.acme.jitsi.config;
 
 import org.springframework.resilience.annotation.EnableResilientMethods;
+import org.springframework.resilience.annotation.Retryable;
+import org.springframework.resilience.annotation.ConcurrencyLimit;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration

@@ -151,7 +151,7 @@ class MeetingsDomainExceptionHandler {
   ProblemDetail handleBulkInviteValidation(BulkInviteValidationException ex, HttpServletRequest request) {
     ProblemDetail problem = buildAndLogProblemDetail(
         request,
-        HttpStatus.UNPROCESSABLE_CONTENT,
+        HttpStatus.UNPROCESSABLE_ENTITY,
         "Частичная ошибка массового создания инвайтов",
         ex.getMessage(),
         ErrorCode.BULK_INVITE_VALIDATION_FAILED.code(),

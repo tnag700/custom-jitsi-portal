@@ -124,7 +124,6 @@ class ActiveConfigSetStartupValidatorTest {
         Instant.parse("2026-01-01T00:00:00Z"));
   }
 
-  @SuppressWarnings("unchecked")
   private <T> ObjectProvider<T> provider(T bean) {
     ObjectProvider<T> provider = Mockito.mock(ObjectProvider.class);
     when(provider.getIfAvailable()).thenReturn(bean);

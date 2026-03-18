@@ -10,7 +10,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -25,7 +24,8 @@ class RedisRefreshTokenStoreTest {
     when(redisTemplate.opsForHash()).thenReturn(hashOperations);
     when(redisTemplate.hasKey("auth:refresh:missing-token-id-1")).thenReturn(false);
 
-    ObjectProvider<StringRedisTemplate> provider = redisProvider(redisTemplate);
+    org.springframework.beans.factory.ObjectProvider<StringRedisTemplate> provider = mock(org.springframework.beans.factory.ObjectProvider.class);
+    when(provider.getIfAvailable()).thenReturn(redisTemplate);
     RedisRefreshTokenStore store = new RedisRefreshTokenStore(provider);
 
     store.revoke("missing-token-id-1");
@@ -39,7 +39,7 @@ class RedisRefreshTokenStoreTest {
     StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
 
     when(redisTemplate.execute(
-      org.mockito.ArgumentMatchers.<DefaultRedisScript<String>>any(),
+        org.mockito.ArgumentMatchers.any(DefaultRedisScript.class),
         eq(List.of("auth:refresh:token-1")),
         eq("token-1"),
         eq("user-1"),
@@ -50,7 +50,8 @@ class RedisRefreshTokenStoreTest {
         org.mockito.ArgumentMatchers.anyString()))
         .thenReturn("CREATED");
 
-    ObjectProvider<StringRedisTemplate> provider = redisProvider(redisTemplate);
+    org.springframework.beans.factory.ObjectProvider<StringRedisTemplate> provider = mock(org.springframework.beans.factory.ObjectProvider.class);
+    when(provider.getIfAvailable()).thenReturn(redisTemplate);
     RedisRefreshTokenStore store = new RedisRefreshTokenStore(provider);
     Instant absolute = Instant.now().plus(2, ChronoUnit.HOURS);
     Instant idle = Instant.now().plus(1, ChronoUnit.HOURS);
@@ -63,7 +64,7 @@ class RedisRefreshTokenStoreTest {
         RefreshTokenStore.TokenStatus.ACTIVE));
 
     verify(redisTemplate, atLeastOnce()).execute(
-      org.mockito.ArgumentMatchers.<DefaultRedisScript<String>>any(),
+        org.mockito.ArgumentMatchers.any(DefaultRedisScript.class),
         eq(List.of("auth:refresh:token-1")),
         eq("token-1"),
         eq("user-1"),
@@ -72,12 +73,5 @@ class RedisRefreshTokenStoreTest {
         org.mockito.ArgumentMatchers.anyString(),
         eq("ACTIVE"),
         org.mockito.ArgumentMatchers.anyString());
-  }
-
-  @SuppressWarnings("unchecked")
-  private static ObjectProvider<StringRedisTemplate> redisProvider(StringRedisTemplate redisTemplate) {
-    ObjectProvider<StringRedisTemplate> provider = mock(ObjectProvider.class);
-    when(provider.getIfAvailable()).thenReturn(redisTemplate);
-    return provider;
   }
 }

@@ -70,7 +70,7 @@ class ConfigSetsDomainExceptionHandler {
       HttpServletRequest request) {
     return buildAndLogProblemDetail(
         request,
-        HttpStatus.UNPROCESSABLE_CONTENT,
+        HttpStatus.UNPROCESSABLE_ENTITY,
         "Активация конфиг-набора не разрешена",
         ex.getMessage(),
         ErrorCode.CONFIG_SET_ACTIVATION_NOT_ALLOWED.code(),
@@ -83,7 +83,7 @@ class ConfigSetsDomainExceptionHandler {
       HttpServletRequest request) {
     return buildAndLogProblemDetail(
         request,
-        HttpStatus.UNPROCESSABLE_CONTENT,
+        HttpStatus.UNPROCESSABLE_ENTITY,
         "Rollout конфиг-набора не разрешён",
         ex.getMessage(),
         ErrorCode.CONFIG_SET_ROLLOUT_NOT_ALLOWED.code(),
@@ -96,7 +96,7 @@ class ConfigSetsDomainExceptionHandler {
       HttpServletRequest request) {
     return buildAndLogProblemDetail(
         request,
-        HttpStatus.UNPROCESSABLE_CONTENT,
+        HttpStatus.UNPROCESSABLE_ENTITY,
         "Конфиг-набор несовместим",
         ex.getMessage(),
         ErrorCode.CONFIG_INCOMPATIBLE.code(),
@@ -109,7 +109,7 @@ class ConfigSetsDomainExceptionHandler {
       HttpServletRequest request) {
     return buildAndLogProblemDetail(
         request,
-        HttpStatus.UNPROCESSABLE_CONTENT,
+        HttpStatus.UNPROCESSABLE_ENTITY,
         "Rollback конфиг-набора не разрешён",
         ex.getMessage(),
         ErrorCode.CONFIG_SET_ROLLBACK_NOT_ALLOWED.code(),
