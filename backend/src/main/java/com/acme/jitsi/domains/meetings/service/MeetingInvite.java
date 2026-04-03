@@ -32,13 +32,21 @@ public record MeetingInvite(
   }
 
   public boolean isValid() {
+    return isValid(Instant.now());
+  }
+
+  public boolean isValid(Instant now) {
     return revokedAt == null
-        && (expiresAt == null || Instant.now().isBefore(expiresAt))
+        && (expiresAt == null || now.isBefore(expiresAt))
         && usedCount < maxUses;
   }
 
   public boolean isExpired() {
-    return expiresAt != null && Instant.now().isAfter(expiresAt);
+    return isExpired(Instant.now());
+  }
+
+  public boolean isExpired(Instant now) {
+    return expiresAt != null && now.isAfter(expiresAt);
   }
 
   public boolean isRevoked() {

@@ -1,6 +1,14 @@
 export { AuthContext, type AuthStore } from "./auth-context";
 export { mapAuthErrorCodeToPayload } from "./auth-error-map";
-export { AUTH_PUBLIC_PATHS, isPublicAuthPath, resolveAuthRedirectPath } from "./auth-guard";
+export {
+	AUTH_PUBLIC_PATHS,
+	buildAuthLoginHref,
+	isPublicAuthPath,
+	resolveAuthRecoveryRedirectPath,
+	resolveAuthRedirectPath,
+	resolvePostAuthRedirectPath,
+	shouldAutoResumeAuth,
+} from "./auth-guard";
 export {
 	fetchAuthMe,
 	fetchCsrfToken,

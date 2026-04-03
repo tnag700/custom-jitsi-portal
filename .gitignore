@@ -30,6 +30,7 @@ Thumbs.db
 # Personal deployment overrides
 /deploy/nginx/local/
 /deploy/personal/
+/deploy/vault/local/dev/
 
 # Logs
 *.log
@@ -101,3 +102,4 @@ CONTEXT7_SETUP.md
 
 
 
+.omx/

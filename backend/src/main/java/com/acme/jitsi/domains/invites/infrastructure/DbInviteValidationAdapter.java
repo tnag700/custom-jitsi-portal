@@ -15,9 +15,11 @@ import com.acme.jitsi.domains.meetings.service.MeetingInviteService;
 import com.acme.jitsi.domains.meetings.usecase.ConsumeInviteCommand;
 import com.acme.jitsi.domains.meetings.usecase.ConsumeInviteUseCase;
 import com.acme.jitsi.shared.ErrorCode;
+import java.time.Clock;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpStatus;
@@ -31,15 +33,26 @@ public class DbInviteValidationAdapter implements InviteValidationPort {
   private final MeetingInviteService inviteService;
   private final ConsumeInviteUseCase consumeInviteUseCase;
   private final InviteMeetingStatePort inviteMeetingStatePort;
+  private final Clock clock;
   private final ReservationRegistry reservationRegistry = new ReservationRegistry();
+
+  @Autowired
+  public DbInviteValidationAdapter(
+      MeetingInviteService inviteService,
+      ConsumeInviteUseCase consumeInviteUseCase,
+      InviteMeetingStatePort inviteMeetingStatePort,
+      Clock clock) {
+    this.inviteService = inviteService;
+    this.consumeInviteUseCase = consumeInviteUseCase;
+    this.inviteMeetingStatePort = inviteMeetingStatePort;
+    this.clock = clock;
+  }
 
   public DbInviteValidationAdapter(
       MeetingInviteService inviteService,
       ConsumeInviteUseCase consumeInviteUseCase,
       InviteMeetingStatePort inviteMeetingStatePort) {
-    this.inviteService = inviteService;
-    this.consumeInviteUseCase = consumeInviteUseCase;
-    this.inviteMeetingStatePort = inviteMeetingStatePort;
+    this(inviteService, consumeInviteUseCase, inviteMeetingStatePort, Clock.systemUTC());
   }
 
   @Override
@@ -57,7 +70,7 @@ public class DbInviteValidationAdapter implements InviteValidationPort {
           "Инвайт отозван.");
     }
 
-    if (invite.isExpired()) {
+    if (invite.isExpired(clock.instant())) {
       throw new InviteExchangeException(
           HttpStatus.GONE,
           ErrorCode.INVITE_EXPIRED.code(),

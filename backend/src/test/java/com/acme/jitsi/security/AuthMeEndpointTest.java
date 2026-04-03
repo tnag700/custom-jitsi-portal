@@ -55,6 +55,7 @@ class AuthMeEndpointTest {
     return template;
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   @Test
   void unauthenticatedRequestToAuthMeReturns401WithSafeErrorPayload() {
     ResponseEntity<Map> response = restTemplate.getForEntity(

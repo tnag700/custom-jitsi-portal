@@ -29,7 +29,7 @@ public class RoomServiceMeetingRoomsAdapter implements MeetingRoomsPort {
     try {
       room = roomService.getRoom(roomId);
     } catch (RoomNotFoundException ex) {
-      throw new MeetingRoomNotFoundException(roomId);
+      throw new MeetingRoomNotFoundException(roomId, ex);
     }
     return new MeetingRoomSnapshot(
         room.roomId(),

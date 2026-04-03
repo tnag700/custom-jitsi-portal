@@ -10,11 +10,11 @@ const generatedFile = path.join(backendDir, 'build', 'openapi', 'openapi-generat
 const committedBaseline = path.join(repoRoot, 'openapi.generated.json');
 
 const result = process.platform === 'win32'
-  ? spawnSync(process.env.ComSpec ?? 'cmd.exe', ['/d', '/s', '/c', 'gradlew.bat --no-daemon generateOpenApiSpec'], {
+  ? spawnSync(process.env.ComSpec ?? 'cmd.exe', ['/d', '/s', '/c', 'gradlew.bat --no-daemon --console=plain generateOpenApiSpec'], {
       cwd: backendDir,
       stdio: 'inherit',
     })
-  : spawnSync('./gradlew', ['--no-daemon', 'generateOpenApiSpec'], {
+  : spawnSync('./gradlew', ['--no-daemon', '--console=plain', 'generateOpenApiSpec'], {
       cwd: backendDir,
       stdio: 'inherit',
     });

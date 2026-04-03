@@ -21,14 +21,17 @@ services:
   backend:
     build:
       context: ./backend
+    entrypoint: ["sh", "/vault/auth/backend/run-with-rendered-secrets.sh.example"]
+    command: ["java", "-jar", "/app/app.jar"]
     ports:
       - "8080:8080"
     environment:
+      - BACKEND_SECRETS_FILE=/vault/runtime/backend/runtime.env
       - SPRING_PROFILES_ACTIVE=dev
       - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/jitsi
-      - SPRING_DATASOURCE_USERNAME=jitsi
-      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD?Set SPRING_DATASOURCE_PASSWORD}
+      - SPRING_DATASOURCE_USERNAME=${DEV_VAULT_POSTGRES_USERNAME:-jitsi}
       - APP_MEETINGS_TOKEN_ISSUER=http://localhost:3000
       - APP_MEETINGS_TOKEN_JOIN_URL_TEMPLATE=https://localhost:8443/%s#jwt=%s
       - APP_MEETINGS_TOKEN_AUDIENCE=jitsi-meet
@@ -36,7 +39,6 @@ services:
       - APP_MEETINGS_TOKEN_ALGORITHM=HS256
       - APP_MEETINGS_TOKEN_TTL_MINUTES=20
       - APP_AUTH_REFRESH_IDLE_TTL_MINUTES=60
-      - APP_MEETINGS_TOKEN_SIGNING_SECRET=${APP_MEETINGS_TOKEN_SIGNING_SECRET:-01234567890123456789012345678901}
       - APP_SECURITY_JWT_ISSUER=http://localhost:3000
       - APP_SECURITY_JWT_AUDIENCE=jitsi-meet
       - APP_SECURITY_JWT_ROLE_CLAIM=role
@@ -50,12 +52,18 @@ services:
       - APP_SECURITY_SSO_EXPECTED_ISSUER=http://localhost:8081/realms/jitsi-dev
       - APP_FRONTEND_ORIGIN=http://localhost:3000
       - SSO_CLIENT_ID=${SSO_CLIENT_ID:-jitsi-backend}
-      - SSO_CLIENT_SECRET=${SSO_CLIENT_SECRET:-jitsi-dev-client-secret}
+    volumes:
+      - ./deploy/vault/auth/backend/run-with-rendered-secrets.sh.example:/vault/auth/backend/run-with-rendered-secrets.sh.example:ro
+      - backend-vault-runtime:/vault/runtime
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      backend-vault-bootstrap:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -71,25 +79,97 @@ services:
     ports:
       - "8082:8080"
 
+  vault:
+    build:
+      context: ./deploy/vault
+      args:
+        VAULT_VERSION: 1.21.4
+        VAULT_ZIP_URL: https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_linux_amd64.zip
+        VAULT_SHA256SUMS_URL: https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_SHA256SUMS
+    image: jitsi-vault:1.21.4
+    command: ["server", "-config=/vault/config/vault.hcl"]
+    environment:
+      - VAULT_ADDR=http://127.0.0.1:8200
+    volumes:
+      - ./deploy/vault/config/vault.hcl.example:/vault/config/vault.hcl:ro
+      - vault-data:/vault/data
+      - vault-audit:/vault/audit
+    healthcheck:
+      test: ["CMD-SHELL", "VAULT_ADDR=http://127.0.0.1:8200 vault status >/tmp/vault-status 2>&1; status=$$?; if [ \"$$status\" = \"0\" ] || [ \"$$status\" = \"1\" ] || [ \"$$status\" = \"2\" ] || grep -q Initialized /tmp/vault-status; then exit 0; fi; exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  vault-dev-bootstrap:
+    image: jitsi-vault:1.21.4
+    entrypoint: ["sh", "/vault/auth/dev/bootstrap-dev-vault.sh"]
+    environment:
+      - VAULT_ADDR=http://vault:8200
+      - DEV_VAULT_LOCAL_DIR=/vault/local/dev
+      - DEV_VAULT_POSTGRES_USERNAME=${DEV_VAULT_POSTGRES_USERNAME:-jitsi}
+      - DEV_VAULT_POSTGRES_PASSWORD=${DEV_VAULT_POSTGRES_PASSWORD:-dev-postgres-password}
+      - DEV_VAULT_REDIS_PASSWORD=${DEV_VAULT_REDIS_PASSWORD:-dev-redis-password}
+      - DEV_VAULT_KEYCLOAK_ADMIN_PASSWORD=${DEV_VAULT_KEYCLOAK_ADMIN_PASSWORD:-dev-keycloak-admin-password}
+      - DEV_VAULT_SSO_CLIENT_SECRET=${DEV_VAULT_SSO_CLIENT_SECRET:-jitsi-dev-client-secret}
+      - DEV_VAULT_APP_MEETINGS_TOKEN_SIGNING_SECRET=${DEV_VAULT_APP_MEETINGS_TOKEN_SIGNING_SECRET:-01234567890123456789012345678901}
+      - DEV_VAULT_JICOFO_AUTH_PASSWORD=${DEV_VAULT_JICOFO_AUTH_PASSWORD:-focus}
+      - DEV_VAULT_JVB_AUTH_PASSWORD=${DEV_VAULT_JVB_AUTH_PASSWORD:-jvb}
+      - DEV_VAULT_JICOFO_COMPONENT_SECRET=${DEV_VAULT_JICOFO_COMPONENT_SECRET:-focussecret}
+    depends_on:
+      vault:
+        condition: service_healthy
+    volumes:
+      - ./deploy/vault/auth/dev/bootstrap-dev-vault.sh:/vault/auth/dev/bootstrap-dev-vault.sh:ro
+      - ./deploy/vault/policies/backend.hcl.example:/vault/policies/backend.hcl:ro
+      - ./deploy/vault/local/dev:/vault/local/dev
+
+  backend-vault-bootstrap:
+    image: jitsi-vault:1.21.4
+    entrypoint: ["sh", "/vault/auth/backend/startup-fetch.sh.example"]
+    environment:
+      - VAULT_ADDR=http://vault:8200
+      - ROLE_ID_FILE=/vault/local/backend/role_id
+      - WRAPPED_SECRET_ID_FILE=/vault/local/backend/wrapped-secret-id
+      - TOKEN_SINK_FILE=/vault/runtime/backend-batch-token
+      - BACKEND_ENV_OUTPUT_FILE=/vault/runtime/backend/runtime.env
+      - BACKEND_APP_SECRET_PATH=kv/app/backend/runtime
+      - BACKEND_OIDC_SECRET_PATH=kv/identity/backend/oidc
+      - BACKEND_REDIS_SECRET_PATH=kv/app/redis/runtime
+      - BACKEND_DB_STATIC_CREDENTIAL_PATH=database/static-creds/backend-app
+      - BACKEND_DB_DYNAMIC_CREDENTIAL_PATH=database/creds/backend-app
+      - OUTPUT_UID=10001
+      - OUTPUT_GID=10001
+    depends_on:
+      vault-dev-bootstrap:
+        condition: service_completed_successfully
+    volumes:
+      - ./deploy/vault/auth/backend/startup-fetch.sh.example:/vault/auth/backend/startup-fetch.sh.example:ro
+      - ${BACKEND_VAULT_ROLE_ID_PATH:-./deploy/vault/local/dev/backend/role_id}:/vault/local/backend/role_id:ro
+      - ${BACKEND_VAULT_WRAPPED_SECRET_ID_PATH:-./deploy/vault/local/dev/backend/wrapped-secret-id}:/vault/local/backend/wrapped-secret-id:ro
+      - backend-vault-runtime:/vault/runtime
+
   db:
     image: postgres:18.1
+    env_file:
+      - ${POSTGRES_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/postgres.env}
     environment:
       - POSTGRES_DB=jitsi
-      - POSTGRES_USER=jitsi
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Set POSTGRES_PASSWORD}
+      - POSTGRES_USER=${DEV_VAULT_POSTGRES_USERNAME:-jitsi}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U jitsi"]
+      test: ["CMD-SHELL", "pg_isready -U ${DEV_VAULT_POSTGRES_USERNAME:-jitsi}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:8.4
-    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    env_file:
+      - ${REDIS_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/redis.env}
+    command: ["sh", "-ec", "exec redis-server --save '' --appendonly no --requirepass \"$$REDIS_PASSWORD\""]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -97,9 +177,10 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.1.2
     command: ["start-dev", "--import-realm"]
+    env_file:
+      - ${KEYCLOAK_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/keycloak.env}
     environment:
-      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN?Set KEYCLOAK_ADMIN}
-      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD?Set KEYCLOAK_ADMIN_PASSWORD}
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-jitsi-admin}
       - KC_HOSTNAME=http://localhost:8081
       - KC_HOSTNAME_STRICT=false
     volumes:
@@ -117,12 +198,13 @@ services:
     ports:
       - "8000:80"
       - "8443:443"
+    env_file:
+      - ${JITSI_WEB_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/jitsi-web.env}
     environment:
       - ENABLE_AUTH=1
       - AUTH_TYPE=jwt
       - PROSODY_AUTH_TYPE=jwt
       - JWT_APP_ID=${JWT_APP_ID:-http://localhost:3000}
-      - JWT_APP_SECRET=${APP_MEETINGS_TOKEN_SIGNING_SECRET:-01234567890123456789012345678901}
       - JWT_ACCEPTED_ISSUERS=${JWT_ACCEPTED_ISSUERS:-http://localhost:3000}
       - JWT_ACCEPTED_AUDIENCES=${JWT_ACCEPTED_AUDIENCES:-jitsi-meet}
       - JWT_ALLOW_EMPTY=0
@@ -137,9 +219,7 @@ services:
       - XMPP_GUEST_DOMAIN=guest.meet.jitsi
       - JVB_BREWERY_MUC=jvbbrewery
       - JICOFO_AUTH_USER=focus
-      - JICOFO_AUTH_PASSWORD=focus
       - JVB_AUTH_USER=jvb
-      - JVB_AUTH_PASSWORD=jvb
       - TZ=UTC
     volumes:
       - ./pilot/jitsi/web/custom-config.js:/config/custom-config.js:ro
@@ -157,12 +237,13 @@ services:
 
   jitsi-prosody:
     image: jitsi/prosody:stable-10741
+    env_file:
+      - ${JITSI_PROSODY_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/jitsi-prosody.env}
     environment:
       - ENABLE_AUTH=1
       - AUTH_TYPE=jwt
       - PROSODY_AUTH_TYPE=jwt
       - JWT_APP_ID=${JWT_APP_ID:-http://localhost:3000}
-      - JWT_APP_SECRET=${APP_MEETINGS_TOKEN_SIGNING_SECRET:-01234567890123456789012345678901}
       - JWT_ACCEPTED_ISSUERS=${JWT_ACCEPTED_ISSUERS:-http://localhost:3000}
       - JWT_ACCEPTED_AUDIENCES=${JWT_ACCEPTED_AUDIENCES:-jitsi-meet}
       - JWT_ALLOW_EMPTY=0
@@ -173,9 +254,7 @@ services:
       - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
       - XMPP_GUEST_DOMAIN=guest.meet.jitsi
       - JICOFO_AUTH_USER=focus
-      - JICOFO_AUTH_PASSWORD=focus
       - JVB_AUTH_USER=jvb
-      - JVB_AUTH_PASSWORD=jvb
       - TZ=UTC
     healthcheck:
       test: ["CMD", "prosodyctl", "--config", "/config/prosody.cfg.lua", "status"]
@@ -194,16 +273,16 @@ services:
 
   jitsi-jicofo:
     image: jitsi/jicofo:stable-10741
+    env_file:
+      - ${JITSI_JICOFO_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/jitsi-jicofo.env}
     environment:
       - ENABLE_AUTH=1
       - AUTH_TYPE=jwt
       - PROSODY_AUTH_TYPE=jwt
       - JICOFO_AUTH_USER=focus
-      - JICOFO_AUTH_PASSWORD=focus
       - XMPP_DOMAIN=meet.jitsi
       - XMPP_AUTH_DOMAIN=auth.meet.jitsi
       - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
-      - JICOFO_COMPONENT_SECRET=focussecret
       - TZ=UTC
     depends_on:
       - jitsi-prosody
@@ -215,12 +294,13 @@ services:
 
   jitsi-jvb:
     image: jitsi/jvb:stable-10741
+    env_file:
+      - ${JITSI_JVB_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/jitsi-jvb.env}
     environment:
       - ENABLE_AUTH=1
       - AUTH_TYPE=jwt
       - PROSODY_AUTH_TYPE=jwt
       - JVB_AUTH_USER=jvb
-      - JVB_AUTH_PASSWORD=jvb
       - XMPP_DOMAIN=meet.jitsi
       - XMPP_AUTH_DOMAIN=auth.meet.jitsi
       - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
@@ -238,4 +318,7 @@ services:
       retries: 5
 
 volumes:
+  backend-vault-runtime:
   pgdata:
+  vault-audit:
+  vault-data:

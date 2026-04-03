@@ -136,39 +136,6 @@ class InviteValidationChainTest {
     }
   }
 
-  private static final class TerminalOrderedValidator extends OrderedValidator {
-
-    private TerminalOrderedValidator(int order, List<Integer> calls) {
-      super(order, calls);
-    }
-
-    @Override
-    public boolean isTerminalValidator() {
-      return true;
-    }
-  }
-
-  private static final class LoadingOrderedValidator extends OrderedValidator {
-
-    private LoadingOrderedValidator(int order, List<Integer> calls) {
-      super(order, calls);
-    }
-
-    @Override
-    public boolean loadsResolvedInvite() {
-      return true;
-    }
-
-    @Override
-    public void validate(InviteValidationContext context) {
-      super.validate(context);
-      InviteExchangeProperties.Invite invite = new InviteExchangeProperties.Invite();
-      invite.setToken("invite");
-      invite.setMeetingId("meeting-a");
-      context.setInvite(invite);
-    }
-  }
-
   private static final class LatePassThroughValidator extends OrderedValidator {
 
     private LatePassThroughValidator() {

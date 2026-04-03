@@ -1,0 +1,26 @@
+# Ubuntu 24 UFW baseline for Story 18.3
+# Replace YOUR_OPERATOR_CIDR in a private override file before live apply.
+# Private override path: deploy/host/local/operator-allowlist.local.txt
+
+# Preview rule syntax safely first.
+ufw --dry-run allow 80/tcp comment 'public http redirect'
+ufw --dry-run allow 443/tcp comment 'public https'
+ufw --dry-run allow 10000/udp comment 'jitsi media'
+ufw --dry-run allow from YOUR_OPERATOR_CIDR to any port 22 proto tcp comment 'operator ssh allowlist'
+
+# Validate default policy commands in a disposable container or maintenance console before live apply.
+# Expected policy commands:
+# ufw reset
+# ufw default deny incoming
+# ufw default allow outgoing
+
+# Apply only after preview from a trusted console session.
+ufw reset
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow 80/tcp comment 'public http redirect'
+ufw allow 443/tcp comment 'public https'
+ufw allow 10000/udp comment 'jitsi media'
+ufw allow from YOUR_OPERATOR_CIDR to any port 22 proto tcp comment 'operator ssh allowlist'
+ufw enable
+ufw status verbose

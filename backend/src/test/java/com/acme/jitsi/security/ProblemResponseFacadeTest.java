@@ -110,7 +110,7 @@ class ProblemResponseFacadeTest {
         TraceFlags.getSampled(),
         TraceState.getDefault()));
 
-    try (Scope ignored = span.makeCurrent()) {
+    try (Scope _ = span.makeCurrent()) {
       assertThat(facade.resolveTraceId(request)).isEqualTo("0123456789abcdef0123456789abcdef");
       assertThat(facade.resolveRequestId(request)).isEqualTo("client-request-123");
     }

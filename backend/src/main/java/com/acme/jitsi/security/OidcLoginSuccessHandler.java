@@ -43,6 +43,9 @@ final class OidcLoginSuccessHandler implements AuthenticationSuccessHandler {
           traceId,
           request.getRequestURI());
     }
-    response.sendRedirect(frontendOrigin + "/auth/continue");
+    response.sendRedirect(
+        AuthRedirectFlowSupport.buildFrontendContinueRedirect(
+            frontendOrigin,
+            AuthRedirectFlowSupport.consumeReturnTo(request)));
   }
 }

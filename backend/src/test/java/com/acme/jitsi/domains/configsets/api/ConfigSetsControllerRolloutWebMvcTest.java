@@ -187,7 +187,7 @@ class ConfigSetsControllerRolloutWebMvcTest {
             .header("Idempotency-Key", "idem-rollback-2")
             .param("tenantId", "tenant-1")
             .param("environmentType", "DEV"))
-        .andExpect(status().isUnprocessableEntity())
+        .andExpect(status().isUnprocessableContent())
       .andExpect(jsonPath("$.errorCode").value(ErrorCode.CONFIG_SET_ROLLBACK_NOT_ALLOWED.code()))
         .andExpect(jsonPath("$.traceId").value("trace-1"));
   }
@@ -215,7 +215,7 @@ class ConfigSetsControllerRolloutWebMvcTest {
             .with(oauth2Login().attributes(attrs -> attrs.put("tenantId", "tenant-1")))
             .header("Idempotency-Key", "idem-rollout-2")
             .param("tenantId", "tenant-1"))
-        .andExpect(status().isUnprocessableEntity())
+        .andExpect(status().isUnprocessableContent())
         .andExpect(jsonPath("$.errorCode").value(ErrorCode.CONFIG_INCOMPATIBLE.code()))
         .andExpect(jsonPath("$.traceId").value("trace-1"));
   }

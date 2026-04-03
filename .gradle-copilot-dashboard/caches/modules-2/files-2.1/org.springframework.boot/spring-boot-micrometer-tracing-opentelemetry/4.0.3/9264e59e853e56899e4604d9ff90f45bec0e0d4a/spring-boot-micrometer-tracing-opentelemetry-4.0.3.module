@@ -1,0 +1,186 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.springframework.boot",
+    "module": "spring-boot-micrometer-tracing-opentelemetry",
+    "version": "4.0.3",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.3.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-micrometer-observation",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-micrometer-tracing",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-opentelemetry",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "io.micrometer",
+          "module": "micrometer-tracing",
+          "version": {
+            "requires": "1.6.3"
+          },
+          "excludes": [
+            {
+              "group": "aopalliance",
+              "module": "aopalliance"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-micrometer-tracing-opentelemetry-4.0.3.jar",
+          "url": "spring-boot-micrometer-tracing-opentelemetry-4.0.3.jar",
+          "size": 63543,
+          "sha512": "8f64e2737228ad7c85ae2b6d9b339c55ff62be9f5705a7dfb34eeef9c68d22b1f05fc067a55c3258fda0f7213d98231b036061d77a9b5ef604af5b3fd6801aba",
+          "sha256": "93f6786776a750058a22b8fd3b1e8b84d6d6dfa519167a6563f6cf58be61369f",
+          "sha1": "21fd20446e006effac314f6937e94a600c69543f",
+          "md5": "5f74534c69542526201221bb299d31a9"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-micrometer-observation",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-micrometer-tracing",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-opentelemetry",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "io.micrometer",
+          "module": "micrometer-tracing",
+          "version": {
+            "requires": "1.6.3"
+          },
+          "excludes": [
+            {
+              "group": "aopalliance",
+              "module": "aopalliance"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-micrometer-tracing-opentelemetry-4.0.3.jar",
+          "url": "spring-boot-micrometer-tracing-opentelemetry-4.0.3.jar",
+          "size": 63543,
+          "sha512": "8f64e2737228ad7c85ae2b6d9b339c55ff62be9f5705a7dfb34eeef9c68d22b1f05fc067a55c3258fda0f7213d98231b036061d77a9b5ef604af5b3fd6801aba",
+          "sha256": "93f6786776a750058a22b8fd3b1e8b84d6d6dfa519167a6563f6cf58be61369f",
+          "sha1": "21fd20446e006effac314f6937e94a600c69543f",
+          "md5": "5f74534c69542526201221bb299d31a9"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-micrometer-tracing-opentelemetry-4.0.3-javadoc.jar",
+          "url": "spring-boot-micrometer-tracing-opentelemetry-4.0.3-javadoc.jar",
+          "size": 168505,
+          "sha512": "88c407888374dbe9aefaf8da56d94b0f4ae0d0536d66452d5a975fa045d22a8eefaf366877583b2058a703fa607ace51d478d75c0aaffd0e22f9cf6826352640",
+          "sha256": "babcd842c8c89cbd571b3d5b7352db7935eab0e8b7060a194a021379f97466a7",
+          "sha1": "b6f2372d21d593c71d29fa8d82bd8ab098c432b7",
+          "md5": "892e9d3dab1f41adb653316f0dcfb003"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-micrometer-tracing-opentelemetry-4.0.3-sources.jar",
+          "url": "spring-boot-micrometer-tracing-opentelemetry-4.0.3-sources.jar",
+          "size": 40691,
+          "sha512": "4c80a71136a83f8bd1b19209f91532403aaa08f0c333cf27d5a0782f7dcc4306e10e7d8f186b3cb3d599b61025edbb0a0e1251705c0c0ceafc32598a9a5177c4",
+          "sha256": "b87fc02e34628795eb183f232e8db0974663c061bba5b527318b1172526cfdc4",
+          "sha1": "e8cfc7bc54f54e8e7a6b41f455115dd3e5098e54",
+          "md5": "18cd8779493a3a6fe61f49c1cc52c84a"
+        }
+      ]
+    }
+  ]
+}

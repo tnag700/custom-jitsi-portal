@@ -1,0 +1,158 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.springframework.boot",
+    "module": "spring-boot-micrometer-tracing",
+    "version": "4.0.3",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.3.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-micrometer-observation",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "io.micrometer",
+          "module": "micrometer-tracing",
+          "version": {
+            "requires": "1.6.3"
+          },
+          "excludes": [
+            {
+              "group": "aopalliance",
+              "module": "aopalliance"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-micrometer-tracing-4.0.3.jar",
+          "url": "spring-boot-micrometer-tracing-4.0.3.jar",
+          "size": 28744,
+          "sha512": "bae44fcd647f5e9c996fd8eafe488f5f741f08f6e32e511e389e826e3ac6ef12424f178135d2b2848fe52dc4eba6470e9f22b9f305132d0a350029a029d2c19b",
+          "sha256": "a5c280c64c0b04ecb9d0d0ecb0e5db2e93db609bb881eb8adeba525ad8bcbc52",
+          "sha1": "36fbc2dfb1ee93f26fabc2a55f77ff8c7e851e16",
+          "md5": "60aefe5d49f24dcb9f5b5519e0bccdc4"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-micrometer-observation",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "io.micrometer",
+          "module": "micrometer-tracing",
+          "version": {
+            "requires": "1.6.3"
+          },
+          "excludes": [
+            {
+              "group": "aopalliance",
+              "module": "aopalliance"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-micrometer-tracing-4.0.3.jar",
+          "url": "spring-boot-micrometer-tracing-4.0.3.jar",
+          "size": 28744,
+          "sha512": "bae44fcd647f5e9c996fd8eafe488f5f741f08f6e32e511e389e826e3ac6ef12424f178135d2b2848fe52dc4eba6470e9f22b9f305132d0a350029a029d2c19b",
+          "sha256": "a5c280c64c0b04ecb9d0d0ecb0e5db2e93db609bb881eb8adeba525ad8bcbc52",
+          "sha1": "36fbc2dfb1ee93f26fabc2a55f77ff8c7e851e16",
+          "md5": "60aefe5d49f24dcb9f5b5519e0bccdc4"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-micrometer-tracing-4.0.3-javadoc.jar",
+          "url": "spring-boot-micrometer-tracing-4.0.3-javadoc.jar",
+          "size": 144705,
+          "sha512": "2dfe5aad412ec7666c3877ade98f79884db19e89ecf997de2c6fa2e6d3cf092102b94142b5875cc90a17a77c8932cf6189f439c7fb7dee766026938ca48f0c82",
+          "sha256": "ed5c5e86d74a5cd12a34778ae9ad9f86f42355ea305d10d3e91173a46742fb25",
+          "sha1": "c50df7bb3fe2349c785bc8affd7bb24d5831e623",
+          "md5": "310790e191e87a444c1c7ac43d8c0eda"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-micrometer-tracing-4.0.3-sources.jar",
+          "url": "spring-boot-micrometer-tracing-4.0.3-sources.jar",
+          "size": 20018,
+          "sha512": "5fcb1541c518dec4d20eef9f370809d6b20b27cfe6c10fab7f9264d388bcdf64bbe5c7c5535d943104232cf7377fb41483315a31f8c62f672fddaabb37439780",
+          "sha256": "722b9f24c8531292e187471dfd3048603e9be4a00a9ec149391ca2e60b7bb8ae",
+          "sha1": "d72130d7c159f37b3753396335365b3b9382a58f",
+          "md5": "5dd12e0fe27c2a403d92d2b3886b8797"
+        }
+      ]
+    }
+  ]
+}

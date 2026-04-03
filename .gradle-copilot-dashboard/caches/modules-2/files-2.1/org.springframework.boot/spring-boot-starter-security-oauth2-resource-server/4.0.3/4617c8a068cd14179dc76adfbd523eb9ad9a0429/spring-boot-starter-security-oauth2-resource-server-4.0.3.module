@@ -1,0 +1,146 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.springframework.boot",
+    "module": "spring-boot-starter-security-oauth2-resource-server",
+    "version": "4.0.3",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.3.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter-security",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-security-oauth2-resource-server",
+          "version": {
+            "requires": "4.0.3"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-starter-security-oauth2-resource-server-4.0.3.jar",
+          "url": "spring-boot-starter-security-oauth2-resource-server-4.0.3.jar",
+          "size": 4780,
+          "sha512": "717f3a791f06d9346a259f23ea7ae89f0c689b7c7f1bc9bfeae96288621ac1e361ef0ed68df607e45a5ea146cc014b622006ee4a3653698960ed15b69b684335",
+          "sha256": "eb233330b71b2d41742b5c5ff826889500d5fb954c3340882addd7955ab35684",
+          "sha1": "8f2a5b89a2888c0b3942c660a14d163fff0ff620",
+          "md5": "3dd5f58486208aa727047cec121b2ec9"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter-security",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-security-oauth2-resource-server",
+          "version": {
+            "requires": "4.0.3"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-starter-security-oauth2-resource-server-4.0.3.jar",
+          "url": "spring-boot-starter-security-oauth2-resource-server-4.0.3.jar",
+          "size": 4780,
+          "sha512": "717f3a791f06d9346a259f23ea7ae89f0c689b7c7f1bc9bfeae96288621ac1e361ef0ed68df607e45a5ea146cc014b622006ee4a3653698960ed15b69b684335",
+          "sha256": "eb233330b71b2d41742b5c5ff826889500d5fb954c3340882addd7955ab35684",
+          "sha1": "8f2a5b89a2888c0b3942c660a14d163fff0ff620",
+          "md5": "3dd5f58486208aa727047cec121b2ec9"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-starter-security-oauth2-resource-server-4.0.3-javadoc.jar",
+          "url": "spring-boot-starter-security-oauth2-resource-server-4.0.3-javadoc.jar",
+          "size": 4780,
+          "sha512": "717f3a791f06d9346a259f23ea7ae89f0c689b7c7f1bc9bfeae96288621ac1e361ef0ed68df607e45a5ea146cc014b622006ee4a3653698960ed15b69b684335",
+          "sha256": "eb233330b71b2d41742b5c5ff826889500d5fb954c3340882addd7955ab35684",
+          "sha1": "8f2a5b89a2888c0b3942c660a14d163fff0ff620",
+          "md5": "3dd5f58486208aa727047cec121b2ec9"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-starter-security-oauth2-resource-server-4.0.3-sources.jar",
+          "url": "spring-boot-starter-security-oauth2-resource-server-4.0.3-sources.jar",
+          "size": 4780,
+          "sha512": "717f3a791f06d9346a259f23ea7ae89f0c689b7c7f1bc9bfeae96288621ac1e361ef0ed68df607e45a5ea146cc014b622006ee4a3653698960ed15b69b684335",
+          "sha256": "eb233330b71b2d41742b5c5ff826889500d5fb954c3340882addd7955ab35684",
+          "sha1": "8f2a5b89a2888c0b3942c660a14d163fff0ff620",
+          "md5": "3dd5f58486208aa727047cec121b2ec9"
+        }
+      ]
+    }
+  ]
+}

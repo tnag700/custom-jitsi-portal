@@ -17,12 +17,14 @@ public abstract class PostgresRedisContainerIntegrationTestSupport {
 	private static final DockerImageName REDIS_IMAGE = DockerImageName.parse("redis:7-alpine");
 
 	@Container
+	@SuppressWarnings("resource")
 	static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(POSTGRES_IMAGE)
 			.withDatabaseName("jitsi_test")
 			.withUsername("test")
 			.withPassword("test");
 
 	@Container
+	@SuppressWarnings("resource")
 	static final GenericContainer<?> REDIS = new GenericContainer<>(REDIS_IMAGE)
 			.withExposedPorts(6379);
 

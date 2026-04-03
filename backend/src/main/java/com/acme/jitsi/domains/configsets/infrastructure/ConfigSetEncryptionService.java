@@ -23,7 +23,7 @@ class ConfigSetEncryptionService {
   private final SecureRandom secureRandom;
 
   ConfigSetEncryptionService(
-      @Value("${APP_CONFIG_SETS_ENCRYPTION_KEY:}") String encryptionKey) {
+      @Value("${app.config-sets.encryption-key:${APP_CONFIG_SETS_ENCRYPTION_KEY:}}") String encryptionKey) {
     this.rawEncryptionKey = encryptionKey;
     this.secureRandom = new SecureRandom();
   }

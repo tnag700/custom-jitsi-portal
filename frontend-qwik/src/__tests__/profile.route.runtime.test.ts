@@ -7,6 +7,7 @@ const mockFetchMyProfile = vi.fn();
 const mockUpsertMyProfile = vi.fn();
 const mockBuildServerRequestContext = vi.fn();
 const mockBuildMutationRequestContext = vi.fn();
+const mockResolveAuthRecoveryRedirectPath = vi.fn();
 
 class MockProfileServiceError extends Error {
   payload: { title: string; detail: string; errorCode: string; traceId?: string };
@@ -60,8 +61,13 @@ vi.mock("~/lib/shared/routes/server-handlers", () => ({
   buildMutationRequestContext: mockBuildMutationRequestContext,
 }));
 
+vi.mock("~/lib/domains/auth", () => ({
+  resolveAuthRecoveryRedirectPath: mockResolveAuthRecoveryRedirectPath,
+}));
+
 interface LoaderCtx {
   sharedMap: Map<string, unknown>;
+  url: URL;
   cookie: { get: (name: string) => { value?: string } | undefined };
   redirect: (status: number, to: string) => unknown;
 }
@@ -73,6 +79,7 @@ interface ActionCtx extends LoaderCtx {
 function createCtx(overrides?: Partial<ActionCtx>): ActionCtx {
   return {
     sharedMap: new Map<string, unknown>([["apiUrl", "http://localhost:8080/api/v1"]]),
+    url: new URL("http://localhost:3000/profile"),
     cookie: {
       get: (name: string) => {
         if (name === "JSESSIONID") return { value: "sess-1" };
@@ -90,6 +97,9 @@ describe("profile route runtime", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    mockResolveAuthRecoveryRedirectPath.mockReturnValue(
+      "/auth?error=AUTH_REQUIRED&mode=recover&returnTo=%2Fprofile",
+    );
     mockBuildServerRequestContext.mockReturnValue({
       apiUrl: "http://localhost:8080/api/v1",
       sessionCookie: "sess-1",
@@ -164,8 +174,13 @@ describe("profile route runtime", () => {
     await expect(mod.useMyProfile(ctx as never)).rejects.toEqual({
       type: "redirect",
       status: 302,
-      to: "/auth",
+      to: "/auth?error=AUTH_REQUIRED&mode=recover&returnTo=%2Fprofile",
     });
+
+    expect(mockResolveAuthRecoveryRedirectPath).toHaveBeenCalledWith(
+      expect.objectContaining({ payload: expect.objectContaining({ errorCode: "AUTH_REQUIRED" }) }),
+      "/profile",
+    );
   });
 
   it("useMyProfile returns service payload for non-auth profile errors", async () => {
@@ -292,7 +307,16 @@ describe("profile route runtime", () => {
         { fullName: "Jane", organization: "Acme", position: "Lead" },
         ctx as never,
       ),
-    ).rejects.toEqual({ type: "redirect", status: 302, to: "/auth" });
+    ).rejects.toEqual({
+      type: "redirect",
+      status: 302,
+      to: "/auth?error=AUTH_REQUIRED&mode=recover&returnTo=%2Fprofile",
+    });
+
+    expect(mockResolveAuthRecoveryRedirectPath).toHaveBeenCalledWith(
+      expect.objectContaining({ payload: expect.objectContaining({ errorCode: "AUTH_REQUIRED" }) }),
+      "/profile",
+    );
   });
 
   it("useUpsertProfile maps unexpected errors to fail(500)", async () => {

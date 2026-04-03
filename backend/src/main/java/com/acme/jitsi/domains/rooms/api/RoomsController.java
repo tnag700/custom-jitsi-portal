@@ -2,7 +2,6 @@ package com.acme.jitsi.domains.rooms.api;
 
 import com.acme.jitsi.domains.rooms.service.Room;
 import com.acme.jitsi.domains.rooms.service.RoomService;
-import com.acme.jitsi.domains.rooms.service.RoomStatus;
 import com.acme.jitsi.domains.rooms.usecase.CloseRoomCommand;
 import com.acme.jitsi.domains.rooms.usecase.CloseRoomUseCase;
 import com.acme.jitsi.domains.rooms.usecase.CreateRoomCommand;

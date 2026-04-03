@@ -54,6 +54,22 @@ public class ConfigSetCompatibilityStateService {
     return compatibilityCheckRepository.findLatestByConfigSetId(configSetId);
   }
 
+  public Optional<ConfigSetCompatibilityCheck> findLatestActive() {
+    return flowObservationFacade.observe("config.compatibility.check", observation -> {
+      observation.stage("compatibility_lookup_active");
+      List<String> activeConfigSetIds = configSetRepository.findByStatus(ConfigSetStatus.ACTIVE)
+          .stream()
+          .map(ConfigSet::configSetId)
+          .toList();
+      Optional<ConfigSetCompatibilityCheck> result = compatibilityCheckRepository.findLatestByConfigSetIds(activeConfigSetIds)
+          .stream()
+          .max(Comparator.comparing(ConfigSetCompatibilityCheck::checkedAt));
+      observation.compatibility(result.map(check -> check.compatible() ? "compatible" : "incompatible").orElse("unknown"))
+          .outcome(result.isPresent() ? "success" : "not_found");
+      return result;
+    });
+  }
+
   public Optional<ConfigSetCompatibilityCheck> findLatestIncompatibleActive() {
     return flowObservationFacade.observe("config.compatibility.check", observation -> {
       observation.stage("compatibility_lookup");

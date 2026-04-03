@@ -1,0 +1,7 @@
+path "kv/data/realtime/jitsi/*" {
+  capabilities = ["read"]
+}
+
+path "kv/metadata/realtime/jitsi/*" {
+  capabilities = ["list"]
+}

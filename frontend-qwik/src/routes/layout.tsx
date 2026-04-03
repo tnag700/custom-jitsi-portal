@@ -11,13 +11,16 @@ import { ThemeContext, type Theme } from "~/lib/shared/stores/theme-context";
 import { AppHeader, Sidebar } from "~/lib/shared/components";
 import {
   AuthContext,
+  AuthServiceError,
   fetchAuthMe,
   isPublicAuthPath,
   logoutFromAuthSession,
+  resolveAuthRecoveryRedirectPath,
   resolveAuthRedirectPath,
   type AuthStore,
   type SafeUserProfile,
 } from "~/lib/domains/auth";
+import { filterNavItemsForClaims, navItems } from "~/lib/shared/components/sidebar-nav-items";
 import {
   buildMutationRequestContext,
   buildServerRequestContext,
@@ -27,6 +30,7 @@ const THEME_COOKIE = "theme";
 const THEME_COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
 const DEFAULT_SERVER_API_URL = "http://localhost:8080/api/v1";
 const DEFAULT_PUBLIC_API_URL = "http://localhost:8080/api/v1";
+const AUTH_LOGOUT_ALLOWED_ORIGINS_ENV = "AUTH_LOGOUT_ALLOWED_ORIGINS";
 
 /** Read theme cookie on the server and pass it via sharedMap → routeLoader$. */
 export const onRequest: RequestHandler = async ({
@@ -58,18 +62,21 @@ export const onRequest: RequestHandler = async ({
     return;
   }
 
+  const returnTo = `${url.pathname}${url.search}`;
+
   const requestContext = buildServerRequestContext({ sharedMap, cookie });
   if (!requestContext.sessionCookie) {
-    throw redirect(302, "/auth");
+    throw redirect(302, resolveAuthRecoveryRedirectPath(undefined, returnTo));
   }
-
-  await buildMutationRequestContext({ sharedMap, cookie });
 
   try {
     const profile = await fetchAuthMe(requestContext);
     sharedMap.set("user", profile);
   } catch (error) {
-    throw redirect(302, resolveAuthRedirectPath(error));
+    if (error instanceof AuthServiceError && error.payload.errorCode === "AUTH_REQUIRED") {
+      throw redirect(302, resolveAuthRecoveryRedirectPath(error, returnTo));
+    }
+    throw redirect(302, resolveAuthRedirectPath(error, returnTo));
   }
 };
 
@@ -81,11 +88,62 @@ export const useAuth = routeLoader$(({ sharedMap }) => {
   return (sharedMap.get("user") as SafeUserProfile | null) ?? null;
 });
 
-export const useLogout = routeAction$(async (_, { sharedMap, cookie, redirect }) => {
+function parseAllowedLogoutOrigins(raw: string | undefined, currentOrigin: string): Set<string> {
+  const allowedOrigins = new Set<string>([currentOrigin]);
+  if (!raw) {
+    return allowedOrigins;
+  }
+  for (const candidate of raw.split(",")) {
+    const trimmed = candidate.trim();
+    if (!trimmed) {
+      continue;
+    }
+    try {
+      const parsed = new URL(trimmed);
+      allowedOrigins.add(parsed.origin);
+    } catch {
+      // Ignore malformed entries and keep strict fallback behavior.
+    }
+  }
+  return allowedOrigins;
+}
+
+function isAllowedLogoutRedirect(
+  location: string,
+  currentUrl: URL,
+  allowedOriginsRaw: string | undefined,
+): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(location, currentUrl.origin);
+  } catch {
+    return false;
+  }
+
+  const allowedOrigins = parseAllowedLogoutOrigins(allowedOriginsRaw, currentUrl.origin);
+  if (!allowedOrigins.has(parsed.origin)) {
+    return false;
+  }
+  if (parsed.origin !== currentUrl.origin && parsed.protocol !== "https:") {
+    return false;
+  }
+  return parsed.protocol === "http:" || parsed.protocol === "https:";
+}
+
+export const useLogout = routeAction$(async (_, { sharedMap, cookie, redirect, url, env }) => {
   const requestContext = await buildMutationRequestContext({ sharedMap, cookie });
+  const returnTo = `${url.pathname}${url.search}`;
 
   try {
     const location = await logoutFromAuthSession(requestContext);
+    if (!isAllowedLogoutRedirect(location, url, env.get(AUTH_LOGOUT_ALLOWED_ORIGINS_ENV))) {
+      throw new AuthServiceError({
+        title: "Некорректный redirect logout",
+        reason: "Logout redirect origin is not allowed.",
+        actions: "Повторите вход через SSO или обратитесь к администратору.",
+        errorCode: "AUTH_LOGOUT_REDIRECT_INVALID",
+      });
+    }
     throw redirect(302, location);
   } catch (error) {
     if (
@@ -97,7 +155,7 @@ export const useLogout = routeAction$(async (_, { sharedMap, cookie, redirect })
       throw error;
     }
 
-    throw redirect(302, resolveAuthRedirectPath(error));
+    throw redirect(302, resolveAuthRedirectPath(error, returnTo));
   }
 });
 
@@ -121,6 +179,7 @@ export default component$(() => {
 
   useContextProvider(ThemeContext, { theme, toggle$ });
   useContextProvider(AuthContext, authStore);
+  const visibleNavItems = filterNavItemsForClaims(navItems, authStore.profile?.claims ?? []);
 
   const toggleSidebar$ = $(() => {
     expanded.value = !expanded.value;
@@ -130,7 +189,7 @@ export default component$(() => {
     <div class="flex h-screen overflow-hidden bg-bg text-text">
       {authStore.isAuthenticated ? (
         <>
-          <Sidebar expanded={expanded} />
+          <Sidebar expanded={expanded} items={visibleNavItems} />
           <div class="flex flex-1 flex-col overflow-hidden">
             <AppHeader
               isAuthenticated={authStore.isAuthenticated}

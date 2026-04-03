@@ -1,0 +1,118 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.springframework.boot",
+    "module": "spring-boot-health",
+    "version": "4.0.3",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.3.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "4.0.3"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-health-4.0.3.jar",
+          "url": "spring-boot-health-4.0.3.jar",
+          "size": 154374,
+          "sha512": "2c4f5602f070b87bbe1c5dd01ebac2846073276d18aad4565c8aa1cb1b07de04793fa6ade593188d812822787bbe22473f26a560f6a9de5ceb57ef157778ec71",
+          "sha256": "a4797e6fc18ba1c3386d207dfec76ced05a78206380076fd0ffeece3b8fc522c",
+          "sha1": "a26d91fe08c055b28499583ff606fdc0809a688e",
+          "md5": "c991a9401bb200f6bf4f1894b6465113"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "4.0.3"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-health-4.0.3.jar",
+          "url": "spring-boot-health-4.0.3.jar",
+          "size": 154374,
+          "sha512": "2c4f5602f070b87bbe1c5dd01ebac2846073276d18aad4565c8aa1cb1b07de04793fa6ade593188d812822787bbe22473f26a560f6a9de5ceb57ef157778ec71",
+          "sha256": "a4797e6fc18ba1c3386d207dfec76ced05a78206380076fd0ffeece3b8fc522c",
+          "sha1": "a26d91fe08c055b28499583ff606fdc0809a688e",
+          "md5": "c991a9401bb200f6bf4f1894b6465113"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-health-4.0.3-javadoc.jar",
+          "url": "spring-boot-health-4.0.3-javadoc.jar",
+          "size": 342796,
+          "sha512": "3a979a4473f35bf2e7c0e9a3a5743a9f23bb35fdf45866473bd2186b98912a352ac5705a5b49d1d491e47402f1b087d40a3e0f6bc49441a86a935ad9496a2891",
+          "sha256": "139951139515fecb60c5a36a27e4f96dce0323b1c3748d34428111dddec42faf",
+          "sha1": "5ba45f059495ab93ef1ca0f4b0c0d9e649c294b9",
+          "md5": "2b0485add3f4e6ac45ca341e230aa0b8"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-health-4.0.3-sources.jar",
+          "url": "spring-boot-health-4.0.3-sources.jar",
+          "size": 116295,
+          "sha512": "31037b5c29564577d66447435b0816e4377f44b7187268cc596cf1b845f88b8b8ac323a4ce7b1fcb90ced544b2e9d6ab42b4b6eb16480efb885fc95dc4ca4519",
+          "sha256": "f30ccd03a1e20a0a9cbb941f51bccad6144d80bf12465b3bccf97a7037734393",
+          "sha1": "6a08b25fcb7f8037396a7823ef4e84529d0d60e2",
+          "md5": "ab9bc6975fd3c74297355e52ba8113cf"
+        }
+      ]
+    }
+  ]
+}

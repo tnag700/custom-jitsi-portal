@@ -5,7 +5,6 @@ import com.acme.jitsi.shared.ErrorCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -223,6 +222,58 @@ class SecurityConfigRouteMatrixTest {
 
     mockMvc.perform(get("/api/v1/config-sets").param("tenantId", "tenant-1").with(adminLogin))
       .andExpect(status().isOk());
+  }
+
+  @Test
+  void supportEngineerCanReadConfigSetsButCannotAccessAdminOnlyMutations() throws Exception {
+    var supportEngineerLogin = oauth2Login()
+        .attributes(attrs -> {
+          attrs.put("sub", "support-user");
+          attrs.put("tenantId", "tenant-1");
+        })
+        .authorities(new SimpleGrantedAuthority("ROLE_support-engineer"));
+
+    mockMvc.perform(get("/api/v1/config-sets").param("tenantId", "tenant-1").with(supportEngineerLogin))
+        .andExpect(status().isOk());
+
+    mockMvc.perform(post("/api/v1/config-sets")
+        .with(csrf())
+        .with(supportEngineerLogin)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{}"))
+      .andExpect(status().isForbidden())
+      .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ACCESS_DENIED.code()))
+      .andExpect(jsonPath("$.properties.traceId").isNotEmpty());
+
+    mockMvc.perform(post("/api/v1/meetings/meeting-missing/cancel").with(csrf()).with(supportEngineerLogin))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void systemAdminCanReadConfigSetsButCannotAccessAdminOnlyMutations() throws Exception {
+    var systemAdminLogin = oauth2Login()
+        .attributes(attrs -> {
+          attrs.put("sub", "system-admin-user");
+          attrs.put("tenantId", "tenant-1");
+        })
+        .authorities(new SimpleGrantedAuthority("ROLE_system-admin"));
+
+    mockMvc.perform(get("/api/v1/config-sets").param("tenantId", "tenant-1").with(systemAdminLogin))
+        .andExpect(status().isOk());
+
+    mockMvc.perform(post("/api/v1/config-sets")
+        .with(csrf())
+        .with(systemAdminLogin)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{}"))
+      .andExpect(status().isForbidden())
+      .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+      .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.ACCESS_DENIED.code()))
+      .andExpect(jsonPath("$.properties.traceId").isNotEmpty());
+
+    mockMvc.perform(post("/api/v1/meetings/meeting-missing/cancel").with(csrf()).with(systemAdminLogin))
+        .andExpect(status().isForbidden());
   }
 
   @Test

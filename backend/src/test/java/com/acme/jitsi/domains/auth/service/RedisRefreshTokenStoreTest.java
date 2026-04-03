@@ -24,6 +24,7 @@ class RedisRefreshTokenStoreTest {
     when(redisTemplate.opsForHash()).thenReturn(hashOperations);
     when(redisTemplate.hasKey("auth:refresh:missing-token-id-1")).thenReturn(false);
 
+    @SuppressWarnings("unchecked")
     org.springframework.beans.factory.ObjectProvider<StringRedisTemplate> provider = mock(org.springframework.beans.factory.ObjectProvider.class);
     when(provider.getIfAvailable()).thenReturn(redisTemplate);
     RedisRefreshTokenStore store = new RedisRefreshTokenStore(provider);
@@ -34,6 +35,7 @@ class RedisRefreshTokenStoreTest {
     verify(redisTemplate).expireAt(eq("auth:refresh:missing-token-id-1"), org.mockito.ArgumentMatchers.any(java.util.Date.class));
   }
 
+  @SuppressWarnings("unchecked")
   @Test
   void createIfAbsentUsesAtomicLuaScriptInRedis() {
     StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);

@@ -81,7 +81,7 @@ describe("Join Flow Guard: route integration (AC: 1, 2, 3, 4, 5, 6)", () => {
   it("routes/index.tsx should handle AUTH_REQUIRED redirect", () => {
     const tsx = readSrc("routes/index.tsx");
     expect(tsx).toContain("AUTH_REQUIRED");
-    expect(tsx).toContain('redirect(302, "/auth")');
+    expect(tsx).toContain("resolveAuthRecoveryRedirectPath(error, returnTo)");
   });
 
   it("routes/index.tsx should keep meeting context for retry after action errors", () => {

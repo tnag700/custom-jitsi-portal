@@ -1,13 +1,15 @@
 import { component$, type Signal } from "@qwik.dev/core";
 import { Link, useLocation } from "@qwik.dev/router";
-import { navItems } from "./sidebar-nav-items";
+import { navItems, type NavItem } from "./sidebar-nav-items";
 
 export interface SidebarProps {
   expanded: Signal<boolean>;
+  items?: readonly NavItem[];
 }
 
-export const Sidebar = component$<SidebarProps>(({ expanded }) => {
+export const Sidebar = component$<SidebarProps>(({ expanded, items }) => {
   const loc = useLocation();
+  const visibleNavItems = items ?? navItems;
 
   const isActive = (href: string) => {
     const pathname = loc.url.pathname;
@@ -39,7 +41,7 @@ export const Sidebar = component$<SidebarProps>(({ expanded }) => {
         {/* Navigation */}
         <nav aria-label="Основная навигация" class="flex-1 px-2">
           <ul class="space-y-1">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const active = isActive(item.href);
               return (
                 <li key={item.href}>

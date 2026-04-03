@@ -13,6 +13,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
@@ -58,6 +59,14 @@ public class SecurityConfig {
     "/api/v1/meetings/*/access-token",
     "/api/v1/profile/**",
     "/api/v1/users/**"
+  };
+
+  private static final String[] ADMIN_CABINET_ENDPOINTS = {
+    "/api/v1/admin/**"
+  };
+
+  private static final String[] ADMIN_INCIDENT_MUTATION_ENDPOINTS = {
+    "/api/v1/admin/incidents/**"
   };
 
   private static final String[] ADMIN_ENDPOINTS = {
@@ -115,6 +124,11 @@ public class SecurityConfig {
     http.authorizeHttpRequests(auth -> auth
         .requestMatchers(publicEndpoints.toArray(String[]::new)).permitAll()
         .requestMatchers(AUTHENTICATED_ENDPOINTS).authenticated()
+      .requestMatchers(HttpMethod.GET, ADMIN_CABINET_ENDPOINTS)
+        .hasAnyRole("admin", "system-admin", "security-admin", "support-engineer")
+        .requestMatchers(HttpMethod.POST, ADMIN_INCIDENT_MUTATION_ENDPOINTS).hasRole("admin")
+        .requestMatchers(HttpMethod.GET, "/api/v1/config-sets/**")
+            .hasAnyRole("admin", "system-admin", "security-admin", "support-engineer")
         .requestMatchers(ADMIN_ENDPOINTS).hasRole("admin")
         .anyRequest().denyAll());
     http.exceptionHandling(ex -> ex

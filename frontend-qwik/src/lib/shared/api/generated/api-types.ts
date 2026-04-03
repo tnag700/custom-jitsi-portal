@@ -4,6 +4,134 @@
  */
 
 export interface paths {
+    "/api/v1/admin/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/dashboard/drill-down": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getDrillDown"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listIncidents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/incidents/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["searchIncidents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/incidents/{incidentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getIncidentDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/incidents/{incidentId}/coordination": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["updateCoordination"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/incidents/{incidentId}/ticket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/role-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getRoleHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/csrf": {
         parameters: {
             query?: never;
@@ -600,6 +728,126 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AdminDashboardDrillDownResponse: {
+            entityFilter?: components["schemas"]["EntityFilter"];
+            environment?: string;
+            /** Format: int64 */
+            failureCount?: number;
+            generatedAt?: string;
+            period?: string;
+            recentSamples?: components["schemas"]["RecentSample"][];
+            sampleWindowLimited?: boolean;
+            selectionType?: string;
+            selectionValue?: string;
+            tenantId?: string;
+        };
+        AdminDashboardSummaryResponse: {
+            affectedScopeSummary?: components["schemas"]["AffectedScopeSummary"][];
+            entityFilter?: components["schemas"]["EntityFilter"];
+            environment?: string;
+            generatedAt?: string;
+            keyServiceStatuses?: components["schemas"]["ServiceStatus"][];
+            latestSpikes?: components["schemas"]["LatestSpike"][];
+            period?: string;
+            priorityBanner?: components["schemas"]["PriorityBanner"];
+            safeStateSummary?: components["schemas"]["SafeStateSummary"];
+            sampleWindowLimited?: boolean;
+            tenantId?: string;
+            topDegradations?: components["schemas"]["DegradationSummary"][];
+            traceId?: string;
+        };
+        AdminIncidentCoordinationUpdateRequest: {
+            owner?: string | null;
+            workflowStatus?: string;
+            ticketReference?: string | null;
+            ticketStatus?: string | null;
+        };
+        AdminIncidentDetailResponse: {
+            affectedAttempts?: components["schemas"]["AffectedAttempt"][];
+            category?: string;
+            coordination?: components["schemas"]["CoordinationState"];
+            endedAt?: string;
+            environment?: string;
+            errorCode?: string;
+            evidence?: components["schemas"]["EvidenceBlock"][];
+            incidentId?: string;
+            nextActions?: components["schemas"]["NextAction"][];
+            relatedLinks?: components["schemas"]["RelatedLink"][];
+            severity?: string;
+            startedAt?: string;
+            summary?: string;
+            summaryBar?: components["schemas"]["SummaryBar"];
+            tenantId?: string;
+            ticketing?: components["schemas"]["TicketingState"];
+            timeline?: components["schemas"]["TimelineEntry"][];
+        };
+        AdminIncidentListResponse: {
+            availableViews?: components["schemas"]["SavedView"][];
+            environment?: string;
+            generatedAt?: string;
+            items?: components["schemas"]["IncidentListItem"][];
+            /** Format: int32 */
+            offset?: number;
+            /** Format: int32 */
+            pageSize?: number;
+            period?: string;
+            quickFacets?: components["schemas"]["QuickFacet"][];
+            selectedQuickFacet?: string | null;
+            selectedView?: string;
+            sort?: components["schemas"]["QueueSort"];
+            tenantId?: string;
+            /** Format: int64 */
+            totalElements?: number;
+        };
+        AdminIncidentSearchResponse: {
+            candidates?: components["schemas"]["SearchCandidate"][];
+            detailUrl?: string | null;
+            incidentId?: string | null;
+            message?: string | null;
+            outcome?: string;
+        };
+        AdminIncidentTicketResponse: {
+            available?: boolean;
+            created?: boolean;
+            message?: string | null;
+            summary?: string | null;
+            ticketKey?: string | null;
+            ticketUrl?: string | null;
+        };
+        AdminRoleHistoryResponse: {
+            content?: components["schemas"]["RoleHistoryEntry"][];
+            environment?: string;
+            generatedAt?: string;
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            pageSize?: number;
+            tenantId?: string;
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+        };
+        AffectedAttempt: {
+            correlationId?: string | null;
+            diagnosticResult?: string | null;
+            meetingId?: string | null;
+            occurredAt?: string;
+            role?: string | null;
+            roomId?: string | null;
+            subjectDisplay?: string | null;
+            subjectIdFilterValue?: string | null;
+            traceId?: string | null;
+            traceUrl?: string | null;
+        };
+        AffectedScopeSummary: {
+            /** Format: int64 */
+            affectedAttempts?: number;
+            handoff?: components["schemas"]["HandoffContext"];
+            scopeType?: string;
+            scopeValue?: string;
+            summary?: string;
+        };
         AssignParticipantRequest: {
             role: string;
             subjectId: string;
@@ -720,6 +968,25 @@ export interface components {
             tenantId?: string;
             validationErrors?: string;
         };
+        CoordinationAuditEntry: {
+            actionType?: string;
+            actorId?: string;
+            fromState?: string;
+            occurredAt?: string;
+            toState?: string;
+            traceId?: string | null;
+        };
+        CoordinationState: {
+            availability?: string;
+            enabled?: boolean;
+            explanation?: string;
+            history?: components["schemas"]["CoordinationAuditEntry"][];
+            owner?: string | null;
+            ticketReference?: string | null;
+            ticketStatus?: string;
+            ticketUrl?: string | null;
+            workflowStatus?: string;
+        };
         CreateConfigSetRequest: {
             /** Format: int32 */
             accessTtlMinutes?: number;
@@ -767,6 +1034,45 @@ export interface components {
             parameterName?: string;
             token?: string;
         };
+        DegradationSummary: {
+            actionLabel?: string;
+            handoff?: components["schemas"]["HandoffContext"];
+            id?: string;
+            severity?: string;
+            summary?: string;
+            title?: string;
+        };
+        EmptyState: {
+            detail?: string;
+            nextActionLabel?: string;
+            nextActionTarget?: string;
+            title?: string;
+        };
+        EntityFilter: {
+            meetingId?: string;
+            roomId?: string;
+        };
+        EvidenceBlock: {
+            correlationId?: string | null;
+            detail?: string;
+            emptyState?: components["schemas"]["EmptyState"];
+            kind?: string;
+            status?: string;
+            summary?: string | null;
+            title?: string;
+            traceId?: string | null;
+            traceUrl?: string | null;
+        };
+        HandoffContext: {
+            category?: string;
+            environment?: string;
+            errorCode?: string;
+            incidentId?: string;
+            meetingId?: string;
+            period?: string;
+            roomId?: string;
+            severity?: string;
+        };
         HealthResponse: {
             checkedAt?: string;
             compatibilityStatus?: string;
@@ -774,6 +1080,20 @@ export interface components {
             details?: string;
             status?: string;
             traceId?: string;
+        };
+        IncidentListItem: {
+            affectedEntitySummary?: string;
+            /** Format: int64 */
+            affectedSubjects?: number;
+            category?: string;
+            errorCode?: string;
+            freshnessHint?: string;
+            incidentId?: string;
+            meetingId?: string | null;
+            occurredAt?: string;
+            roomId?: string | null;
+            severity?: string;
+            tenantId?: string;
         };
         InviteExchangeRequest: {
             displayName?: string;
@@ -824,6 +1144,14 @@ export interface components {
             systemChecks?: components["schemas"]["JoinReadinessCheckResponse"][];
             traceId?: string;
         };
+        LatestSpike: {
+            category?: string;
+            /** Format: int64 */
+            count?: number;
+            errorCode?: string;
+            handoff?: components["schemas"]["HandoffContext"];
+            summary?: string;
+        };
         MeetingAccessTokenResponse: {
             /** Format: date-time */
             expiresAt?: string;
@@ -848,6 +1176,13 @@ export interface components {
             title?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        NextAction: {
+            detail?: string;
+            externalUrl?: string | null;
+            kind?: string;
+            label?: string;
+            target?: string;
         };
         PagedConfigSetResponse: {
             content?: components["schemas"]["ConfigSetResponse"][];
@@ -913,6 +1248,67 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        PriorityBanner: {
+            actionLabel?: string;
+            active?: boolean;
+            handoff?: components["schemas"]["HandoffContext"];
+            headline?: string;
+            severity?: string;
+            summary?: string;
+        };
+        QueueSort: {
+            direction?: string;
+            label?: string;
+            token?: string;
+        };
+        QuickFacet: {
+            active?: boolean;
+            /** Format: int64 */
+            count?: number;
+            label?: string;
+            token?: string;
+        };
+        RecentSample: {
+            errorCode?: string;
+            meetingId?: string;
+            occurredAt?: string;
+            reasonCategory?: string;
+            roomId?: string;
+            subjectId?: string;
+            traceId?: string;
+            traceUrl?: string;
+            userMessage?: string;
+        };
+        RelatedLink: {
+            environment?: string;
+            externalUrl?: string | null;
+            kind?: string;
+            label?: string;
+            meetingId?: string | null;
+            roomId?: string | null;
+            subjectId?: string | null;
+            traceId?: string | null;
+        };
+        ResolvedSpikeSummary: {
+            detail?: string;
+            label?: string;
+        };
+        RoleHistoryEntry: {
+            actionLabel?: string;
+            actionType?: string;
+            actorLabel?: string;
+            actorReference?: string;
+            environment?: string;
+            meetingId?: string;
+            newRole?: string;
+            occurredAt?: string;
+            oldRole?: string;
+            roomId?: string;
+            subjectLabel?: string;
+            subjectReference?: string;
+            tenantId?: string;
+            traceId?: string;
+        };
         RoomResponse: {
             configSetId?: string;
             /** Format: date-time */
@@ -925,12 +1321,66 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        SafeStateAction: {
+            href?: string;
+            label?: string;
+        };
+        SafeStateSummary: {
+            actions?: components["schemas"]["SafeStateAction"][];
+            headline?: string;
+            recentResolvedSpikes?: components["schemas"]["ResolvedSpikeSummary"][];
+            stable?: boolean;
+            summary?: string;
+        };
         SafeUserProfileResponse: {
             claims?: string[];
             displayName?: string;
             email?: string;
             id?: string;
             tenant?: string;
+        };
+        SavedView: {
+            label?: string;
+            summary?: string;
+            token?: string;
+        };
+        SearchCandidate: {
+            errorCode?: string;
+            incidentId?: string;
+            meetingId?: string | null;
+            occurredAt?: string;
+        };
+        ServiceStatus: {
+            detail?: string;
+            handoff?: components["schemas"]["HandoffContext"];
+            key?: string;
+            label?: string;
+            status?: string;
+        };
+        SummaryBar: {
+            affectedScope?: string;
+            environment?: string;
+            operationalStatus?: string;
+            refusalReason?: string;
+            timeWindow?: string;
+            title?: string;
+        };
+        TicketingState: {
+            available?: boolean;
+            status?: string;
+            ticketKey?: string | null;
+            ticketUrl?: string | null;
+        };
+        TimelineEntry: {
+            correlationId?: string | null;
+            meetingId?: string | null;
+            occurredAt?: string;
+            role?: string | null;
+            roomId?: string | null;
+            subjectDisplay?: string | null;
+            summary?: string;
+            title?: string;
+            traceId?: string | null;
         };
         UpcomingMeetingCardResponse: {
             /** @enum {string} */
@@ -1008,6 +1458,231 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getSummary: {
+        parameters: {
+            query?: {
+                period?: string;
+                environment?: string;
+                roomId?: string;
+                meetingId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdminDashboardSummaryResponse"];
+                };
+            };
+        };
+    };
+    getDrillDown: {
+        parameters: {
+            query?: {
+                period?: string;
+                environment?: string;
+                roomId?: string;
+                meetingId?: string;
+                errorCode?: string;
+                category?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdminDashboardDrillDownResponse"];
+                };
+            };
+        };
+    };
+    listIncidents: {
+        parameters: {
+            query?: {
+                period?: string;
+                environment?: string;
+                view?: string;
+                facet?: string;
+                roomId?: string;
+                meetingId?: string;
+                subjectId?: string;
+                errorCode?: string;
+                category?: string;
+                severity?: string;
+                limit?: number;
+                offset?: number;
+                sort?: string;
+                direction?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdminIncidentListResponse"];
+                };
+            };
+        };
+    };
+    searchIncidents: {
+        parameters: {
+            query?: {
+                environment?: string;
+                traceId?: string;
+                requestId?: string;
+                errorCode?: string;
+                from?: string;
+                to?: string;
+                meetingId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdminIncidentSearchResponse"];
+                };
+            };
+        };
+    };
+    getIncidentDetail: {
+        parameters: {
+            query?: {
+                environment?: string;
+            };
+            header?: never;
+            path: {
+                incidentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdminIncidentDetailResponse"];
+                };
+            };
+        };
+    };
+    updateCoordination: {
+        parameters: {
+            query?: {
+                environment?: string;
+            };
+            header?: never;
+            path: {
+                incidentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminIncidentCoordinationUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CoordinationState"];
+                };
+            };
+        };
+    };
+    createTicket: {
+        parameters: {
+            query?: {
+                environment?: string;
+            };
+            header?: never;
+            path: {
+                incidentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdminIncidentTicketResponse"];
+                };
+            };
+        };
+    };
+    getRoleHistory: {
+        parameters: {
+            query?: {
+                environment?: string;
+                q?: string;
+                from?: string;
+                to?: string;
+                actionType?: string;
+                role?: string;
+                actorId?: string;
+                subjectId?: string;
+                roomId?: string;
+                meetingId?: string;
+                traceId?: string;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdminRoleHistoryResponse"];
+                };
+            };
+        };
+    };
     csrf: {
         parameters: {
             query: {

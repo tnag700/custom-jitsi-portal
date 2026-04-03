@@ -14,6 +14,7 @@ import {
   type ProfileErrorPayload,
   type UserProfileResponse,
 } from "~/lib/domains/profile";
+import { resolveAuthRecoveryRedirectPath } from "~/lib/domains/auth";
 import { AppToast, useAppToast } from "~/lib/shared/components";
 import { buildMutationRequestContext, buildServerRequestContext } from "~/lib/shared/routes/server-handlers";
 
@@ -23,8 +24,9 @@ interface ProfileLoaderData {
   loadError: ProfileErrorPayload | null;
 }
 
-export const useMyProfile = routeLoader$(async ({ sharedMap, cookie, redirect }) => {
+export const useMyProfile = routeLoader$(async ({ sharedMap, cookie, redirect, url }) => {
   const requestContext = buildServerRequestContext({ sharedMap, cookie });
+  const returnTo = `${url.pathname}${url.search}`;
   try {
     const profile = await fetchMyProfile(requestContext);
     if (profile === null) {
@@ -34,7 +36,7 @@ export const useMyProfile = routeLoader$(async ({ sharedMap, cookie, redirect })
   } catch (error) {
     if (error instanceof ProfileServiceError) {
       if (error.payload.errorCode === "AUTH_REQUIRED") {
-        throw redirect(302, "/auth");
+        throw redirect(302, resolveAuthRecoveryRedirectPath(error, returnTo));
       }
       return {
         profile: null,
@@ -55,15 +57,16 @@ export const useMyProfile = routeLoader$(async ({ sharedMap, cookie, redirect })
 });
 
 export const useUpsertProfile = routeAction$(
-  async (data, { sharedMap, cookie, redirect, fail }) => {
+  async (data, { sharedMap, cookie, redirect, fail, url }) => {
     const requestContext = await buildMutationRequestContext({ sharedMap, cookie });
+    const returnTo = `${url.pathname}${url.search}`;
     try {
       const profile = await upsertMyProfile(requestContext, data);
       return { success: true as const, profile };
     } catch (error) {
       if (error instanceof ProfileServiceError) {
         if (error.payload.errorCode === "AUTH_REQUIRED") {
-          throw redirect(302, "/auth");
+          throw redirect(302, resolveAuthRecoveryRedirectPath(error, returnTo));
         }
         return fail(400, { error: error.payload });
       }

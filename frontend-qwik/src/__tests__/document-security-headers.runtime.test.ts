@@ -24,8 +24,23 @@ describe("document security headers", () => {
     expect(csp).toContain("style-src-attr 'unsafe-inline'");
     expect(csp).toContain("img-src 'self' data: blob:");
     expect(csp).toContain("font-src 'self'");
-    expect(csp).toContain("connect-src 'self' http://localhost:8080 https: wss:");
+    expect(csp).toContain("connect-src 'self' http://localhost:8080");
     expect(csp).toContain("manifest-src 'self'");
+  });
+
+  it("drops unsafe or malformed extra connect-src tokens", () => {
+    const csp = buildDocumentContentSecurityPolicy({
+      nonce: "nonce-123",
+      apiUrl: "https://api.example.com/v1",
+      publicApiUrl: "https://api.example.com/v1",
+      extraConnectSrc: "https://realtime.example.com ws://invalid 'unsafe-inline' garbage",
+    });
+
+    const connectDirective = csp.split("; ").find((directive) => directive.startsWith("connect-src "));
+
+    expect(connectDirective).toBe("connect-src 'self' https://api.example.com https://realtime.example.com ws://invalid");
+    expect(connectDirective).not.toContain("'unsafe-inline'");
+    expect(connectDirective).not.toContain("garbage");
   });
 
   it("generates unique nonces and exports browser-hardening headers", () => {

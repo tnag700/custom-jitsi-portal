@@ -39,7 +39,6 @@ class MeetingsController {
 
   private static final String MEETING_ALL_FIELDS =
       "title,description,meetingType,startsAt,endsAt,allowGuests,recordingEnabled";
-  private static final String MEETING_STATUS_FIELD = "status";
 
   private final MeetingService meetingService;
   private final CreateMeetingUseCase createMeetingUseCase;

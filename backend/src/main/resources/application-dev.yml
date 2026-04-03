@@ -22,6 +22,13 @@ spring:
     enabled: true
 
 app:
+  config-sets:
+    encryption-key: ${APP_CONFIG_SETS_ENCRYPTION_KEY:0123456789ABCDEF0123456789ABCDEF}
+  dev-bootstrap:
+    active-config-set:
+      enabled: ${APP_DEV_BOOTSTRAP_ACTIVE_CONFIG_SET_ENABLED:true}
+      tenant-id: ${APP_DEV_BOOTSTRAP_ACTIVE_CONFIG_SET_TENANT_ID:tenant-1}
+      name: ${APP_DEV_BOOTSTRAP_ACTIVE_CONFIG_SET_NAME:Local DEV Config}
   resilience:
     invites:
       redis:

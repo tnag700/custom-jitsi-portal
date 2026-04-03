@@ -1,28 +1,29 @@
 import { component$ } from "@qwik.dev/core";
 import { routeLoader$ } from "@qwik.dev/router";
-import { AuthServiceError, fetchAuthMe } from "~/lib/domains/auth";
+import {
+  fetchAuthMe,
+  resolveAuthRedirectPath,
+  resolvePostAuthRedirectPath,
+} from "~/lib/domains/auth";
 import { buildServerRequestContext } from "~/lib/shared/routes/server-handlers";
 
 export const useAuthContinue = routeLoader$(
-  async ({ cookie, sharedMap, redirect }) => {
+  async ({ cookie, sharedMap, redirect, url }) => {
+    const returnTo = url.searchParams.get("returnTo");
     const requestContext = buildServerRequestContext({ sharedMap, cookie });
     if (!requestContext.sessionCookie) {
-      throw redirect(302, "/auth?error=AUTH_REQUIRED");
+      throw redirect(302, resolveAuthRedirectPath(undefined, returnTo));
     }
 
     let profile;
     try {
       profile = await fetchAuthMe(requestContext);
     } catch (error) {
-      if (error instanceof AuthServiceError) {
-        const errorCode = encodeURIComponent(error.payload.errorCode);
-        throw redirect(302, `/auth?error=${errorCode}`);
-      }
-      throw redirect(302, "/auth?error=AUTH_SERVICE_UNAVAILABLE");
+      throw redirect(302, resolveAuthRedirectPath(error, returnTo));
     }
 
     sharedMap.set("user", profile);
-    throw redirect(302, "/");
+    throw redirect(302, resolvePostAuthRedirectPath(returnTo));
   },
 );
 

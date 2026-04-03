@@ -30,7 +30,9 @@ public class DefaultHealthService implements HealthService {
   public HealthResponse getHealth() {
     return compatibilityStateService.findLatestIncompatibleActive()
         .map(this::createDownResponse)
-        .orElseGet(() -> new HealthResponse("UP", "COMPATIBLE", null, null, null, null));
+        .orElseGet(() -> compatibilityStateService.findLatestActive()
+            .map(this::createUpResponse)
+            .orElseGet(() -> new HealthResponse("UP", "COMPATIBLE", null, null, null, null)));
   }
 
   @Override
@@ -64,6 +66,16 @@ public class DefaultHealthService implements HealthService {
         check.traceId(),
         check.checkedAt().toString());
   }
+
+        private HealthResponse createUpResponse(ConfigSetCompatibilityCheck check) {
+          return new HealthResponse(
+          "UP",
+          "COMPATIBLE",
+          check.configSetId(),
+          null,
+          check.traceId(),
+          check.checkedAt().toString());
+        }
 
   private JoinReadinessCheckResponse createBackendCheck(HealthResponse health) {
     if ("UP".equals(health.status())) {

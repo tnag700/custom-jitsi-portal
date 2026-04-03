@@ -35,6 +35,7 @@ public final class OpenApiSpecGenerator {
 
     SpringApplication application = new SpringApplication(Application.class);
     application.setAdditionalProfiles("test");
+    application.setRegisterShutdownHook(false);
     application.setDefaultProperties(Map.ofEntries(
         Map.entry("server.port", "0"),
         Map.entry("spring.datasource.url", "jdbc:h2:mem:openapi-spec;MODE=PostgreSQL;DB_CLOSE_DELAY=-1"),
@@ -55,10 +56,14 @@ public final class OpenApiSpecGenerator {
         Map.entry("app.security.jwt-contour.algorithm", "HS256"),
         Map.entry("app.security.jwt-contour.access-ttl-minutes", "20"),
         Map.entry("app.security.jwt-contour.refresh-ttl-minutes", "60"),
-        Map.entry("app.openapi.server-url", "http://localhost:8080")
+        Map.entry("app.openapi.server-url", "http://localhost:8080"),
+        Map.entry("management.otlp.metrics.export.enabled", "false"),
+        Map.entry("management.otlp.tracing.export.enabled", "false")
     ));
 
-    try (ConfigurableApplicationContext context = application.run()) {
+      ConfigurableApplicationContext context = application.run();
+      int exitCode = 0;
+      try {
       OpenApiWebMvcResource openApiResource = context.getBean(OpenApiWebMvcResource.class);
       MockHttpServletRequest request = createOpenApiRequest();
       String body = new String(
@@ -70,7 +75,10 @@ public final class OpenApiSpecGenerator {
           outputPath,
           JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root) + System.lineSeparator(),
           StandardCharsets.UTF_8);
+    } finally {
+      exitCode = SpringApplication.exit(context);
     }
+    System.exit(exitCode);
   }
 
   private static MockHttpServletRequest createOpenApiRequest() {

@@ -48,9 +48,19 @@ function readString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
+function sanitizeHeaderToken(value: string): string {
+  if (!value) {
+    return "";
+  }
+
+  // Prevent response/request-splitting and cookie delimiter injection in composed headers.
+  return value.replace(/[\r\n\u0000-\u001F\u007F;,]/g, "").trim();
+}
+
 export function createBaseHeaders(sessionCookie: string): Record<string, string> {
+  const safeSessionCookie = sanitizeHeaderToken(sessionCookie);
   return {
-    Cookie: `JSESSIONID=${sessionCookie}`,
+    Cookie: `JSESSIONID=${safeSessionCookie}`,
   };
 }
 
@@ -60,11 +70,14 @@ export function createMutationHeaders(
   csrfCookieToken = csrfRequestToken,
   idempotencyKey?: string,
 ): Record<string, string> {
+  const safeSessionCookie = sanitizeHeaderToken(sessionCookie);
+  const safeCsrfRequestToken = sanitizeHeaderToken(csrfRequestToken);
+  const safeCsrfCookieToken = sanitizeHeaderToken(csrfCookieToken);
   const headers: Record<string, string> = {
-    ...createBaseHeaders(sessionCookie),
+    ...createBaseHeaders(safeSessionCookie),
     "Content-Type": "application/json",
-    Cookie: `JSESSIONID=${sessionCookie}; XSRF-TOKEN=${csrfCookieToken}`,
-    "X-XSRF-TOKEN": csrfRequestToken,
+    Cookie: `JSESSIONID=${safeSessionCookie}; XSRF-TOKEN=${safeCsrfCookieToken}`,
+    "X-XSRF-TOKEN": safeCsrfRequestToken,
   };
 
   if (idempotencyKey) {

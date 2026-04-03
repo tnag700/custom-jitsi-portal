@@ -6,7 +6,6 @@ import com.acme.jitsi.domains.rooms.event.RoomDeletedEvent;
 import com.acme.jitsi.domains.rooms.event.RoomUpdatedEvent;
 import com.acme.jitsi.domains.rooms.service.RoomAuditLog;
 import io.micrometer.core.instrument.MeterRegistry;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;

@@ -69,7 +69,7 @@ class MonitoringAlertingArtifactsContractTest {
 
   @Test
   void liveDrillAndRootScriptsCoverAlertLifecycleSmoke() throws IOException {
-    String liveDrill = Files.readString(REPOSITORY_ROOT.resolve("scripts/run-observability-live-drill.ps1"));
+    String liveDrill = Files.readString(REPOSITORY_ROOT.resolve("scripts/run-observability-live-drill.py"));
     String packageJson = Files.readString(REPOSITORY_ROOT.resolve("package.json"));
 
     assertThat(liveDrill)

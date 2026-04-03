@@ -2,6 +2,7 @@ package com.acme.jitsi.domains.auth.api;
 
 import com.acme.jitsi.domains.auth.service.AuthRefreshService;
 import com.acme.jitsi.domains.auth.service.AuthLogoutService;
+import com.acme.jitsi.security.AuthRedirectFlowSupport;
 import com.acme.jitsi.security.ProblemDetailsFactory;
 import com.acme.jitsi.security.ProblemDetailsMappingPolicy;
 import com.acme.jitsi.shared.ErrorCode;
@@ -57,7 +58,10 @@ class AuthController {
   }
 
   @GetMapping("/login")
-  ResponseEntity<Void> login() {
+  ResponseEntity<Void> login(
+      @RequestParam(name = "returnTo", required = false) String returnTo,
+      HttpServletRequest request) {
+    AuthRedirectFlowSupport.rememberReturnTo(request, returnTo);
     return ResponseEntity.status(302)
         .location(URI.create("/oauth2/authorization/keycloak"))
         .build();
@@ -87,9 +91,10 @@ class AuthController {
   }
 
   @GetMapping(value = "/me", params = "continue")
-  ResponseEntity<Void> meContinue() {
+  ResponseEntity<Void> meContinue(
+      @RequestParam(name = "returnTo", required = false) String returnTo) {
     return ResponseEntity.status(302)
-        .location(URI.create(frontendOrigin + "/auth/continue"))
+        .location(URI.create(AuthRedirectFlowSupport.buildFrontendContinueRedirect(frontendOrigin, returnTo)))
         .build();
   }
 

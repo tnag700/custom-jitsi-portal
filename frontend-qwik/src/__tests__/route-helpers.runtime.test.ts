@@ -81,6 +81,24 @@ describe("shared route server helpers", () => {
     });
   });
 
+  it("buildServerRequestContext strips control and delimiter chars from proxied cookie headers", () => {
+    const result = buildServerRequestContext({
+      sharedMap: new Map<string, unknown>([
+        ["apiUrl", "http://localhost:8080/api/v1"],
+        ["requestCookieHeader", "JSESSIONID=sess-1\r\nX-Test:1; XSRF-TOKEN=csrf;evil"],
+      ]),
+      cookie: {
+        get() {
+          return undefined;
+        },
+      },
+    });
+
+    expect(result.headers).toEqual({
+      Cookie: "JSESSIONID=sess-1X-Test:1",
+    });
+  });
+
   it("buildMutationRequestContext adds idempotency key only for mutation flows", async () => {
     vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("idem-shared-1");
 
@@ -197,6 +215,36 @@ describe("shared route server helpers", () => {
         "X-XSRF-TOKEN": "csrf-request-3",
       },
       idempotencyKey: "idem-shared-3",
+    });
+  });
+
+  it("buildMutationRequestContext sanitizes csrf and cookie values before composing upstream headers", async () => {
+    vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("idem-shared-4");
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      headers: {
+        getSetCookie: () => ["XSRF-TOKEN=csrf-cookie-4\r\nInjected:1; Path=/; SameSite=Lax"],
+      },
+      json: async () => ({ token: "csrf-request-4\r\nInjected:1", headerName: "X-XSRF-TOKEN" }),
+    } as Response);
+
+    const result = await buildMutationRequestContext({
+      sharedMap: new Map<string, unknown>([["apiUrl", "http://localhost:8080/api/v1"]]),
+      cookie: {
+        get(name: string) {
+          if (name === "JSESSIONID") {
+            return { value: "sess-4\r\nInjected:1" };
+          }
+          return undefined;
+        },
+      },
+    });
+
+    expect(result.headers).toEqual({
+      "Content-Type": "application/json",
+      Cookie: "JSESSIONID=sess-4Injected:1; XSRF-TOKEN=csrf-cookie-4Injected:1",
+      "Idempotency-Key": "idem-shared-4",
+      "X-XSRF-TOKEN": "csrf-request-4Injected:1",
     });
   });
 

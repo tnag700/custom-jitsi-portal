@@ -1,0 +1,146 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.springframework.boot",
+    "module": "spring-boot-opentelemetry",
+    "version": "4.0.3",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.3.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "io.opentelemetry",
+          "module": "opentelemetry-api",
+          "version": {
+            "requires": "1.55.0"
+          }
+        },
+        {
+          "group": "io.opentelemetry",
+          "module": "opentelemetry-sdk",
+          "version": {
+            "requires": "1.55.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-opentelemetry-4.0.3.jar",
+          "url": "spring-boot-opentelemetry-4.0.3.jar",
+          "size": 41496,
+          "sha512": "9d2074193e3f6c1f075424125673c1840836d39ac09f4de715ec4f474dc16f460b68292e0e402b22584a23cf219ed70a3849baf0aef2b9fd3d0d89c7f3be5c23",
+          "sha256": "f561f30fc5b6bb19be886a05d0257c705f7a54f3d99851ea7fdf4ab615f0cb3c",
+          "sha1": "d1b8904b46a00b9058d505292ebe581247af10bf",
+          "md5": "dcebdc45cfef135565148855e4d98055"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "io.opentelemetry",
+          "module": "opentelemetry-api",
+          "version": {
+            "requires": "1.55.0"
+          }
+        },
+        {
+          "group": "io.opentelemetry",
+          "module": "opentelemetry-sdk",
+          "version": {
+            "requires": "1.55.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-opentelemetry-4.0.3.jar",
+          "url": "spring-boot-opentelemetry-4.0.3.jar",
+          "size": 41496,
+          "sha512": "9d2074193e3f6c1f075424125673c1840836d39ac09f4de715ec4f474dc16f460b68292e0e402b22584a23cf219ed70a3849baf0aef2b9fd3d0d89c7f3be5c23",
+          "sha256": "f561f30fc5b6bb19be886a05d0257c705f7a54f3d99851ea7fdf4ab615f0cb3c",
+          "sha1": "d1b8904b46a00b9058d505292ebe581247af10bf",
+          "md5": "dcebdc45cfef135565148855e4d98055"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-opentelemetry-4.0.3-javadoc.jar",
+          "url": "spring-boot-opentelemetry-4.0.3-javadoc.jar",
+          "size": 148717,
+          "sha512": "55beb7fcaa86c3b14d74cdbf2a22cb054f3e2d6bddfaa259a3eea679cef020852d1ff793255be76848c1308274da3f486a23dd967fb8e0cc80dd861174521ca7",
+          "sha256": "bc1f576a4fd720fd10bda028a169b4ed2a8c02d1d8a736386292ce33a0bac857",
+          "sha1": "641104c07f15324f5d3a7a58267e0bd4ef03cf12",
+          "md5": "87258956e8b21dab3d97a6a96fd591a2"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-opentelemetry-4.0.3-sources.jar",
+          "url": "spring-boot-opentelemetry-4.0.3-sources.jar",
+          "size": 30238,
+          "sha512": "b36cbdd6cce91b8b99e8e01034854d62e0228539800092ce3d2545d132bca212e4081df74bb49cfc334153c5bd3afdfd4a10326e033ba2a3ec15f10b1ced0740",
+          "sha256": "23421c832eebcab18940fc0012b3645b17187bf623f1fe8a01b006e24942bf8f",
+          "sha1": "7f03f169a4ee780524c764be9c20487a2b699ee9",
+          "md5": "619bbddc4aea01d1d3a04dfb83325680"
+        }
+      ]
+    }
+  ]
+}

@@ -38,6 +38,7 @@ class SecurityConfigProblemHandlersCharacterizationTest {
       securityProblemResponseWriter,
       new MaskedErrorDispatchDiagnosticsLogger());
 
+  @SuppressWarnings("unchecked")
   @Test
   void authenticationEntryPointWritesStableProblemJsonContract() throws Exception {
     MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/rooms");

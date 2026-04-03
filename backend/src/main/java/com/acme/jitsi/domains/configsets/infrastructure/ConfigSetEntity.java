@@ -1,6 +1,5 @@
 package com.acme.jitsi.domains.configsets.infrastructure;
 
-import com.acme.jitsi.domains.configsets.service.ConfigSet;
 import com.acme.jitsi.domains.configsets.service.ConfigSetEnvironmentType;
 import com.acme.jitsi.domains.configsets.service.ConfigSetStatus;
 import jakarta.persistence.Column;

@@ -1,0 +1,6 @@
+{
+  "oidc_discovery_url": "https://auth.example.com/realms/jitsi",
+  "oidc_client_id": "vault-operators",
+  "oidc_client_secret": "SET_IN_LOCAL_OVERRIDE_ONLY",
+  "default_role": "operator-day2-admin"
+}

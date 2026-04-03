@@ -48,8 +48,17 @@ class DefaultHealthServiceTest {
   }
 
   @Test
-  void getHealthReturnsUpWhenNoIncompatibleActiveConfigExists() {
+  void getHealthReturnsUpWithLatestActiveCompatibilitySnapshotWhenNoIncompatibleActiveConfigExists() {
     when(compatibilityStateService.findLatestIncompatibleActive()).thenReturn(Optional.empty());
+    when(compatibilityStateService.findLatestActive()).thenReturn(Optional.of(
+        new ConfigSetCompatibilityCheck(
+            "chk-2",
+            "cs-2",
+            true,
+            List.of(),
+            "",
+            Instant.parse("2026-01-02T00:00:00Z"),
+            "trace-2")));
 
     DefaultHealthService service = new DefaultHealthService(
         compatibilityStateService,
@@ -59,11 +68,31 @@ class DefaultHealthServiceTest {
 
     assertThat(response.status()).isEqualTo("UP");
     assertThat(response.compatibilityStatus()).isEqualTo("COMPATIBLE");
+    assertThat(response.configSetId()).isEqualTo("cs-2");
+    assertThat(response.traceId()).isEqualTo("trace-2");
+    assertThat(response.checkedAt()).isEqualTo("2026-01-02T00:00:00Z");
+  }
+
+  @Test
+  void getHealthReturnsUpWithoutSnapshotWhenNoActiveCompatibilityCheckExists() {
+    when(compatibilityStateService.findLatestIncompatibleActive()).thenReturn(Optional.empty());
+    when(compatibilityStateService.findLatestActive()).thenReturn(Optional.empty());
+
+    DefaultHealthService service = new DefaultHealthService(
+        compatibilityStateService,
+        meetingJoinConfigurationReadinessService);
+
+    var response = service.getHealth();
+
+    assertThat(response.status()).isEqualTo("UP");
+    assertThat(response.compatibilityStatus()).isEqualTo("COMPATIBLE");
+    assertThat(response.configSetId()).isNull();
   }
 
   @Test
   void getJoinReadinessReturnsBlockedWhenAnyBlockingCheckFails() {
     when(compatibilityStateService.findLatestIncompatibleActive()).thenReturn(Optional.empty());
+    when(compatibilityStateService.findLatestActive()).thenReturn(Optional.empty());
     when(meetingJoinConfigurationReadinessService.inspect()).thenReturn(
         new MeetingJoinConfigurationReadiness(
             null,
@@ -91,6 +120,7 @@ class DefaultHealthServiceTest {
   @Test
   void getJoinReadinessReturnsDegradedWhenOnlyWarningChecksExist() {
     when(compatibilityStateService.findLatestIncompatibleActive()).thenReturn(Optional.empty());
+    when(compatibilityStateService.findLatestActive()).thenReturn(Optional.empty());
     when(meetingJoinConfigurationReadinessService.inspect()).thenReturn(
         new MeetingJoinConfigurationReadiness(
             "http://meet.example.test/",

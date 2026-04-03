@@ -5,6 +5,17 @@ export interface NavItem {
   icon: string;
 }
 
+const ADMIN_CABINET_CLAIMS = new Set([
+  "role_admin",
+  "admin",
+  "role_system-admin",
+  "system-admin",
+  "role_security-admin",
+  "security-admin",
+  "role_support-engineer",
+  "support-engineer",
+]);
+
 export const navItems: NavItem[] = [
   {
     label: "Кабинет",
@@ -26,4 +37,27 @@ export const navItems: NavItem[] = [
     href: "/profile",
     icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
   },
+  {
+    label: "Админ",
+    href: "/admin",
+    icon: "M12 6l7 4v4c0 5-3.5 9.5-7 11-3.5-1.5-7-6-7-11v-4l7-4zm0 3.2L8 11v2.8c0 3.8 2.4 7.2 4 8.2 1.6-1 4-4.4 4-8.2V11l-4-1.8z",
+  },
 ];
+
+export function filterNavItemsForClaims(items: NavItem[], claims: readonly string[]): NavItem[] {
+  const normalizedClaims = new Set(claims.map((claim) => claim.trim().toLowerCase()));
+
+  return items.filter((item) => {
+    if (item.href !== "/admin") {
+      return true;
+    }
+
+    for (const claim of normalizedClaims) {
+      if (ADMIN_CABINET_CLAIMS.has(claim)) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+}

@@ -81,6 +81,10 @@ tasks.register('testSmoke', Test) {
   classpath = sourceSets.test.runtimeClasspath
   maxParallelForks = fastTestForks
 
+  filter {
+    excludeTestsMatching 'com.acme.jitsi.architecture.*'
+  }
+
   useJUnitPlatform {
     excludeTags 'integration'
   }
@@ -92,6 +96,10 @@ tasks.register('testUnit', Test) {
   testClassesDirs = sourceSets.test.output.classesDirs
   classpath = sourceSets.test.runtimeClasspath
   maxParallelForks = fastTestForks
+
+  filter {
+    excludeTestsMatching 'com.acme.jitsi.architecture.*'
+  }
 
   useJUnitPlatform {
     excludeTags 'integration', 'slice', 'container'
@@ -134,6 +142,20 @@ tasks.register('testContainer', Test) {
   useJUnitPlatform {
     includeTags 'container'
   }
+}
+
+tasks.register('architectureTest', Test) {
+  group = LifecycleBasePlugin.VERIFICATION_GROUP
+  description = 'Runs architecture, modulith, and source guard validation tests only.'
+  testClassesDirs = sourceSets.test.output.classesDirs
+  classpath = sourceSets.test.runtimeClasspath
+  shouldRunAfter tasks.named('testUnit')
+
+  filter {
+    includeTestsMatching 'com.acme.jitsi.architecture.*'
+  }
+
+  useJUnitPlatform()
 }
 
 jacoco {
@@ -235,6 +257,17 @@ tasks.register('cpdCheck', JavaExec) {
   }
 }
 
+tasks.register('validateQuality') {
+  group = LifecycleBasePlugin.VERIFICATION_GROUP
+  description = 'Runs focused architecture and code quality validators in one command.'
+  dependsOn(
+    tasks.named('architectureTest'),
+    tasks.named('pmdMain'),
+    tasks.named('pmdFullAudit'),
+    tasks.named('cpdCheck')
+  )
+}
+
 tasks.named('check') {
-  dependsOn tasks.named('cpdCheck')
+  dependsOn tasks.named('validateQuality')
 }

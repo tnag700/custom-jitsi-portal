@@ -107,12 +107,6 @@ class RedisInviteUsageStore implements InviteUsageStore {
     }
   }
 
-  private void assertWithinUsageLimit(InviteExchangeProperties.Invite invite, long usageCount) {
-    if (usageCount > invite.usageLimit()) {
-      throw new InviteExchangeException(HttpStatus.CONFLICT, ErrorCode.INVITE_EXHAUSTED.code(), "Лимит использований инвайта исчерпан.");
-    }
-  }
-
   @Override
   public void rollback(String inviteToken) {
     StringRedisTemplate redisTemplate = redisTemplateProvider.getIfAvailable();

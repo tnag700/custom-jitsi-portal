@@ -90,7 +90,6 @@ class MeetingParticipantAssignmentServiceTest {
   void assignParticipant_updatesExistingAssignment() {
     String meetingId = "meeting-1";
     String subjectId = "user-1";
-    String oldRoleValue = "participant";
     String newRoleValue = "moderator";
     String assignedBy = "admin-1";
     String traceId = "trace-1";

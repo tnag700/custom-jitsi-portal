@@ -1,0 +1,160 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.springframework.security",
+    "module": "spring-security-oauth2-jose",
+    "version": "7.0.3",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14.4"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.security",
+          "module": "spring-security-core",
+          "version": {
+            "requires": "7.0.3"
+          }
+        },
+        {
+          "group": "org.springframework.security",
+          "module": "spring-security-oauth2-core",
+          "version": {
+            "requires": "7.0.3"
+          }
+        },
+        {
+          "group": "org.springframework",
+          "module": "spring-core",
+          "version": {
+            "requires": "7.0.4"
+          }
+        },
+        {
+          "group": "com.nimbusds",
+          "module": "nimbus-jose-jwt",
+          "version": {
+            "requires": "10.4"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-security-oauth2-jose-7.0.3.jar",
+          "url": "spring-security-oauth2-jose-7.0.3.jar",
+          "size": 139456,
+          "sha512": "a7c18983bd8a80e9115edb44fcdc603344619402d420400fed96625e4e1730d9cf3ec4a4830f2b9a1bc2636530bb97283835492798212c80b75ba7c9b52845e4",
+          "sha256": "fe8f1e81181d0f4314393e7ec510aa897fbc2e2305a106db8f854cd0e4830782",
+          "sha1": "02a6bdf3ee367159ef9459ba6549526ca490361d",
+          "md5": "abd0c6773f44729aff136ec3aeb80f09"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.security",
+          "module": "spring-security-core",
+          "version": {
+            "requires": "7.0.3"
+          }
+        },
+        {
+          "group": "org.springframework.security",
+          "module": "spring-security-oauth2-core",
+          "version": {
+            "requires": "7.0.3"
+          }
+        },
+        {
+          "group": "org.springframework",
+          "module": "spring-core",
+          "version": {
+            "requires": "7.0.4"
+          }
+        },
+        {
+          "group": "com.nimbusds",
+          "module": "nimbus-jose-jwt",
+          "version": {
+            "requires": "10.4"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-security-oauth2-jose-7.0.3.jar",
+          "url": "spring-security-oauth2-jose-7.0.3.jar",
+          "size": 139456,
+          "sha512": "a7c18983bd8a80e9115edb44fcdc603344619402d420400fed96625e4e1730d9cf3ec4a4830f2b9a1bc2636530bb97283835492798212c80b75ba7c9b52845e4",
+          "sha256": "fe8f1e81181d0f4314393e7ec510aa897fbc2e2305a106db8f854cd0e4830782",
+          "sha1": "02a6bdf3ee367159ef9459ba6549526ca490361d",
+          "md5": "abd0c6773f44729aff136ec3aeb80f09"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-security-oauth2-jose-7.0.3-javadoc.jar",
+          "url": "spring-security-oauth2-jose-7.0.3-javadoc.jar",
+          "size": 300094,
+          "sha512": "e8182bbd9dbf97e6913c12b346e58b093a62fcfea921fa39f5282a1e37be668768ed680495f7da3f2ef0a021fde1b419916beefd042a70e9f3e3e1f4967fbb22",
+          "sha256": "e6dc4d1c4f57ee3c90a9b53b5d0b4d7ef4881568dd70380695e2738062da4de7",
+          "sha1": "017b01f5f80c5103b3c8ed6facd4e1fddc18d54c",
+          "md5": "7fb6f53b1827399c10b58cd94a295e42"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-security-oauth2-jose-7.0.3-sources.jar",
+          "url": "spring-security-oauth2-jose-7.0.3-sources.jar",
+          "size": 88975,
+          "sha512": "8eceb84aecb716020164c57514ad8469a60670d3a12c56d0f9008fd687631b631f90cd798f9acc4019e7b08cc2f7ac0b847eec40211565d9364c6270372b8a23",
+          "sha256": "4fccf0bf14025c68f6367e6de9eb3c1e097ec618942a219f5a92f656b5c38155",
+          "sha1": "445a4eb8d0e80262e370c91dafdb8a6895a1b466",
+          "md5": "d81abbf5426c89ec23c5461b5c03284c"
+        }
+      ]
+    }
+  ]
+}

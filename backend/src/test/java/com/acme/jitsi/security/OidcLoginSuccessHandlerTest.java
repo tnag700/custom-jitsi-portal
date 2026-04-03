@@ -48,4 +48,24 @@ class OidcLoginSuccessHandlerTest {
       appender.stop();
     }
   }
+
+  @Test
+  void redirectsToRememberedReturnToAndClearsSessionAttribute() throws Exception {
+    ProblemResponseFacade problemResponseFacade = mock(ProblemResponseFacade.class);
+    OidcLoginSuccessHandler handler = new OidcLoginSuccessHandler(problemResponseFacade, "http://localhost:3000");
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/login/oauth2/code/keycloak");
+    request.getSession(true)
+        .setAttribute(
+            AuthRedirectFlowSupport.RETURN_TO_SESSION_ATTRIBUTE,
+            "/admin/config-sets?environment=dev");
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    TestingAuthenticationToken authentication = new TestingAuthenticationToken("user-1", "n/a");
+
+    handler.onAuthenticationSuccess(request, response, authentication);
+
+    assertThat(response.getRedirectedUrl())
+        .isEqualTo("http://localhost:3000/auth/continue?returnTo=%2Fadmin%2Fconfig-sets%3Fenvironment%3Ddev");
+    assertThat(request.getSession(false).getAttribute(AuthRedirectFlowSupport.RETURN_TO_SESSION_ATTRIBUTE))
+        .isNull();
+  }
 }

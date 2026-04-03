@@ -7,8 +7,12 @@ import {
 import { mapAuthErrorCodeToPayload } from "../lib/domains/auth/auth-error-map";
 import {
   AUTH_PUBLIC_PATHS,
+  buildAuthLoginHref,
   isPublicAuthPath,
+  resolveAuthRecoveryRedirectPath,
   resolveAuthRedirectPath,
+  resolvePostAuthRedirectPath,
+  shouldAutoResumeAuth,
 } from "../lib/domains/auth/auth-guard";
 
 afterEach(() => {
@@ -152,10 +156,58 @@ describe("Auth guard routing behavior", () => {
       errorCode: "ACCESS DENIED",
     });
 
-    expect(resolveAuthRedirectPath(error)).toBe("/auth?error=ACCESS%20DENIED");
+    expect(resolveAuthRedirectPath(error, "/admin/config-sets?environment=dev")).toBe(
+      "/auth?error=ACCESS+DENIED&returnTo=%2Fadmin%2Fconfig-sets%3Fenvironment%3Ddev",
+    );
   });
 
-  it("maps unknown errors to generic /auth redirect", () => {
-    expect(resolveAuthRedirectPath(new Error("boom"))).toBe("/auth");
+  it("maps unknown errors to generic /auth redirect while preserving returnTo", () => {
+    expect(resolveAuthRedirectPath(new Error("boom"), "/admin/incidents?environment=prod")).toBe(
+      "/auth?returnTo=%2Fadmin%2Fincidents%3Fenvironment%3Dprod",
+    );
+  });
+
+  it("builds recovery auth redirect with explicit mode and safe returnTo", () => {
+    const error = new AuthServiceError({
+      title: "Expired",
+      reason: "Session expired",
+      actions: "Login again",
+      errorCode: "AUTH_REQUIRED",
+    });
+
+    expect(resolveAuthRecoveryRedirectPath(error, "/profile?tab=settings")).toBe(
+      "/auth?error=AUTH_REQUIRED&mode=recover&returnTo=%2Fprofile%3Ftab%3Dsettings",
+    );
+  });
+
+  it("drops unsafe returnTo values from auth redirects", () => {
+    expect(resolveAuthRedirectPath(new Error("boom"), "https://evil.example/phish")).toBe("/auth");
+  });
+
+  it("drops unsafe returnTo values from recovery redirects", () => {
+    expect(resolveAuthRecoveryRedirectPath(new Error("boom"), "https://evil.example/phish")).toBe(
+      "/auth?mode=recover",
+    );
+  });
+
+  it("builds auth login href with encoded returnTo", () => {
+    expect(buildAuthLoginHref("http://localhost:8080/api/v1", "/admin/config-sets?environment=dev")).toBe(
+      "http://localhost:8080/api/v1/auth/login?returnTo=%2Fadmin%2Fconfig-sets%3Fenvironment%3Ddev",
+    );
+  });
+
+  it("resolves post-auth redirect to safe returnTo only", () => {
+    expect(resolvePostAuthRedirectPath("/admin/config-sets?environment=dev")).toBe(
+      "/admin/config-sets?environment=dev",
+    );
+    expect(resolvePostAuthRedirectPath("https://evil.example/phish")).toBe("/");
+  });
+
+  it("auto-resumes only for recoverable auth states", () => {
+    expect(shouldAutoResumeAuth(undefined, "recover")).toBe(true);
+    expect(shouldAutoResumeAuth("AUTH_REQUIRED", "recover")).toBe(true);
+    expect(shouldAutoResumeAuth("ACCESS_DENIED", "recover")).toBe(false);
+    expect(shouldAutoResumeAuth("AUTH_REQUIRED", null)).toBe(false);
   });
 });
+

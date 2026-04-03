@@ -1,0 +1,118 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "io.opentelemetry",
+    "module": "opentelemetry-extension-trace-propagators",
+    "version": "1.55.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.1.0"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "io.opentelemetry",
+          "module": "opentelemetry-api",
+          "version": {
+            "requires": "1.55.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "opentelemetry-extension-trace-propagators-1.55.0.jar",
+          "url": "opentelemetry-extension-trace-propagators-1.55.0.jar",
+          "size": 29368,
+          "sha512": "9e9a0c4315c03d178ec82ec1f5ffdca6052ebc974939a5b1170e345f0bb95b4aac12dde9d5a743da7c2cb6cac8982db1ba0b48134c0ebab09b98be986f22412f",
+          "sha256": "27861a2b49b3acf3166f489426808032c3addd9c082999f74a110eb7ac6985ce",
+          "sha1": "02c4f1eddd4ba35a82d27d6c784e3d4fbb3c8a3a",
+          "md5": "d6adb667d9806fde70d7f8b61d7239d4"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "io.opentelemetry",
+          "module": "opentelemetry-api",
+          "version": {
+            "requires": "1.55.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "opentelemetry-extension-trace-propagators-1.55.0.jar",
+          "url": "opentelemetry-extension-trace-propagators-1.55.0.jar",
+          "size": 29368,
+          "sha512": "9e9a0c4315c03d178ec82ec1f5ffdca6052ebc974939a5b1170e345f0bb95b4aac12dde9d5a743da7c2cb6cac8982db1ba0b48134c0ebab09b98be986f22412f",
+          "sha256": "27861a2b49b3acf3166f489426808032c3addd9c082999f74a110eb7ac6985ce",
+          "sha1": "02c4f1eddd4ba35a82d27d6c784e3d4fbb3c8a3a",
+          "md5": "d6adb667d9806fde70d7f8b61d7239d4"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "opentelemetry-extension-trace-propagators-1.55.0-javadoc.jar",
+          "url": "opentelemetry-extension-trace-propagators-1.55.0-javadoc.jar",
+          "size": 100628,
+          "sha512": "7841fe12eb5073d86fdf77b4538c21437d90708102ab4c08e9aaa6bcf3e9165cf928bae0e6c37a73529967cd944d3e5cfcd739a259dc58e44dd13a0d4f5e8c2e",
+          "sha256": "249195f689c04611810fb5b7501acf24d27f2dbc8ff4740d6a2ea8f58e8ccd4b",
+          "sha1": "2c8b3b45e3de6fab75572b944edd0769943c787e",
+          "md5": "a7336a7de47a2065d994c4b8b4ef2818"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "opentelemetry-extension-trace-propagators-1.55.0-sources.jar",
+          "url": "opentelemetry-extension-trace-propagators-1.55.0-sources.jar",
+          "size": 19874,
+          "sha512": "9fdaaa94af8b7642469687e336d30b6ab7d1921eb420f468d48c3aa2a15bacfd0911ab64af29d641583014173e81a80765ae581fd678882334579484dded6501",
+          "sha256": "784afdd2a2a6fca26f8bf237b8aae7f6bfcb44c65d141901a110b4ff769bee0c",
+          "sha1": "c07cfa6b9aefb16ead7c863824ea37b020cf10d0",
+          "md5": "05e04a470ed78e0b1d21b8d69f186cec"
+        }
+      ]
+    }
+  ]
+}

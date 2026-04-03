@@ -64,6 +64,7 @@ class ActuatorHealthTest {
     return template;
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   @Test
   void actuatorHealthIsAvailable() {
     ResponseEntity<Map> response = restTemplate.getForEntity(

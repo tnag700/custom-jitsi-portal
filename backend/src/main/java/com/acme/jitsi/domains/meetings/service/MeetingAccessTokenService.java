@@ -6,7 +6,6 @@ import com.acme.jitsi.security.TokenIssuancePolicyException;
 import com.acme.jitsi.shared.ErrorCode;
 import com.acme.jitsi.shared.observability.FlowObservationFacade;
 import java.time.Clock;
-import java.time.Instant;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import org.slf4j.Logger;

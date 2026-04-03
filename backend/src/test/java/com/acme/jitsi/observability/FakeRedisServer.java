@@ -62,10 +62,7 @@ public final class FakeRedisServer implements Closeable {
   private void acceptLoop() {
     while (running) {
       try {
-        Socket socket = serverSocket.accept();
-        Thread clientThread = new Thread(() -> handleClient(socket), "fake-redis-client");
-        clientThread.setDaemon(true);
-        clientThread.start();
+        startClientThread(serverSocket.accept());
       } catch (SocketException socketException) {
         if (running) {
           throw new IllegalStateException("Fake Redis server socket failed", socketException);
@@ -77,6 +74,17 @@ public final class FakeRedisServer implements Closeable {
         }
         return;
       }
+    }
+  }
+
+  private void startClientThread(Socket socket) {
+    try {
+      Thread clientThread = new Thread(() -> handleClient(socket), "fake-redis-client");
+      clientThread.setDaemon(true);
+      clientThread.start();
+    } catch (RuntimeException runtimeException) {
+      closeSocket(socket, runtimeException);
+      throw runtimeException;
     }
   }
 
@@ -129,11 +137,10 @@ public final class FakeRedisServer implements Closeable {
 
   private void writeResponse(List<String> command, OutputStream outputStream) throws IOException {
     String verb = command.get(0).toUpperCase();
+    if (writeFixedResponse(verb, outputStream)) {
+      return;
+    }
     switch (verb) {
-      case "HELLO" -> writeHello(outputStream);
-      case "CLIENT", "PING", "SELECT" -> writeSimpleString(outputStream, verb.equals("PING") ? "PONG" : "OK");
-      case "COMMAND" -> writeArrayHeader(outputStream, 0);
-      case "INFO" -> writeBulkString(outputStream, "redis_version:7.2.0\r\nrole:master\r\n");
       case "SET" -> handleSet(command, outputStream);
       case "GET" -> handleGet(command, outputStream);
       case "DEL" -> handleDelete(command, outputStream);
@@ -141,9 +148,34 @@ public final class FakeRedisServer implements Closeable {
       case "EXPIRE" -> handleExpire(command, outputStream, false);
       case "PSETEX" -> handleSetWithExpiration(command, outputStream, true);
       case "SETEX" -> handleSetWithExpiration(command, outputStream, false);
-      case "QUIT" -> writeSimpleString(outputStream, "OK");
       default -> writeSimpleString(outputStream, "OK");
     }
+  }
+
+  private boolean writeFixedResponse(String verb, OutputStream outputStream) throws IOException {
+    return switch (verb) {
+      case "HELLO" -> {
+        writeHello(outputStream);
+        yield true;
+      }
+      case "CLIENT", "SELECT", "QUIT" -> {
+        writeSimpleString(outputStream, "OK");
+        yield true;
+      }
+      case "PING" -> {
+        writeSimpleString(outputStream, "PONG");
+        yield true;
+      }
+      case "COMMAND" -> {
+        writeArrayHeader(outputStream, 0);
+        yield true;
+      }
+      case "INFO" -> {
+        writeBulkString(outputStream, "redis_version:7.2.0\r\nrole:master\r\n");
+        yield true;
+      }
+      default -> false;
+    };
   }
 
   private void handleSet(List<String> command, OutputStream outputStream) throws IOException {
@@ -308,6 +340,14 @@ public final class FakeRedisServer implements Closeable {
     int lineFeed = inputStream.read();
     if (carriageReturn != '\r' || lineFeed != '\n') {
       throw new IOException("Malformed RESP bulk string termination");
+    }
+  }
+
+  private void closeSocket(Socket socket, RuntimeException runtimeException) {
+    try {
+      socket.close();
+    } catch (IOException closeException) {
+      runtimeException.addSuppressed(closeException);
     }
   }
 }

@@ -17,7 +17,6 @@ import com.acme.jitsi.support.TestDomainModuleApplication;
 import com.acme.jitsi.shared.ErrorCode;
 import com.acme.jitsi.shared.JwtTestProperties;
 import com.jayway.jsonpath.JsonPath;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

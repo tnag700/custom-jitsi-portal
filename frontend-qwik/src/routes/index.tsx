@@ -27,6 +27,7 @@ import {
   type JoinReadinessPayload,
   type JoinErrorPayload,
 } from "~/lib/domains/join";
+import { resolveAuthRecoveryRedirectPath } from "~/lib/domains/auth";
 import { buildMutationRequestContext, buildServerRequestContext } from "~/lib/shared/routes/server-handlers";
 import { RequestStatePanel } from "~/lib/shared";
 
@@ -135,15 +136,16 @@ export const useJoinReadiness = routeLoader$(async ({ sharedMap, cookie }) => {
 });
 
 export const useJoinMeeting = routeAction$(
-  async (data, { sharedMap, cookie, redirect, fail }) => {
+  async (data, { sharedMap, cookie, redirect, fail, url }) => {
     // buildMutationRequestContext forwards the XSRF-TOKEN cookie/header pair.
     const requestContext = await buildMutationRequestContext({ sharedMap, cookie });
+    const returnTo = `${url.pathname}${url.search}`;
     try {
       return await issueAccessToken(requestContext, data.meetingId);
     } catch (error) {
       if (error instanceof JoinServiceError) {
         if (error.payload.errorCode === "AUTH_REQUIRED") {
-          throw redirect(302, "/auth");
+          throw redirect(302, resolveAuthRecoveryRedirectPath(error, returnTo));
         }
         return fail(400, { error: error.payload });
       }

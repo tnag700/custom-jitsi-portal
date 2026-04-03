@@ -20,7 +20,12 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/server ./server
 
+RUN addgroup -S app && adduser -S -G app -h /app app \
+	&& chown -R app:app /app
+
 ENV PORT=3000
 EXPOSE 3000
+
+USER app
 
 CMD ["node", "server/entry.express.mjs"]

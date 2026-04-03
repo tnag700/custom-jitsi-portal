@@ -1,0 +1,132 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.springframework.boot",
+    "module": "spring-boot-micrometer-observation",
+    "version": "4.0.3",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.3.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "io.micrometer",
+          "module": "micrometer-observation",
+          "version": {
+            "requires": "1.16.3"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-micrometer-observation-4.0.3.jar",
+          "url": "spring-boot-micrometer-observation-4.0.3.jar",
+          "size": 28846,
+          "sha512": "5b7c8b873e1dbad3c1f8ff2cce0a8280144e82a401348798d859ee8656905f0bf6535087b7d154583f05e04ddb9349a2be43575c061a4666288a532fb990941d",
+          "sha256": "5874547f2b23d2ee32efc0c44ca3d291c103d4c72fe8741d746b7ed199e2bd86",
+          "sha1": "1da1d86ff5a7828e9713689c481f4deb4edee6ff",
+          "md5": "aae431266b486854a60f5c9f81c3baf8"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "4.0.3"
+          }
+        },
+        {
+          "group": "io.micrometer",
+          "module": "micrometer-observation",
+          "version": {
+            "requires": "1.16.3"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-micrometer-observation-4.0.3.jar",
+          "url": "spring-boot-micrometer-observation-4.0.3.jar",
+          "size": 28846,
+          "sha512": "5b7c8b873e1dbad3c1f8ff2cce0a8280144e82a401348798d859ee8656905f0bf6535087b7d154583f05e04ddb9349a2be43575c061a4666288a532fb990941d",
+          "sha256": "5874547f2b23d2ee32efc0c44ca3d291c103d4c72fe8741d746b7ed199e2bd86",
+          "sha1": "1da1d86ff5a7828e9713689c481f4deb4edee6ff",
+          "md5": "aae431266b486854a60f5c9f81c3baf8"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-micrometer-observation-4.0.3-javadoc.jar",
+          "url": "spring-boot-micrometer-observation-4.0.3-javadoc.jar",
+          "size": 135670,
+          "sha512": "7fc066d4ddbc34360271427324cb2cdf6845cbe1d5549d66a0dcc277cf91b170c5d7218a77b3cfc81840e6fe00eea3fde278c10faa6a9d8e5f59a5d4f9b0f118",
+          "sha256": "b9e75d1472233d0213f30f58991b06cb7ba522525d311d0512ce6b24823dc138",
+          "sha1": "e36ac99d4a2d9c86d3474cd2cf7107794076ed9a",
+          "md5": "5b979772398a7e1fa03f644d2411fafc"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-micrometer-observation-4.0.3-sources.jar",
+          "url": "spring-boot-micrometer-observation-4.0.3-sources.jar",
+          "size": 19810,
+          "sha512": "54e3f2edebc01a8d79e3269e01c08449df7ef555383d3745e0ad654d856a8c130250b952aa593982baf2ff6f971c9187b36dee5ddbee1578bb680b68417f8e65",
+          "sha256": "503e57cee36aa4f5ccb17bf082eda12844d158e8c93991103febdf84effd2806",
+          "sha1": "2a92e32ddc1ca23022c9337e3f70cf58442501a7",
+          "md5": "dbe2f09cc9d8a3765da457bdf66ee155"
+        }
+      ]
+    }
+  ]
+}

@@ -91,9 +91,6 @@ function buildConnectSrc(apiUrl?: string, publicApiUrl?: string, extraConnectSrc
     appendUnique(connectSrc, source);
   }
 
-  appendUnique(connectSrc, "https:");
-  appendUnique(connectSrc, "wss:");
-
   return connectSrc.join(" ");
 }
 
@@ -117,7 +114,24 @@ function parseExtraSources(rawValue?: string): string[] {
   return rawValue
     .split(/[\s,]+/)
     .map((value) => value.trim())
-    .filter(Boolean);
+    .map((value) => normalizeConnectSource(value))
+    .filter((value): value is string => value !== null);
+}
+
+function normalizeConnectSource(rawValue: string): string | null {
+  if (!rawValue) {
+    return null;
+  }
+
+  if (rawValue === "'self'") {
+    return rawValue;
+  }
+
+  try {
+    return new URL(rawValue).origin;
+  } catch {
+    return null;
+  }
 }
 
 function appendUnique(target: string[], value: string): void {

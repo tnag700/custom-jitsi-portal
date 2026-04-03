@@ -7,7 +7,6 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import com.acme.jitsi.infrastructure.idempotency.IdempotencyTestController;
 import com.acme.jitsi.support.PostgresRedisContainerIntegrationTestSupport;
-import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;

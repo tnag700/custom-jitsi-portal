@@ -6,7 +6,6 @@ import io.micrometer.observation.ObservationRegistry;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -31,7 +30,7 @@ public class FlowObservationFacade {
   }
 
   public <T> T observe(String name, ObservationSupplier<T> supplier) {
-    FlowObservation flowObservation = new FlowObservation(this);
+    FlowObservation flowObservation = new FlowObservation();
     if (noop) {
       return supplier.get(flowObservation);
     }
@@ -76,11 +75,9 @@ public class FlowObservationFacade {
         "flow.guest",
         "flow.compatibility");
 
-    private final FlowObservationFacade facade;
     private final Map<String, String> lowCardinalityValues = new LinkedHashMap<>();
 
-    private FlowObservation(FlowObservationFacade facade) {
-      this.facade = facade;
+    private FlowObservation() {
     }
 
     public FlowObservation outcome(String value) {

@@ -2,6 +2,10 @@ package com.acme.jitsi.domains.meetings.service;
 
 public class MeetingRoomNotFoundException extends RuntimeException {
   public MeetingRoomNotFoundException(String roomId) {
-    super("Room '" + roomId + "' not found");
+    this(roomId, null);
+  }
+
+  public MeetingRoomNotFoundException(String roomId, Throwable cause) {
+    super("Room '" + roomId + "' not found", cause);
   }
 }

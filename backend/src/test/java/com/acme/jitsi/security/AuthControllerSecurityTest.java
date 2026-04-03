@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
@@ -63,6 +64,25 @@ class AuthControllerSecurityTest {
     mockMvc.perform(get("/api/v1/auth/login"))
         .andExpect(status().isFound())
         .andExpect(header().string("Location", "/oauth2/authorization/keycloak"));
+  }
+
+  @Test
+  void loginEndpointStoresSafeReturnToInSession() throws Exception {
+    mockMvc.perform(get("/api/v1/auth/login").param("returnTo", "/admin/config-sets?environment=dev"))
+        .andExpect(status().isFound())
+        .andExpect(header().string("Location", "/oauth2/authorization/keycloak"))
+        .andExpect(
+            request().sessionAttribute(
+                AuthRedirectFlowSupport.RETURN_TO_SESSION_ATTRIBUTE,
+                "/admin/config-sets?environment=dev"));
+  }
+
+  @Test
+  void loginEndpointRejectsUnsafeReturnTo() throws Exception {
+    mockMvc.perform(get("/api/v1/auth/login").param("returnTo", "https://evil.example/phish"))
+        .andExpect(status().isFound())
+        .andExpect(header().string("Location", "/oauth2/authorization/keycloak"))
+        .andExpect(request().sessionAttributeDoesNotExist(AuthRedirectFlowSupport.RETURN_TO_SESSION_ATTRIBUTE));
   }
 
   @Test

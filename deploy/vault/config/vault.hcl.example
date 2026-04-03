@@ -1,0 +1,25 @@
+ui = false
+disable_mlock = false
+
+api_addr = "https://vault.example.com:8200"
+cluster_addr = "https://vault.example.com:8201"
+
+storage "raft" {
+  path = "/vault/data"
+  node_id = "vault-prod-1"
+}
+
+listener "tcp" {
+  address = "0.0.0.0:8200"
+  cluster_address = "0.0.0.0:8201"
+  tls_disable = 0
+  tls_cert_file = "/vault/tls/server.crt"
+  tls_key_file = "/vault/tls/server.key"
+  tls_client_ca_file = "/vault/tls/ca.crt"
+}
+
+telemetry {
+  disable_hostname = true
+  unauthenticated_metrics_access = false
+  prometheus_retention_time = "24h"
+}

@@ -1,7 +1,6 @@
 package com.acme.jitsi.domains.meetings.api;
 
 import com.acme.jitsi.domains.meetings.service.MeetingInvite;
-import com.acme.jitsi.domains.meetings.service.MeetingRole;
 import java.time.Instant;
 
 public record InviteResponse(

@@ -29,7 +29,7 @@ spring:
           keycloak:
             provider: keycloak
             client-id: ${SSO_CLIENT_ID:jitsi-backend}
-            client-secret: ${SSO_CLIENT_SECRET:change-me}
+            client-secret: ${SSO_CLIENT_SECRET:}
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             scope: openid,profile,email

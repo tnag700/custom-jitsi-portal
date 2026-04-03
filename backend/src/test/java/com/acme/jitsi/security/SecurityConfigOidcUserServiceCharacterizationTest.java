@@ -45,6 +45,7 @@ class SecurityConfigOidcUserServiceCharacterizationTest {
       "jitsi-backend",
       delegate);
 
+  @SuppressWarnings("unchecked")
   @Test
   void oidcUserServiceMergesUserInfoAndAccessTokenClaimsForSuccessfulLogin() {
     OidcUser delegateUser = delegateUser(Map.of("email", "user@example.test", "locale", "ru"));
@@ -75,6 +76,7 @@ class SecurityConfigOidcUserServiceCharacterizationTest {
       .containsExactly("ROLE_admin");
   }
 
+  @SuppressWarnings("unchecked")
   @Test
   void oidcUserServiceFallsBackToEmptyAccessTokenClaimsWhenParsingFails() {
     OidcUser delegateUser = delegateUser(Map.of("email", "user@example.test"));
