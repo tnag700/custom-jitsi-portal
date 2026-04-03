@@ -77,6 +77,7 @@ coverage/
 /_bmad-output/
 /.certs/
 /.clinerules/
+/\.codex/
 /.github/
 /.kilocode/
 /.qwen/
@@ -92,6 +93,15 @@ test_output.txt
 test_context7.js
 project_context.md
 CONTEXT7_SETUP.md
+frontend-admin-incidents-test.log
+gradle_test_output.txt
+openapi-generate-run-2.log
+tmp-keycloak-*
+
+# Local tooling caches / generated folders
+/.gradle-copilot-dashboard/
+/backend/.gradle-user-home-copilot*/
+/deploy/
 
 # Local toolchains / archives
 /gradle-9.3.1/
