@@ -289,6 +289,19 @@ Baseline фиксирует и проверяет:
 - Jitsi Web: `https://localhost:8443`
 - Jitsi Web HTTP: `http://localhost:8000`
 
+Для доступа к dev-контуру с другого компьютера скопируйте `.env.example` в
+локальный `.env` и замените `localhost` на адрес dev-хоста в
+`DEV_BACKEND_ORIGIN`, `DEV_PUBLIC_API_URL`, `DEV_KEYCLOAK_ORIGIN` и
+`DEV_PORTAL_ORIGIN`. Эти значения должны описывать один и тот же внешний
+контур: frontend использует `DEV_PUBLIC_API_URL` для перехода на backend, а
+Keycloak разрешает callback из `DEV_BACKEND_ORIGIN`. Файл `.env` содержит
+настройки конкретного окружения и не коммитится.
+
+Если realm Keycloak уже был импортирован до смены адреса backend, обновите у
+клиента `jitsi-backend` разрешённый redirect URI на
+`<DEV_BACKEND_ORIGIN>/login/oauth2/code/keycloak`; повторный импорт
+существующего realm не перезаписывает сохранённую конфигурацию клиента.
+
 Если поднят monitoring overlay через `docker-compose.monitoring.yml`:
 - Prometheus: `http://localhost:9090`
 - Alertmanager: `http://localhost:9093`
