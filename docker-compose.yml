@@ -153,7 +153,7 @@ services:
       - backend-vault-runtime:/vault/runtime
 
   db:
-    image: postgres:18.1
+    image: postgres:18.4
     env_file:
       - ${POSTGRES_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/postgres.env}
     environment:
@@ -179,7 +179,7 @@ services:
       retries: 5
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.1.2
+    image: quay.io/keycloak/keycloak:26.7.0
     command: ["start-dev", "--import-realm"]
     env_file:
       - ${KEYCLOAK_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/keycloak.env}
@@ -200,7 +200,7 @@ services:
       retries: 10
 
   jitsi-web:
-    image: jitsi/web:stable-10741
+    image: jitsi/web:stable-10978
     ports:
       - "${DEV_JITSI_HTTP_PORT:-8000}:80"
       - "${DEV_JITSI_HTTPS_PORT:-8443}:443"
@@ -210,8 +210,8 @@ services:
       - ENABLE_AUTH=1
       - AUTH_TYPE=jwt
       - PROSODY_AUTH_TYPE=jwt
-      - JWT_APP_ID=${JWT_APP_ID:-http://localhost:3000}
-      - JWT_ACCEPTED_ISSUERS=${JWT_ACCEPTED_ISSUERS:-http://localhost:3000}
+      - JWT_APP_ID=${DEV_PORTAL_ORIGIN:-http://localhost:3000}
+      - JWT_ACCEPTED_ISSUERS=${DEV_PORTAL_ORIGIN:-http://localhost:3000}
       - JWT_ACCEPTED_AUDIENCES=${JWT_ACCEPTED_AUDIENCES:-jitsi-meet}
       - JWT_ALLOW_EMPTY=0
       - ENABLE_GUESTS=0
@@ -244,15 +244,15 @@ services:
       retries: 5
 
   jitsi-prosody:
-    image: jitsi/prosody:stable-10741
+    image: jitsi/prosody:stable-10978
     env_file:
       - ${JITSI_PROSODY_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/jitsi-prosody.env}
     environment:
       - ENABLE_AUTH=1
       - AUTH_TYPE=jwt
       - PROSODY_AUTH_TYPE=jwt
-      - JWT_APP_ID=${JWT_APP_ID:-http://localhost:3000}
-      - JWT_ACCEPTED_ISSUERS=${JWT_ACCEPTED_ISSUERS:-http://localhost:3000}
+      - JWT_APP_ID=${DEV_PORTAL_ORIGIN:-http://localhost:3000}
+      - JWT_ACCEPTED_ISSUERS=${DEV_PORTAL_ORIGIN:-http://localhost:3000}
       - JWT_ACCEPTED_AUDIENCES=${JWT_ACCEPTED_AUDIENCES:-jitsi-meet}
       - JWT_ALLOW_EMPTY=0
       - ENABLE_GUESTS=0
@@ -280,7 +280,7 @@ services:
           - guest.meet.jitsi
 
   jitsi-jicofo:
-    image: jitsi/jicofo:stable-10741
+    image: jitsi/jicofo:stable-10978
     env_file:
       - ${JITSI_JICOFO_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/jitsi-jicofo.env}
     environment:
@@ -301,7 +301,7 @@ services:
       retries: 5
 
   jitsi-jvb:
-    image: jitsi/jvb:stable-10741
+    image: jitsi/jvb:stable-10978
     env_file:
       - ${JITSI_JVB_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/jitsi-jvb.env}
     environment:

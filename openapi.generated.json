@@ -96,6 +96,46 @@
         },
         "type" : "object"
       },
+      "AdminFrameworkVersionsResponse" : {
+        "properties" : {
+          "cacheExpiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "components" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Component"
+            },
+            "type" : "array"
+          },
+          "criticalUpdateRequired" : {
+            "type" : "boolean"
+          },
+          "criticalVulnerabilityCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "generatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "lastSuccessfulCheckAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "scanStatus" : {
+            "type" : "string"
+          },
+          "statusMessage" : {
+            "type" : "string"
+          },
+          "vulnerabilityCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "AdminIncidentCoordinationUpdateRequest" : {
         "properties" : {
           "owner" : {
@@ -318,6 +358,38 @@
           "totalPages" : {
             "format" : "int32",
             "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "Advisory" : {
+        "properties" : {
+          "advisoryUrl" : {
+            "type" : "string"
+          },
+          "aliases" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "fixedVersions" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "modifiedAt" : {
+            "type" : "string"
+          },
+          "severity" : {
+            "type" : "string"
+          },
+          "summary" : {
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -592,6 +664,49 @@
         },
         "type" : "object"
       },
+      "Component" : {
+        "properties" : {
+          "advisories" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Advisory"
+            },
+            "type" : "array"
+          },
+          "criticalVulnerabilityCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "currentVersion" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "ecosystem" : {
+            "type" : "string"
+          },
+          "key" : {
+            "type" : "string"
+          },
+          "packageName" : {
+            "type" : "string"
+          },
+          "scanStatus" : {
+            "type" : "string"
+          },
+          "securityStatus" : {
+            "type" : "string"
+          },
+          "versionSource" : {
+            "type" : "string"
+          },
+          "vulnerabilityCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "ConfigSetCompatibilityMismatchResponse" : {
         "properties" : {
           "actual" : {
@@ -838,6 +953,8 @@
         "properties" : {
           "expiresInHours" : {
             "format" : "int32",
+            "maximum" : 168,
+            "minimum" : 1,
             "type" : "integer"
           },
           "maxUses" : {
@@ -849,7 +966,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "role" ],
+        "required" : [ "expiresInHours", "role" ],
         "type" : "object"
       },
       "CreateMeetingRequest" : {
@@ -2214,6 +2331,42 @@
           }
         },
         "tags" : [ "admin-dashboard-controller" ]
+      }
+    },
+    "/api/v1/admin/framework-versions" : {
+      "get" : {
+        "operationId" : "getCurrent",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminFrameworkVersionsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-framework-versions-controller" ]
+      }
+    },
+    "/api/v1/admin/framework-versions/refresh" : {
+      "post" : {
+        "operationId" : "refresh_1",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminFrameworkVersionsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-framework-versions-controller" ]
       }
     },
     "/api/v1/admin/incidents" : {

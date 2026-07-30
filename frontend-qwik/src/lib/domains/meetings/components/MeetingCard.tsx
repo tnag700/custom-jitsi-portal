@@ -1,6 +1,7 @@
 import { component$, type QRL } from "@qwik.dev/core";
 import type { Meeting } from "../types";
 import { formatDateTime } from "~/lib/shared";
+import { getMeetingTypePresentation } from "../meeting-type-presentation";
 
 interface MeetingCardProps {
   meeting: Meeting;
@@ -13,6 +14,7 @@ interface MeetingCardProps {
 export const MeetingCard = component$<MeetingCardProps>(
   ({ meeting, onEdit$, onCancel$, onParticipants$, onInvites$ }) => {
     const isScheduled = meeting.status === "scheduled";
+    const meetingType = getMeetingTypePresentation(meeting.meetingType);
     const statusLabel =
       meeting.status === "scheduled"
         ? "Запланирована"
@@ -47,8 +49,11 @@ export const MeetingCard = component$<MeetingCardProps>(
         )}
 
         <div class="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted">
-          <span class="rounded bg-bg px-2 py-0.5">{meeting.meetingType}</span>
-          <span>{formatDateTime(meeting.startsAt)} - {formatDateTime(meeting.endsAt)}</span>
+          <span class="rounded bg-bg px-2 py-0.5">{meetingType.label}</span>
+          <span>
+            {formatDateTime(meeting.startsAt)} —{" "}
+            {formatDateTime(meeting.endsAt)}
+          </span>
         </div>
 
         <div class="mb-3 flex flex-wrap gap-2 text-xs text-muted">

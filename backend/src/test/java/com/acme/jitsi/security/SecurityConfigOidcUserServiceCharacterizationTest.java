@@ -49,7 +49,7 @@ class SecurityConfigOidcUserServiceCharacterizationTest {
   @Test
   void oidcUserServiceMergesUserInfoAndAccessTokenClaimsForSuccessfulLogin() {
     OidcUser delegateUser = delegateUser(Map.of("email", "user@example.test", "locale", "ru"));
-    when(roleAuthoritiesMapper.mapAuthorities(any(OidcUser.class), anyMap()))
+    when(roleAuthoritiesMapper.mapAuthorities(any(OidcUser.class), anyMap(), eq("jitsi-backend")))
         .thenReturn(Set.of(new SimpleGrantedAuthority("ROLE_admin")));
 
     when(delegate.loadUser(any(OidcUserRequest.class))).thenReturn(delegateUser);
@@ -62,7 +62,10 @@ class SecurityConfigOidcUserServiceCharacterizationTest {
       eq("https://issuer.example.test"),
       eq("jitsi-backend"));
     ArgumentCaptor<Map<String, Object>> claimsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(roleAuthoritiesMapper).mapAuthorities(eq(delegateUser), claimsCaptor.capture());
+    verify(roleAuthoritiesMapper).mapAuthorities(
+        eq(delegateUser),
+        claimsCaptor.capture(),
+        eq("jitsi-backend"));
     assertThat(claimsCaptor.getValue())
       .containsEntry("roles", List.of("admin"))
       .containsEntry("tenantId", "tenant-1");
@@ -80,7 +83,7 @@ class SecurityConfigOidcUserServiceCharacterizationTest {
   @Test
   void oidcUserServiceFallsBackToEmptyAccessTokenClaimsWhenParsingFails() {
     OidcUser delegateUser = delegateUser(Map.of("email", "user@example.test"));
-    when(roleAuthoritiesMapper.mapAuthorities(any(OidcUser.class), anyMap()))
+    when(roleAuthoritiesMapper.mapAuthorities(any(OidcUser.class), anyMap(), eq("jitsi-backend")))
         .thenReturn(Set.of());
 
     when(delegate.loadUser(any(OidcUserRequest.class))).thenReturn(delegateUser);
@@ -89,7 +92,10 @@ class SecurityConfigOidcUserServiceCharacterizationTest {
     OidcUser user = service.loadUser(oidcUserRequest("not-a-jwt"));
 
     ArgumentCaptor<Map<String, Object>> claimsCaptor = ArgumentCaptor.forClass(Map.class);
-    verify(roleAuthoritiesMapper).mapAuthorities(eq(delegateUser), claimsCaptor.capture());
+    verify(roleAuthoritiesMapper).mapAuthorities(
+        eq(delegateUser),
+        claimsCaptor.capture(),
+        eq("jitsi-backend"));
     assertThat(claimsCaptor.getValue()).isEmpty();
     assertThat(user.getUserInfo().getClaims()).containsOnlyKeys("email");
     assertThat(user.getUserInfo().getClaimAsString("email")).isEqualTo("user@example.test");

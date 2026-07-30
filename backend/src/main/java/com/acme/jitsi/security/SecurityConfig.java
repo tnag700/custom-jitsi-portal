@@ -69,6 +69,10 @@ public class SecurityConfig {
     "/api/v1/admin/incidents/**"
   };
 
+  private static final String[] ADMIN_VERSION_MONITOR_MUTATION_ENDPOINTS = {
+    "/api/v1/admin/framework-versions/refresh"
+  };
+
   private static final String[] ADMIN_ENDPOINTS = {
     "/api/v1/meetings/**",
     "/api/v1/rooms/**",
@@ -127,11 +131,22 @@ public class SecurityConfig {
         .requestMatchers(publicEndpoints.toArray(String[]::new)).permitAll()
         .requestMatchers(AUTHENTICATED_ENDPOINTS).authenticated()
       .requestMatchers(HttpMethod.GET, ADMIN_CABINET_ENDPOINTS)
-        .hasAnyRole("admin", "system-admin", "security-admin", "support-engineer")
-        .requestMatchers(HttpMethod.POST, ADMIN_INCIDENT_MUTATION_ENDPOINTS).hasRole("admin")
+        .hasAnyRole(
+            PortalRole.ADMIN.claimValue(),
+            PortalRole.SYSTEM_ADMIN.claimValue(),
+            PortalRole.SECURITY_ADMIN.claimValue(),
+            PortalRole.SUPPORT_ENGINEER.claimValue())
+        .requestMatchers(HttpMethod.POST, ADMIN_INCIDENT_MUTATION_ENDPOINTS)
+            .hasRole(PortalRole.ADMIN.claimValue())
+        .requestMatchers(HttpMethod.POST, ADMIN_VERSION_MONITOR_MUTATION_ENDPOINTS)
+            .hasRole(PortalRole.ADMIN.claimValue())
         .requestMatchers(HttpMethod.GET, "/api/v1/config-sets/**")
-            .hasAnyRole("admin", "system-admin", "security-admin", "support-engineer")
-        .requestMatchers(ADMIN_ENDPOINTS).hasRole("admin")
+            .hasAnyRole(
+                PortalRole.ADMIN.claimValue(),
+                PortalRole.SYSTEM_ADMIN.claimValue(),
+                PortalRole.SECURITY_ADMIN.claimValue(),
+                PortalRole.SUPPORT_ENGINEER.claimValue())
+        .requestMatchers(ADMIN_ENDPOINTS).hasRole(PortalRole.ADMIN.claimValue())
         .anyRequest().denyAll());
     http.exceptionHandling(ex -> ex
         .authenticationEntryPoint(jsonAuthenticationEntryPoint)

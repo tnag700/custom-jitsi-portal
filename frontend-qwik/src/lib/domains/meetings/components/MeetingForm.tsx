@@ -12,6 +12,7 @@ import {
   formatDateTimeLocalInput,
 } from "~/lib/shared";
 import type { Meeting, MeetingErrorPayload } from "../types";
+import { getMeetingTypeOptions } from "../meeting-type-presentation";
 import {
   buildMeetingFormSubmission,
   type MeetingFormSubmissionPayload,
@@ -105,12 +106,7 @@ export const MeetingForm = component$<MeetingFormProps>(
       await submitAction(submission.payload);
     });
 
-    const meetingTypeDescription =
-      meetingTypeValue.value === "webinar"
-        ? "Формат выступления одного или нескольких ведущих."
-        : meetingTypeValue.value === "workshop"
-          ? "Практическая сессия с активной работой участников."
-          : "Обычная видеовстреча для совместного обсуждения.";
+    const meetingTypeOptions = getMeetingTypeOptions(meetingTypeValue.value);
 
     const errorMessage = error
       ? ERROR_MESSAGES[error.errorCode] ?? error.detail
@@ -139,7 +135,7 @@ export const MeetingForm = component$<MeetingFormProps>(
             ? "Обновите параметры встречи и сохраните изменения."
             : "Заполните расписание и параметры новой встречи."
         }
-        maxWidth="max-w-xl"
+        maxWidth="max-w-2xl"
         showTrigger={false}
         closeOnBackdropClick={false}
         closeLabel="Отмена"
@@ -234,34 +230,52 @@ export const MeetingForm = component$<MeetingFormProps>(
               )}
             </div>
 
-            <div>
-              <label
-                for="meeting-type"
-                class="mb-1 block text-sm font-medium text-text"
-              >
-                Тип *
-              </label>
-              <select
-                id="meeting-type"
-                name="meetingType"
-                value={meetingTypeValue.value}
-                class="w-full rounded border border-border bg-bg px-3 py-2 text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                onChange$={(_, element) => {
-                  meetingTypeValue.value = element.value;
-                  void clearFieldError$("meetingType");
-                }}
-              >
-                <option value="standard">Обычная встреча</option>
-                <option value="webinar">Вебинар</option>
-                <option value="workshop">Практический семинар</option>
-              </select>
-              <p class="mt-1 text-xs text-muted">{meetingTypeDescription}</p>
+            <fieldset class="md:col-span-2">
+              <legend class="mb-2 text-sm font-medium text-text">
+                Формат встречи *
+              </legend>
+              <div class="grid gap-2 sm:grid-cols-3">
+                {meetingTypeOptions.map((option) => {
+                  const isSelected = meetingTypeValue.value === option.value;
+                  return (
+                    <label
+                      key={option.value}
+                      class={[
+                        "flex cursor-pointer gap-2 rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-blue-500",
+                        isSelected
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
+                          : "border-border bg-bg hover:border-blue-300",
+                      ]}
+                    >
+                      <input
+                        type="radio"
+                        name="meetingType"
+                        value={option.value}
+                        checked={isSelected}
+                        class="mt-1"
+                        onChange$={() => {
+                          meetingTypeValue.value = option.value;
+                          void clearFieldError$("meetingType");
+                        }}
+                      />
+                      <span>
+                        <span class="block text-sm font-medium text-text">
+                          {option.label}
+                        </span>
+                        <span class="mt-1 block text-xs leading-5 text-muted">
+                          {option.description}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
               {validationErrors.value.meetingType && (
                 <p class="mt-1 text-xs text-red-600">
                   {validationErrors.value.meetingType}
                 </p>
               )}
-            </div>
+            </fieldset>
 
             <div>
               <label

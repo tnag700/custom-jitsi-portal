@@ -59,6 +59,11 @@ export function buildAdminSecondaryNavItems(
       match: "/admin/config-sets",
       label: "Конфиг-наборы",
     },
+    {
+      href: buildAdminSecondaryHref(currentUrl, "/admin/framework-versions", fallbackEnvironment),
+      match: "/admin/framework-versions",
+      label: "Версии и CVE",
+    },
   ];
 
   if (includePlatformAdminTools) {

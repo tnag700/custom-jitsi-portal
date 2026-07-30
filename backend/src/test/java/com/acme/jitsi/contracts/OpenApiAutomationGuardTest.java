@@ -13,17 +13,17 @@ class OpenApiAutomationGuardTest {
   private static final Path BACKEND_BUILD = REPO_ROOT.resolve("backend/build.gradle");
   private static final Path ROOT_PACKAGE = REPO_ROOT.resolve("package.json");
   private static final Path FRONTEND_PACKAGE = REPO_ROOT.resolve("frontend-qwik/package.json");
-    private static final Path OPENAPI_GENERATED_BASELINE = REPO_ROOT.resolve("openapi.generated.json");
+  private static final Path OPENAPI_GENERATED_BASELINE = REPO_ROOT.resolve("openapi.generated.json");
   private static final Path SECURITY_CONFIG =
       REPO_ROOT.resolve("backend/src/main/java/com/acme/jitsi/security/SecurityConfig.java");
 
   @Test
-  void backendUsesSpringBoot403Baseline() throws IOException {
+  void backendUsesSupportedSpringBootPatchBaseline() throws IOException {
     String buildGradle = Files.readString(BACKEND_BUILD);
 
     assertTrue(
-        buildGradle.contains("id 'org.springframework.boot' version '4.0.3'"),
-        "backend/build.gradle must upgrade Spring Boot to 4.0.3");
+        buildGradle.contains("id 'org.springframework.boot' version '4.0.7'"),
+        "backend/build.gradle must keep the approved Spring Boot 4.0.7 patch baseline");
   }
 
   @Test
@@ -37,7 +37,7 @@ class OpenApiAutomationGuardTest {
   }
 
   @Test
-    void frontendGenerationRefreshesGeneratedBaselineBeforeTypeEmission() throws IOException {
+  void frontendGenerationRefreshesGeneratedBaselineBeforeTypeEmission() throws IOException {
     String frontendPackageJson = Files.readString(FRONTEND_PACKAGE);
 
     assertTrue(
@@ -47,13 +47,13 @@ class OpenApiAutomationGuardTest {
   }
 
   @Test
-    void committedGeneratedOpenApiBaselineCarriesGeneratedMarker() throws IOException {
-        String openApi = Files.readString(OPENAPI_GENERATED_BASELINE);
+  void committedGeneratedOpenApiBaselineCarriesGeneratedMarker() throws IOException {
+    String openApi = Files.readString(OPENAPI_GENERATED_BASELINE);
 
     assertTrue(
         openApi.contains("Generated from backend runtime contract")
             || openApi.contains("generated from backend runtime contract"),
-                "openapi.generated.json must be a tracked generated baseline with an explicit marker");
+        "openapi.generated.json must be a tracked generated baseline with an explicit marker");
   }
 
   @Test

@@ -36,6 +36,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/framework-versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCurrent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/framework-versions/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["refresh_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/incidents": {
         parameters: {
             query?: never;
@@ -756,6 +788,22 @@ export interface components {
             topDegradations?: components["schemas"]["DegradationSummary"][];
             traceId?: string;
         };
+        AdminFrameworkVersionsResponse: {
+            /** Format: date-time */
+            cacheExpiresAt?: string;
+            components?: components["schemas"]["Component"][];
+            criticalUpdateRequired?: boolean;
+            /** Format: int32 */
+            criticalVulnerabilityCount?: number;
+            /** Format: date-time */
+            generatedAt?: string;
+            /** Format: date-time */
+            lastSuccessfulCheckAt?: string;
+            scanStatus?: string;
+            statusMessage?: string;
+            /** Format: int32 */
+            vulnerabilityCount?: number;
+        };
         AdminIncidentCoordinationUpdateRequest: {
             owner?: string | null;
             ticketReference?: string | null;
@@ -827,6 +875,15 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+        };
+        Advisory: {
+            advisoryUrl?: string;
+            aliases?: string[];
+            fixedVersions?: string[];
+            id?: string;
+            modifiedAt?: string;
+            severity?: string;
+            summary?: string;
         };
         AffectedAttempt: {
             correlationId?: string | null;
@@ -922,6 +979,21 @@ export interface components {
             /** Format: int32 */
             total?: number;
         };
+        Component: {
+            advisories?: components["schemas"]["Advisory"][];
+            /** Format: int32 */
+            criticalVulnerabilityCount?: number;
+            currentVersion?: string;
+            displayName?: string;
+            ecosystem?: string;
+            key?: string;
+            packageName?: string;
+            scanStatus?: string;
+            securityStatus?: string;
+            versionSource?: string;
+            /** Format: int32 */
+            vulnerabilityCount?: number;
+        };
         ConfigSetCompatibilityMismatchResponse: {
             actual?: string;
             code?: string;
@@ -1006,7 +1078,7 @@ export interface components {
         };
         CreateInviteRequest: {
             /** Format: int32 */
-            expiresInHours?: number;
+            expiresInHours: number;
             /** Format: int32 */
             maxUses?: number;
             /** @enum {string} */
@@ -1506,6 +1578,46 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AdminDashboardDrillDownResponse"];
+                };
+            };
+        };
+    };
+    getCurrent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdminFrameworkVersionsResponse"];
+                };
+            };
+        };
+    };
+    refresh_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdminFrameworkVersionsResponse"];
                 };
             };
         };

@@ -45,7 +45,7 @@ class TestcontainersBaselineSourceGuardTest {
         .contains("@DynamicPropertySource")
         .contains("PostgreSQLContainer")
         .contains("getJdbcUrl")
-        .contains("postgres:18-alpine")
+        .contains("postgres:18.4-alpine")
         .contains("redis:7-alpine")
         .contains("spring.datasource.url")
         .contains("spring.data.redis.host");

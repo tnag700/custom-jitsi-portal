@@ -114,7 +114,7 @@ describe("admin dashboard presentation", () => {
     const { AdminDashboardOverview } = await import(
       "~/lib/domains/admin/components"
     );
-    const tree = renderNode(
+    const tree = await renderNode(
       AdminDashboardOverview({
         currentUrl: "http://localhost:3000/admin",
         dashboard: createDashboard(),
@@ -194,7 +194,7 @@ describe("admin dashboard presentation", () => {
     ];
     dashboard.safeStateSummary.stable = false;
 
-    const tree = renderNode(
+    const tree = await renderNode(
       AdminDashboardOverview({
         currentUrl: "http://localhost:3000/admin?environment=prod&period=1h",
         dashboard,

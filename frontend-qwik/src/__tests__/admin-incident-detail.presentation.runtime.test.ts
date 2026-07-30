@@ -159,7 +159,7 @@ describe("admin incident detail presentation", () => {
       "~/lib/domains/admin/components"
     );
     const incident = createIncidentDetail();
-    const tree = renderNode(
+    const tree = await renderNode(
       AdminIncidentDetailOverview({
         currentUrl:
           "http://localhost:3000/admin/incidents/incident-1?environment=dev&returnTo=%2Fadmin%2Fincidents%3Fperiod%3D24h",
@@ -211,7 +211,7 @@ describe("admin incident detail presentation", () => {
       ticketReference: "INC-42",
       ticketStatus: "linked",
     };
-    const tree = renderNode(
+    const tree = await renderNode(
       AdminIncidentDetailOverview({
         currentUrl:
           "http://localhost:3000/admin/incidents/incident-1?environment=dev",
@@ -255,7 +255,7 @@ describe("admin incident detail presentation", () => {
       availability: "available",
       workflowStatus: "triage",
     };
-    const tree = renderNode(
+    const tree = await renderNode(
       AdminIncidentDetailOverview({
         currentUrl:
           "http://localhost:3000/admin/incidents/incident-1?environment=dev",

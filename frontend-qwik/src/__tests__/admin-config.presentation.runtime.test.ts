@@ -141,7 +141,7 @@ describe("admin config presentation", () => {
     const { AdminConfigSetsToolbar } = await import(
       "~/lib/domains/admin/components/AdminConfigSetsToolbar"
     );
-    const tree = renderNode(
+    const tree = await renderNode(
       AdminConfigSetsToolbar({
         currentUrl: "http://localhost:3000/admin/config-sets/?environment=dev",
         capability: createCapability(),
@@ -163,7 +163,7 @@ describe("admin config presentation", () => {
       "~/lib/domains/admin/components"
     );
     const detail = createDetail();
-    const tree = renderNode(
+    const tree = await renderNode(
       AdminConfigSetsOverview({
         currentUrl:
           "http://localhost:3000/admin/config-sets/?configSetId=cfg-1",
@@ -210,7 +210,7 @@ describe("admin config presentation", () => {
       "~/lib/domains/admin/components"
     );
     const detail = createDetail();
-    const tree = renderNode(
+    const tree = await renderNode(
       AdminConfigSetsOverview({
         currentUrl:
           "http://localhost:3000/admin/config-sets/?configSetId=cfg-1&mode=edit",
@@ -245,7 +245,7 @@ describe("admin config presentation", () => {
     const { AdminConfigSetsOverview } = await import(
       "~/lib/domains/admin/components"
     );
-    const tree = renderNode(
+    const tree = await renderNode(
       AdminConfigSetsOverview({
         currentUrl:
           "http://localhost:3000/admin/config-sets/?mode=create&returnTo=%2Fadmin%2Fincidents%3Fenvironment%3Ddev",
@@ -300,7 +300,7 @@ describe("admin config presentation", () => {
         },
       ],
     };
-    const tree = renderNode(
+    const tree = await renderNode(
       AdminConfigSetsOverview({
         currentUrl:
           "http://localhost:3000/admin/config-sets/?configSetId=cfg-1",

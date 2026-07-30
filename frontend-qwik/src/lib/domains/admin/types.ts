@@ -345,6 +345,42 @@ export const adminRoleHistorySchema = z.object({
   content: z.array(adminRoleHistoryEntrySchema),
 });
 
+export const adminFrameworkAdvisorySchema = z.object({
+  id: z.string(),
+  aliases: z.array(z.string()),
+  summary: z.string(),
+  severity: z.string(),
+  fixedVersions: z.array(z.string()),
+  advisoryUrl: z.string().url(),
+  modifiedAt: z.string(),
+});
+
+export const adminFrameworkComponentSchema = z.object({
+  key: z.string(),
+  displayName: z.string(),
+  ecosystem: z.string(),
+  packageName: z.string(),
+  currentVersion: z.string(),
+  versionSource: z.string(),
+  scanStatus: z.string(),
+  securityStatus: z.string(),
+  vulnerabilityCount: z.number(),
+  criticalVulnerabilityCount: z.number(),
+  advisories: z.array(adminFrameworkAdvisorySchema),
+});
+
+export const adminFrameworkVersionsSchema = z.object({
+  generatedAt: z.string(),
+  lastSuccessfulCheckAt: z.string().nullable(),
+  cacheExpiresAt: z.string(),
+  scanStatus: z.string(),
+  statusMessage: z.string(),
+  criticalUpdateRequired: z.boolean(),
+  vulnerabilityCount: z.number(),
+  criticalVulnerabilityCount: z.number(),
+  components: z.array(adminFrameworkComponentSchema),
+});
+
 export type AdminDashboardSummary = z.infer<typeof adminDashboardSummarySchema>;
 export type AdminDashboardDrillDown = z.infer<typeof adminDashboardDrillDownSchema>;
 export type AdminIncidentList = z.infer<typeof adminIncidentListSchema>;
@@ -353,3 +389,4 @@ export type AdminIncidentCoordination = z.infer<typeof adminIncidentCoordination
 export type AdminIncidentSearch = z.infer<typeof adminIncidentSearchSchema>;
 export type AdminIncidentTicket = z.infer<typeof adminIncidentTicketSchema>;
 export type AdminRoleHistory = z.infer<typeof adminRoleHistorySchema>;
+export type AdminFrameworkVersions = z.infer<typeof adminFrameworkVersionsSchema>;

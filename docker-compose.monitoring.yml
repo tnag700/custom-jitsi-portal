@@ -64,7 +64,7 @@ services:
       - mock-alert-receiver
 
   mock-alert-receiver:
-    image: node:22-alpine
+    image: node:24.18.0-alpine
     working_dir: /workspace
     command:
       - node

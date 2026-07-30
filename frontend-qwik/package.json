@@ -1,10 +1,9 @@
 {
-  "name": "my-qwik-empty-starter",
-  "description": "Blank project with routing included",
+  "name": "custom-jitsi-portal-frontend",
+  "description": "Qwik SSR frontend for Custom Jitsi Portal",
   "engines": {
-    "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
+    "node": ">=24.18.0 <25"
   },
-  "engines-annotation": "Mostly required by sharp which needs a Node-API v9 compatible runtime",
   "private": true,
   "type": "module",
   "scripts": {
@@ -27,35 +26,49 @@
     "preview": "npm run build && vite preview --open",
     "start": "node server/entry.express.mjs",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "verify:ssr": "npm run build && node scripts/verify-ssr.mjs",
     "qwik": "qwik",
-    "generate:api": "npm --prefix .. run openapi:generate && openapi-typescript ../openapi.generated.json -o src/lib/shared/api/generated/api-types.ts"
+    "generate:api": "npm --prefix .. run openapi:generate && npm --prefix .. run frontend:api-types:generate"
   },
   "dependencies": {
-    "@qwik-ui/headless": "^0.7.4",
+    "@qwik-ui/headless": "0.7.7",
     "express": "^5.2.1",
     "openapi-fetch": "^0.17.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.0.0",
-    "@qwik.dev/core": "2.0.0-beta.25",
-    "@qwik.dev/router": "2.0.0-beta.25",
-    "@tailwindcss/vite": "^4.2.1",
+    "@eslint/js": "10.0.1",
+    "@qwik.dev/core": "2.0.0-beta.38",
+    "@qwik.dev/router": "2.0.0-beta.38",
+    "@tailwindcss/vite": "4.3.3",
     "@types/node": "24.10.0",
-    "@vitest/coverage-v8": "^3.2.4",
-    "eslint": "9.39.2",
-    "eslint-plugin-qwik": "2.0.0-beta.25",
-    "globals": "17.0.0",
-    "openapi-typescript": "^7.13.0",
-    "prettier": "3.6.2",
-    "tailwindcss": "^4.2.1",
+    "eslint": "10.8.0",
+    "eslint-plugin-qwik": "2.0.0-beta.38",
+    "globals": "17.8.0",
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.9.6",
+    "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
     "typescript-eslint": "8.65.0",
-    "typescript-plugin-css-modules": "latest",
     "vite": "7.3.6",
-    "vite-tsconfig-paths": "^4.2.1",
-    "vitest": "^3.2.4"
+    "vite-tsconfig-paths": "6.1.1",
+    "vitest": "3.2.7"
+  },
+  "overrides": {
+    "@builder.io/qwik": "npm:@qwik.dev/core@2.0.0-beta.38",
+    "@builder.io/qwik-city": "npm:@qwik.dev/router@2.0.0-beta.38",
+    "@redocly/openapi-core": {
+      "minimatch": "10.2.6"
+    },
+    "@azure/functions": {
+      "uuid": "11.1.1"
+    },
+    "vite-imagetools": {
+      "sharp": "0.35.0"
+    }
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "fsevents": false
   }
 }

@@ -17,20 +17,26 @@ import {
   isSuccessfulAction,
 } from "./meetings-page-state";
 import {
+  useCreateInvite,
+  useRevokeInvite,
+} from "./invite-actions";
+import {
   useActiveRooms,
   useAssignableUsers,
-  useBulkAssignParticipants,
-  useCancelMeeting,
-  useCreateInvite,
-  useCreateMeeting,
   useInvites,
   useMeetings,
   useParticipants,
-  useRevokeInvite,
-  useUnassignParticipant,
+} from "./loaders";
+import {
+  useCancelMeeting,
+  useCreateMeeting,
   useUpdateMeeting,
+} from "./meeting-actions";
+import {
+  useBulkAssignParticipants,
+  useUnassignParticipant,
   useUpdateParticipantRole,
-} from "./route-handlers";
+} from "./participant-actions";
 
 export default component$(() => {
   const authStore = useContext(AuthContext);

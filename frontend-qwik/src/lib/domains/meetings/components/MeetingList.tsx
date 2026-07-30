@@ -128,7 +128,14 @@ export const MeetingList = component$<MeetingListProps>(
           </div>
         ) : (
           <>
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div
+              class={[
+                "grid grid-cols-1 gap-4",
+                filteredMeetings.value.length > 1
+                  ? "md:grid-cols-2 xl:grid-cols-3"
+                  : "",
+              ]}
+            >
               {filteredMeetings.value.map((meeting) => (
                 <MeetingCard
                   key={meeting.meetingId}

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
+import { noSerialize } from "@qwik.dev/core";
 import type { Meeting, ParticipantAssignment } from "~/lib/domains/meetings";
 import type { Room } from "~/lib/domains/rooms";
 import {
@@ -110,7 +111,7 @@ describe("meetings presentation", () => {
     const { MeetingsOverview } = await import(
       "~/routes/meetings/components/MeetingsOverview"
     );
-    const tree = renderNode(MeetingsOverview(overviewProps()));
+    const tree = await renderNode(MeetingsOverview(overviewProps()));
     const content = textContent(tree);
     const roomLink = findNode(
       tree,
@@ -127,7 +128,7 @@ describe("meetings presentation", () => {
     const { MeetingsOverview } = await import(
       "~/routes/meetings/components/MeetingsOverview"
     );
-    const tree = renderNode(
+    const tree = await renderNode(
       MeetingsOverview(
         overviewProps({
           rooms: [createRoom()],
@@ -146,6 +147,36 @@ describe("meetings presentation", () => {
     expect(content).toContain("Кардиология");
     expect(content).toContain("meetings:1");
     expect(meetingList).toBeDefined();
+    expect(
+      findNode(tree, (node) => node.type === "select"),
+    ).toBeUndefined();
+  });
+
+  it("offers one explicit action instead of duplicate controls for a single room", async () => {
+    const { MeetingsOverview } = await import(
+      "~/routes/meetings/components/MeetingsOverview"
+    );
+    const tree = await renderNode(
+      MeetingsOverview(
+        overviewProps({
+          rooms: [createRoom()],
+        }),
+      ),
+    );
+    const content = textContent(tree);
+    const openScheduleLink = findNode(
+      tree,
+      (node) =>
+        node.type === "a" &&
+        node.props.href === "/meetings?roomId=room-1",
+    );
+
+    expect(content).toContain("Активная комната");
+    expect(content).toContain("Открыть расписание");
+    expect(openScheduleLink).toBeDefined();
+    expect(
+      findNode(tree, (node) => node.type === "select"),
+    ).toBeUndefined();
   });
 
   it("submits only selected participant ids and uses localized roles", async () => {
@@ -153,7 +184,7 @@ describe("meetings presentation", () => {
       "~/lib/domains/meetings/components/ParticipantDirectory"
     );
     const selectedIds = { value: ["u-1"] };
-    const tree = renderNode(
+    const tree = await renderNode(
       ParticipantDirectory({
         meetingId: "meeting-1",
         currentUserId: "u-1",
@@ -175,8 +206,8 @@ describe("meetings presentation", () => {
         bulkRole: { value: "participant" },
         bulkAssignAction: {},
         isAssigning: false,
-        onApplyFilters$: vi.fn(),
-        onResetFilters$: vi.fn(),
+        onApplyFilters$: noSerialize(vi.fn()),
+        onResetFilters$: noSerialize(vi.fn()),
       }),
     );
     const content = textContent(tree);
@@ -214,7 +245,7 @@ describe("meetings presentation", () => {
     const { ParticipantSelfAssignment } = await import(
       "~/lib/domains/meetings/components/ParticipantSelfAssignment"
     );
-    const tree = renderNode(
+    const tree = await renderNode(
       ParticipantSelfAssignment({
         meetingId: "meeting-1",
         currentUserId: "u-self",
@@ -240,7 +271,7 @@ describe("meetings presentation", () => {
     expect(subjectFields.map((field) => field.props.value)).toEqual(["u-self"]);
     expect(submitButton?.props.disabled).toBe(false);
 
-    const assignedTree = renderNode(
+    const assignedTree = await renderNode(
       ParticipantSelfAssignment({
         meetingId: "meeting-1",
         currentUserId: "u-self",
@@ -277,7 +308,7 @@ describe("meetings presentation", () => {
       organization: "ЦРБ",
       position: "Врач",
     };
-    const tree = renderNode(
+    const tree = await renderNode(
       ParticipantCurrentList({
         meetingId: "meeting-1",
         currentUserId: "subject-technical-id",

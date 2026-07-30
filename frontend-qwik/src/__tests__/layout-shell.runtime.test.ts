@@ -3,6 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   collectNodes,
+  eventHandler,
   findNode,
   findNodes,
   isRenderedNode,
@@ -80,7 +81,7 @@ describe("layout shell runtime", () => {
     const { Sidebar } = await import("~/lib/shared/components/Sidebar");
     const expanded = { value: false };
 
-    const tree = renderNode(Sidebar({ expanded }));
+    const tree = await renderNode(Sidebar({ expanded }));
     expect(isRenderedNode(tree)).toBe(true);
 
     const aside = findNode(tree, (node) => node.type === "aside");
@@ -112,7 +113,7 @@ describe("layout shell runtime", () => {
     const { Sidebar } = await import("~/lib/shared/components/Sidebar");
     const dismiss = vi.fn();
 
-    const tree = renderNode(
+    const tree = await renderNode(
       Sidebar({
         expanded: { value: false },
         variant: "mobile",
@@ -131,8 +132,10 @@ describe("layout shell runtime", () => {
     expect(aside?.props["aria-label"]).toBe("Мобильное меню");
     expect(classText(aside!)).toContain("fixed inset-y-0 left-0");
     expect(textContent(tree)).toContain("Jitsi Portal");
-    expect(links.every((link) => link.props.onClick$ === dismiss)).toBe(true);
-    expect(close?.props.onClick$).toBe(dismiss);
+    expect(links.every((link) => eventHandler(link, "click") === dismiss)).toBe(
+      true,
+    );
+    expect(eventHandler(close, "click")).toBe(dismiss);
   });
 
   it("exposes mobile menu state and authenticated controls in the header", async () => {
@@ -142,7 +145,7 @@ describe("layout shell runtime", () => {
     const { AppHeader } = await import("~/lib/shared/components/AppHeader");
     const toggle = vi.fn();
     const logoutAction = { actionPath: "/logout" };
-    const tree = renderNode(
+    const tree = await renderNode(
       AppHeader({
         isAuthenticated: true,
         showSidebarToggle: true,
@@ -170,7 +173,7 @@ describe("layout shell runtime", () => {
     expect(header).toBeDefined();
     expect(menuButton?.props["aria-label"]).toBe("Закрыть меню");
     expect(menuButton?.props["aria-expanded"]).toBe(true);
-    expect(menuButton?.props.onClick$).toBe(toggle);
+    expect(eventHandler(menuButton, "click")).toBe(toggle);
     expect(form?.props.action).toBe(logoutAction);
     expect(textContent(submit)).toBe("Выйти");
     expect(textContent(tree)).toContain("Dev Admin");
@@ -179,7 +182,7 @@ describe("layout shell runtime", () => {
 
   it("renders unauthenticated login navigation without a sidebar toggle", async () => {
     const { AppHeader } = await import("~/lib/shared/components/AppHeader");
-    const tree = renderNode(
+    const tree = await renderNode(
       AppHeader({
         isAuthenticated: false,
         showSidebarToggle: false,

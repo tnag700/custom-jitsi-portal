@@ -9,6 +9,12 @@ spring:
   doc:
     api-docs:
       version: openapi_3_1
+  data:
+    redis:
+      repositories:
+        enabled: false
+  jpa:
+    open-in-view: false
   mvc:
     apiversion:
       use:
@@ -61,6 +67,20 @@ app:
     core-pool-size: ${APP_ASYNC_CORE_POOL_SIZE:2}
     max-pool-size: ${APP_ASYNC_MAX_POOL_SIZE:10}
     queue-capacity: ${APP_ASYNC_QUEUE_CAPACITY:500}
+  version-monitor:
+    enabled: ${APP_VERSION_MONITOR_ENABLED:true}
+    cache-ttl: ${APP_VERSION_MONITOR_CACHE_TTL:PT6H}
+    schedule:
+      enabled: ${APP_VERSION_MONITOR_SCHEDULE_ENABLED:true}
+      initial-delay: ${APP_VERSION_MONITOR_INITIAL_DELAY:PT1M}
+      fixed-delay: ${APP_VERSION_MONITOR_FIXED_DELAY:PT6H}
+    components:
+      qwik:
+        version: ${APP_VERSION_MONITOR_QWIK_VERSION:2.0.0-beta.38}
+      qwik-router:
+        version: ${APP_VERSION_MONITOR_QWIK_ROUTER_VERSION:2.0.0-beta.38}
+      express:
+        version: ${APP_VERSION_MONITOR_EXPRESS_VERSION:5.2.1}
   frontend:
     origin: ${APP_FRONTEND_ORIGIN:http://localhost:3000}
   features:
@@ -118,6 +138,13 @@ app:
           delay: ${APP_RESILIENCE_AUTH_REFRESH_REDIS_RETRY_DELAY:100ms}
           max-delay: ${APP_RESILIENCE_AUTH_REFRESH_REDIS_RETRY_MAX_DELAY:1s}
         concurrency-limit: ${APP_RESILIENCE_AUTH_REFRESH_REDIS_CONCURRENCY_LIMIT:32}
+
+# Keep JDBC tracing and HikariCP pool metrics, while disabling the additional
+# OpenTelemetry database metric handler that emits unstable Prometheus labels.
+jdbc:
+  opentelemetry:
+    metrics:
+      enabled: false
 
 management:
   otlp:

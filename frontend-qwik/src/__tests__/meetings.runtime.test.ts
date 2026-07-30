@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { updateMeetingSchema } from "../lib/domains/meetings/meetings.zod";
 import { applyMeetingListState } from "../lib/domains/meetings/components/meeting-list-state";
 import type { Meeting } from "../lib/domains/meetings/types";
+import {
+  getMeetingTypeOptions,
+  getMeetingTypePresentation,
+} from "../lib/domains/meetings/meeting-type-presentation";
 
 function meeting(overrides: Partial<Meeting>): Meeting {
   return {
@@ -85,5 +89,27 @@ describe("Meetings runtime: list state", () => {
       "00000000-0000-4000-8000-000000000001",
       "00000000-0000-4000-8000-000000000003",
     ]);
+  });
+});
+
+describe("Meetings runtime: presentation labels", () => {
+  it("maps stored meeting types to clear Russian labels", () => {
+    expect(getMeetingTypePresentation("standard").label).toBe(
+      "Обычная встреча",
+    );
+    expect(getMeetingTypePresentation("webinar").label).toBe("Вебинар");
+    expect(getMeetingTypePresentation("workshop").label).toBe(
+      "Практическая сессия",
+    );
+  });
+
+  it("preserves an unknown stored value as an explicit migration option", () => {
+    const options = getMeetingTypeOptions("legacy-format");
+
+    expect(options[0]).toMatchObject({
+      value: "legacy-format",
+      label: "Другой формат",
+    });
+    expect(options).toHaveLength(4);
   });
 });

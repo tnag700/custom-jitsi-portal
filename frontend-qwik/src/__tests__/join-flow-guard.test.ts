@@ -55,57 +55,62 @@ describe("Join Flow Guard: barrel export (AC: all)", () => {
 });
 
 describe("Join Flow Guard: route integration (AC: 1, 2, 3, 4, 5, 6)", () => {
-  it("routes/index.tsx should contain routeLoader$ and routeAction$", () => {
+  it("routes/index.tsx should stay a thin composition boundary", () => {
     const tsx = readSrc("routes/index.tsx");
-    expect(tsx).toContain("routeLoader$");
-    expect(tsx).toContain("routeAction$");
+    expect(tsx).toContain("JoinPage");
+    expect(tsx).toContain("useUpcomingMeetings");
+    expect(tsx).toContain("useJoinMeeting");
+    expect(tsx).not.toContain("routeLoader$");
+    expect(tsx).not.toContain("routeAction$");
+    expect(tsx.split("\n").length).toBeLessThan(40);
   });
 
-  it("routes/index.tsx should use fetchUpcomingMeetings and issueAccessToken", () => {
-    const tsx = readSrc("routes/index.tsx");
-    expect(tsx).toContain("fetchUpcomingMeetings");
-    expect(tsx).toContain("issueAccessToken");
+  it("join loaders should own upcoming meetings and readiness requests", () => {
+    const ts = readSrc("routes/join-loaders.ts");
+    expect(ts).toContain("routeLoader$");
+    expect(ts).toContain("fetchUpcomingMeetings");
+    expect(ts).toContain("fetchJoinReadiness");
+    expect(ts).toContain("mapUpcomingMeetingsLoaderError");
+    expect(ts).toContain("loadError");
   });
 
-  it("routes/index.tsx should handle CSRF token", () => {
-    const tsx = readSrc("routes/index.tsx");
-    expect(tsx).toContain("XSRF-TOKEN");
+  it("join action should issue access tokens through the shared mutation context", () => {
+    const ts = readSrc("routes/join-action.ts");
+    expect(ts).toContain("routeAction$");
+    expect(ts).toContain("issueAccessToken");
+    expect(ts).toContain("buildMutationRequestContext");
   });
 
-  it("routes/index.tsx should use loader error mapping instead of silent empty-state fallback", () => {
-    const tsx = readSrc("routes/index.tsx");
-    expect(tsx).toContain("mapUpcomingMeetingsLoaderError");
-    expect(tsx).toContain("loadError");
+  it("join action should handle AUTH_REQUIRED redirect", () => {
+    const ts = readSrc("routes/join-action.ts");
+    expect(ts).toContain("AUTH_REQUIRED");
+    expect(ts).toContain("resolveAuthRecoveryRedirectPath(error, returnTo)");
   });
 
-  it("routes/index.tsx should handle AUTH_REQUIRED redirect", () => {
-    const tsx = readSrc("routes/index.tsx");
-    expect(tsx).toContain("AUTH_REQUIRED");
-    expect(tsx).toContain("resolveAuthRecoveryRedirectPath(error, returnTo)");
-  });
-
-  it("routes/index.tsx should keep meeting context for retry after action errors", () => {
-    const tsx = readSrc("routes/index.tsx");
+  it("join page should keep meeting context for retry after action errors", () => {
+    const tsx = readSrc("routes/join-page.tsx");
     expect(tsx).not.toContain("joiningMeetingId.value = null;");
   });
 
-  it("routes/index.tsx should bind loading state to joinAction.isRunning", () => {
-    const tsx = readSrc("routes/index.tsx");
+  it("join page should bind loading state to joinAction.isRunning", () => {
+    const tsx = readSrc("routes/join-page.tsx");
     expect(tsx).toContain(
       "joinAction.isRunning ? joiningMeetingId.value : null",
     );
   });
 
-  it("routes/index.tsx should guard against double submit before submit call", () => {
-    const tsx = readSrc("routes/index.tsx");
+  it("join page should guard against double submit before submit call", () => {
+    const tsx = readSrc("routes/join-page.tsx");
     expect(tsx).toContain("if (!canStartJoin(joinAction.isRunning))");
   });
 
-  it("routes/index.tsx should reject unsafe joinUrl before redirect", () => {
-    const tsx = readSrc("routes/index.tsx");
-    expect(tsx).toContain("redirectToJoinUrl(");
-    expect(tsx).toContain("JOIN_RESPONSE_INVALID");
-    expect(tsx).toContain("url.origin !== expectedOrigin");
+  it("join redirect helper should reject unsafe joinUrl before navigation", () => {
+    const ts = readSrc("lib/domains/join/join-flow.helpers.ts");
+    const tsx = readSrc("routes/join-page.tsx");
+    expect(ts).toContain("validateJoinRedirect(");
+    expect(ts).toContain("JOIN_RESPONSE_INVALID");
+    expect(ts).toContain("url.origin !== expectedOrigin");
+    expect(tsx).toContain("window.location.assign(validated.joinUrl)");
   });
 });
 
@@ -120,15 +125,15 @@ describe("Join Flow Guard: concurrency protection (M3 fix)", () => {
     expect(tsx).toContain("disabled");
   });
 
-  it("routes/index.tsx should disable all cards while any join is in flight", () => {
-    const tsx = readSrc("routes/index.tsx");
+  it("join page should disable all cards while any join is in flight", () => {
+    const tsx = readSrc("routes/join-page.tsx");
     expect(tsx).toContain("disabled={joinAction.isRunning}");
   });
 });
 
 describe("Join Flow Guard: clipboard feedback (L2 fix)", () => {
-  it("routes/index.tsx should track clipboard copy state via signal", () => {
-    const tsx = readSrc("routes/index.tsx");
+  it("join page should track clipboard copy state via signal", () => {
+    const tsx = readSrc("routes/join-page.tsx");
     expect(tsx).toContain("clipboardCopied");
   });
 
@@ -150,8 +155,8 @@ describe("Join Flow Guard: reusable request state UX", () => {
     expect(tsx).toContain("tone");
   });
 
-  it("routes/index.tsx should render RequestStatePanel on loader error", () => {
-    const tsx = readSrc("routes/index.tsx");
+  it("join page should render RequestStatePanel on loader error", () => {
+    const tsx = readSrc("routes/join-page.tsx");
     expect(tsx).toContain("RequestStatePanel");
     expect(tsx).toContain("meetingsState.value.loadError");
   });

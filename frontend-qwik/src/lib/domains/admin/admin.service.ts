@@ -6,6 +6,7 @@ import type {
   AdminIncidentTicket,
   AdminDashboardDrillDown,
   AdminDashboardErrorPayload,
+  AdminFrameworkVersions,
   AdminRoleHistory,
   AdminDashboardSummary,
 } from "./types";
@@ -16,6 +17,7 @@ import {
   adminIncidentSearchSchema,
   adminIncidentTicketSchema,
   adminDashboardDrillDownSchema,
+  adminFrameworkVersionsSchema,
   adminRoleHistorySchema,
   adminDashboardSummarySchema,
 } from "./types";
@@ -483,5 +485,73 @@ export async function fetchAdminRoleHistory(
     (data) => adminRoleHistorySchema.parse(data),
     await parseJsonOrThrow(response),
     "GET /api/v1/admin/role-history",
+  );
+}
+
+export function fetchAdminFrameworkVersions(
+  context: ServerRequestContext,
+): Promise<AdminFrameworkVersions>;
+export function fetchAdminFrameworkVersions(
+  sessionCookie: string,
+  apiUrl: string,
+): Promise<AdminFrameworkVersions>;
+export async function fetchAdminFrameworkVersions(
+  contextOrSessionCookie: ServerRequestContext | string,
+  apiUrl?: string,
+): Promise<AdminFrameworkVersions> {
+  const context = asServerRequestContext(contextOrSessionCookie, apiUrl);
+  const response = await fetch(
+    buildUrl(context.apiUrl, "/admin/framework-versions"),
+    {
+      method: "GET",
+      headers: context.headers,
+    },
+  );
+
+  if (!response.ok) {
+    await throwProblem(response);
+  }
+
+  return parseOrThrow(
+    (data) => adminFrameworkVersionsSchema.parse(data),
+    await parseJsonOrThrow(response),
+    "GET /api/v1/admin/framework-versions",
+  );
+}
+
+export function refreshAdminFrameworkVersions(
+  context: MutationRequestContext,
+): Promise<AdminFrameworkVersions>;
+export function refreshAdminFrameworkVersions(
+  sessionCookie: string,
+  apiUrl: string,
+  csrfToken: string,
+): Promise<AdminFrameworkVersions>;
+export async function refreshAdminFrameworkVersions(
+  contextOrSessionCookie: MutationRequestContext | string,
+  apiUrl?: string,
+  csrfToken = "",
+): Promise<AdminFrameworkVersions> {
+  const context = asMutationRequestContext(
+    contextOrSessionCookie,
+    apiUrl,
+    csrfToken,
+  );
+  const response = await fetch(
+    buildUrl(context.apiUrl, "/admin/framework-versions/refresh"),
+    {
+      method: "POST",
+      headers: context.headers,
+    },
+  );
+
+  if (!response.ok) {
+    await throwProblem(response);
+  }
+
+  return parseOrThrow(
+    (data) => adminFrameworkVersionsSchema.parse(data),
+    await parseJsonOrThrow(response),
+    "POST /api/v1/admin/framework-versions/refresh",
   );
 }

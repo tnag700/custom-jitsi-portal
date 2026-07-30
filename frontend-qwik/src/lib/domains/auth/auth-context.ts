@@ -7,4 +7,13 @@ export interface AuthStore {
   error: AuthErrorPayload | null;
 }
 
+export function synchronizeAuthStore(
+  store: AuthStore,
+  profile: SafeUserProfile | null,
+): void {
+  store.isAuthenticated = profile !== null;
+  store.profile = profile;
+  store.error = null;
+}
+
 export const AuthContext = createContextId<AuthStore>("auth-context");

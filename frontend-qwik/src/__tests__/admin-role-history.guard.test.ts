@@ -34,33 +34,63 @@ describe("Admin Role History Guard: routes", () => {
     expect(ts).toContain('"/admin/role-history"');
   });
 
-  it("routes/admin/role-history/index.tsx should use routeLoader$, buildServerRequestContext and deep-link query params", () => {
+  it("role history route should stay a thin composition boundary", () => {
     const tsx = readSrc("routes/admin/role-history/index.tsx");
-    expect(tsx).toContain("routeLoader$");
-    expect(tsx).toContain("buildAdminRoleHistoryFilters");
-    expect(tsx).toContain("hasAdminRoleHistoryPrimaryFilter");
-    expect(tsx).toContain("buildAdminRoleHistoryResetQueryUpdates");
-    expect(tsx).toContain("buildAdminRoleHistoryPageQueryUpdates");
-    expect(tsx).toContain("normalizePositiveInteger");
-    expect(tsx).toContain("normalizeNonNegativeInteger");
-    expect(tsx).toContain("buildServerRequestContext");
-    expect(tsx).toContain("resolveIncidentReturnTo");
-    expect(tsx).toContain("Вторичный модуль");
-    expect(tsx).toContain("Сводка");
-    expect(tsx).toContain("Инциденты");
-    expect(tsx).toContain("subjectId");
-    expect(tsx).toContain("meetingId");
-    expect(tsx).toContain("roomId");
-    expect(tsx).toContain("actionType");
-    expect(tsx).toContain("returnTo");
-    expect(tsx).toContain("buildAdminRoleHistoryFilters(query)");
-    expect(tsx).toContain(
-      "const page = normalizeNonNegativeInteger(filters.page, 0)",
+    expect(tsx).toContain("useAdminRoleHistory");
+    expect(tsx).toContain("AdminRoleHistoryOverview");
+    expect(tsx).toContain("ApiErrorAlert");
+    expect(tsx).not.toContain("routeLoader$");
+    expect(tsx).not.toContain("<form");
+    expect(tsx).not.toContain("fetchAdminRoleHistory");
+    expect(tsx.split("\n").length).toBeLessThan(80);
+  });
+
+  it("role history loader should own authenticated data loading and bounded pagination", () => {
+    const ts = readSrc("routes/admin/role-history/loader.ts");
+    expect(ts).toContain("routeLoader$");
+    expect(ts).toContain("buildServerRequestContext");
+    expect(ts).toContain("buildAdminRoleHistoryFilters");
+    expect(ts).toContain("hasAdminRoleHistoryPrimaryFilter");
+    expect(ts).toContain("normalizePositiveAdminInteger");
+    expect(ts).toContain("normalizeNonNegativeAdminInteger");
+    expect(ts).toContain("resolveAuthRecoveryRedirectPath");
+    expect(ts).toContain("subjectId");
+    expect(ts).toContain("meetingId");
+    expect(ts).toContain("roomId");
+    expect(ts).toContain("actionType");
+    expect(ts).toContain("returnTo");
+    expect(ts).toContain("buildAdminRoleHistoryFilters(query)");
+    expect(ts).toContain(
+      "const page = normalizeNonNegativeAdminInteger(filters.page, 0)",
     );
-    expect(tsx).toContain(
-      "const pageSize = normalizePositiveInteger(filters.pageSize, 20)",
+    expect(ts).toContain(
+      "const pageSize = normalizePositiveAdminInteger(filters.pageSize, 20)",
     );
-    expect(tsx).not.toContain("function hasPrimaryFilter");
+  });
+
+  it("role history overview should separate primary, advanced and technical context", () => {
+    const overview = readSrc(
+      "lib/domains/admin/components/AdminRoleHistoryOverview.tsx",
+    );
+    const filters = readSrc(
+      "lib/domains/admin/components/AdminRoleHistoryFilterForm.tsx",
+    );
+    const timeline = readSrc(
+      "lib/domains/admin/components/AdminRoleHistoryTimeline.tsx",
+    );
+
+    expect(overview).toContain("buildAdminRoleHistoryResetQueryUpdates");
+    expect(overview).toContain("buildAdminRoleHistoryPageQueryUpdates");
+    expect(overview).toContain("Сначала задайте область поиска");
+    expect(overview).not.toContain("Контекст разбора");
+    expect(overview).toContain("<h2");
+    expect(filters).toContain("Дополнительные фильтры");
+    expect(filters).toContain('name="subjectId"');
+    expect(filters).toContain('name="meetingId"');
+    expect(filters).toContain('name="roomId"');
+    expect(filters).toContain('name="actionType"');
+    expect(timeline).toContain("Технический контекст");
+    expect(timeline).toContain("describeAdminRoleTransition");
   });
 
   it("AdminIncidentInvestigation should expose deep-link to История ролей", () => {

@@ -3,14 +3,18 @@ import { routeLoader$, useLocation } from "@qwik.dev/router";
 import {
   buildAdminPrimaryNavItems,
   buildAdminSecondaryNavItems,
+  fetchAdminFrameworkVersions,
   hasAdminCabinetAccess,
+  hasCriticalFrameworkAlert,
   isActiveAdminNavItem,
+  withAdminEnvironment,
 } from "~/lib/domains/admin";
 import {
   resolveAuthRecoveryRedirectPath,
   type SafeUserProfile,
 } from "~/lib/domains/auth";
 import { hasPlatformAdminAccess } from "~/lib/shared/security";
+import { buildServerRequestContext } from "~/lib/shared/routes/server-handlers";
 
 export const useAdminGuard = routeLoader$(({ sharedMap, redirect, url }) => {
   const user = (sharedMap.get("user") as SafeUserProfile | null) ?? null;
@@ -32,8 +36,25 @@ export const useAdminGuard = routeLoader$(({ sharedMap, redirect, url }) => {
   return user;
 });
 
+export const useFrameworkVersionAlert = routeLoader$(
+  async ({ sharedMap, cookie }) => {
+    const user = (sharedMap.get("user") as SafeUserProfile | null) ?? null;
+    if (!user || !hasAdminCabinetAccess(user)) {
+      return null;
+    }
+    try {
+      return await fetchAdminFrameworkVersions(
+        buildServerRequestContext({ sharedMap, cookie }),
+      );
+    } catch {
+      return null;
+    }
+  },
+);
+
 export default component$(() => {
   const adminUser = useAdminGuard();
+  const versionAlert = useFrameworkVersionAlert();
   const location = useLocation();
   const environment = location.url.searchParams.get("environment");
 
@@ -118,6 +139,29 @@ export default component$(() => {
           </nav>
         </div>
       </header>
+      {hasCriticalFrameworkAlert(versionAlert.value) ? (
+        <aside
+          role="alert"
+          class="flex flex-col gap-3 rounded-3xl border border-danger/30 bg-danger/10 px-4 py-4 text-danger shadow-sm sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div>
+            <p class="font-semibold">Обнаружены критические уязвимости</p>
+            <p class="mt-1 text-sm">
+              Требуется обновить затронутые фреймворки. Критических записей:{" "}
+              {versionAlert.value?.criticalVulnerabilityCount ?? 0}.
+            </p>
+          </div>
+          <a
+            href={withAdminEnvironment(
+              "/admin/framework-versions",
+              environment,
+            )}
+            class="w-fit rounded-full bg-danger px-4 py-2 text-sm font-medium text-white"
+          >
+            Открыть отчёт
+          </a>
+        </aside>
+      ) : null}
       <Slot />
     </section>
   );

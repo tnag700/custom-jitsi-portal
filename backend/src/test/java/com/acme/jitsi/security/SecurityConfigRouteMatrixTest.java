@@ -16,6 +16,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.acme.jitsi.shared.JwtTestProperties;
+import com.acme.jitsi.domains.admin.dto.AdminFrameworkVersionsResponse;
+import com.acme.jitsi.domains.admin.service.FrameworkVersionMonitorService;
+import java.time.Instant;
+import java.util.List;
 import java.time.Duration;
 import org.springframework.http.MediaType;
 import org.junit.jupiter.api.BeforeEach;
@@ -77,6 +81,9 @@ class SecurityConfigRouteMatrixTest {
 
   @MockitoBean
   private ValueOperations<String, String> valueOperations;
+
+  @MockitoBean
+  private FrameworkVersionMonitorService frameworkVersionMonitorService;
 
   @BeforeEach
   void setUp() {
@@ -225,6 +232,35 @@ class SecurityConfigRouteMatrixTest {
   }
 
   @Test
+  void adminCabinetRolesCanReadVersionMonitorButOnlyAdminCanRefresh() throws Exception {
+    when(frameworkVersionMonitorService.getCurrent()).thenReturn(frameworkVersionsResponse());
+    when(frameworkVersionMonitorService.refresh()).thenReturn(frameworkVersionsResponse());
+    var supportEngineerLogin = oauth2Login()
+        .attributes(attrs -> {
+          attrs.put("sub", "support-user");
+          attrs.put("tenantId", "tenant-1");
+        })
+        .authorities(new SimpleGrantedAuthority("ROLE_support-engineer"));
+    var adminLogin = oauth2Login()
+        .attributes(attrs -> {
+          attrs.put("sub", "admin-user");
+          attrs.put("tenantId", "tenant-1");
+        })
+        .authorities(new SimpleGrantedAuthority("ROLE_admin"));
+
+    mockMvc.perform(get("/api/v1/admin/framework-versions").with(supportEngineerLogin))
+        .andExpect(status().isOk());
+    mockMvc.perform(post("/api/v1/admin/framework-versions/refresh")
+            .with(csrf())
+            .with(supportEngineerLogin))
+        .andExpect(status().isForbidden());
+    mockMvc.perform(post("/api/v1/admin/framework-versions/refresh")
+            .with(csrf())
+            .with(adminLogin))
+        .andExpect(status().isOk());
+  }
+
+  @Test
   void supportEngineerCanReadConfigSetsButCannotAccessAdminOnlyMutations() throws Exception {
     var supportEngineerLogin = oauth2Login()
         .attributes(attrs -> {
@@ -247,6 +283,11 @@ class SecurityConfigRouteMatrixTest {
       .andExpect(jsonPath("$.properties.traceId").isNotEmpty());
 
     mockMvc.perform(post("/api/v1/meetings/meeting-missing/cancel").with(csrf()).with(supportEngineerLogin))
+        .andExpect(status().isForbidden());
+
+    mockMvc.perform(post("/api/v1/admin/incidents/incident-1/ticket")
+            .with(csrf())
+            .with(supportEngineerLogin))
         .andExpect(status().isForbidden());
   }
 
@@ -274,6 +315,39 @@ class SecurityConfigRouteMatrixTest {
 
     mockMvc.perform(post("/api/v1/meetings/meeting-missing/cancel").with(csrf()).with(systemAdminLogin))
         .andExpect(status().isForbidden());
+
+    mockMvc.perform(post("/api/v1/admin/incidents/incident-1/ticket")
+            .with(csrf())
+            .with(systemAdminLogin))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void securityAdminCanReadOperationalEndpointsButCannotMutateThem() throws Exception {
+    var securityAdminLogin = oauth2Login()
+        .attributes(attrs -> {
+          attrs.put("sub", "security-admin-user");
+          attrs.put("tenantId", "tenant-1");
+        })
+        .authorities(new SimpleGrantedAuthority("ROLE_security-admin"));
+
+    mockMvc.perform(get("/api/v1/config-sets").param("tenantId", "tenant-1").with(securityAdminLogin))
+        .andExpect(status().isOk());
+
+    mockMvc.perform(get("/api/v1/admin/dashboard").with(securityAdminLogin))
+        .andExpect(status().isOk());
+
+    mockMvc.perform(post("/api/v1/config-sets")
+            .with(csrf())
+            .with(securityAdminLogin)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+        .andExpect(status().isForbidden());
+
+    mockMvc.perform(post("/api/v1/admin/incidents/incident-1/ticket")
+            .with(csrf())
+            .with(securityAdminLogin))
+        .andExpect(status().isForbidden());
   }
 
   @Test
@@ -282,7 +356,8 @@ class SecurityConfigRouteMatrixTest {
         .attributes(attrs -> {
           attrs.put("sub", "regular-user");
           attrs.put("tenantId", "tenant-1");
-        });
+        })
+        .authorities(new SimpleGrantedAuthority("ROLE_participant"));
 
     mockMvc.perform(get("/api/v1/rooms").param("tenantId", "tenant-1").with(userLogin))
         .andExpect(status().isForbidden())
@@ -299,10 +374,61 @@ class SecurityConfigRouteMatrixTest {
   }
 
   @Test
+  void tenantScopedEndpointsRejectARequestedTenantDifferentFromThePrincipal() throws Exception {
+    var adminLogin = oauth2Login()
+        .attributes(attrs -> {
+          attrs.put("sub", "tenant-admin");
+          attrs.put("tenantId", "tenant-1");
+        })
+        .authorities(new SimpleGrantedAuthority("ROLE_admin"));
+
+    mockMvc.perform(get("/api/v1/rooms").param("tenantId", "tenant-2").with(adminLogin))
+        .andExpect(status().isForbidden())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TENANT_ACCESS_DENIED.code()));
+
+    mockMvc.perform(get("/api/v1/users/search")
+            .param("tenant_id", "tenant-2")
+            .param("q", "a")
+            .with(adminLogin))
+        .andExpect(status().isForbidden())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TENANT_ACCESS_DENIED.code()));
+  }
+
+  @Test
+  void unknownPlatformRoleDoesNotGainAdministrativeAccess() throws Exception {
+    var unknownRoleLogin = oauth2Login()
+        .attributes(attrs -> {
+          attrs.put("sub", "organizer-user");
+          attrs.put("tenantId", "tenant-1");
+        })
+        .authorities(new SimpleGrantedAuthority("ROLE_organizer"));
+
+    mockMvc.perform(get("/api/v1/rooms").param("tenantId", "tenant-1").with(unknownRoleLogin))
+        .andExpect(status().isForbidden());
+
+    mockMvc.perform(get("/api/v1/admin/dashboard").with(unknownRoleLogin))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
   void undefinedEndpointIsDeniedByDefault() throws Exception {
     mockMvc.perform(get("/api/v1/non-existent-endpoint"))
         .andExpect(status().isUnauthorized());
   }
+
+  private AdminFrameworkVersionsResponse frameworkVersionsResponse() {
+    Instant now = Instant.parse("2026-07-30T10:00:00Z");
+    return new AdminFrameworkVersionsResponse(
+        now,
+        now,
+        now.plusSeconds(21_600),
+        "current",
+        "Versions checked.",
+        false,
+        0,
+        0,
+        List.of());
+  }
 }
-
-

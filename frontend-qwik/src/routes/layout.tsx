@@ -2,6 +2,7 @@ import {
   component$,
   useSignal,
   useStore,
+  useTask$,
   useContextProvider,
   useOnDocument,
   $,
@@ -22,6 +23,7 @@ import {
   logoutFromAuthSession,
   resolveAuthRecoveryRedirectPath,
   resolveAuthRedirectPath,
+  synchronizeAuthStore,
   type AuthStore,
   type SafeUserProfile,
 } from "~/lib/domains/auth";
@@ -237,6 +239,11 @@ export default component$(() => {
     isAuthenticated: !!authData.value,
     profile: authData.value,
     error: null,
+  });
+
+  useTask$(({ track }) => {
+    const profile = track(() => authData.value);
+    synchronizeAuthStore(authStore, profile);
   });
 
   const toggle$ = $(() => {

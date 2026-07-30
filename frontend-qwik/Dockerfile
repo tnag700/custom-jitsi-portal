@@ -1,8 +1,8 @@
-FROM node:22-alpine AS build
+FROM node:24.18.0-alpine AS build
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 
 COPY . .
@@ -12,7 +12,7 @@ ENV VITE_API_URL=${VITE_API_URL}
 
 RUN npm run build
 
-FROM node:22-alpine
+FROM node:24.18.0-alpine
 
 WORKDIR /app
 

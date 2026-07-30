@@ -14,7 +14,13 @@ export {
   adaptJoinProblemDetails,
 } from "./join.service";
 
-export { canStartJoin, mapUpcomingMeetingsLoaderError } from "./join-flow.helpers";
+export {
+  canStartJoin,
+  mapUpcomingMeetingsLoaderError,
+  resolveExpectedJoinOrigin,
+  validateJoinRedirect,
+} from "./join-flow.helpers";
+export type { ValidatedJoinRedirect } from "./join-flow.helpers";
 
 export { UpcomingMeetingCard as UpcomingMeetingCardComponent } from "./components/UpcomingMeetingCard";
 export { UpcomingMeetingsList } from "./components/UpcomingMeetingsList";

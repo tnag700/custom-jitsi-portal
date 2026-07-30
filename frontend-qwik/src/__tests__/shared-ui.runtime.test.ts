@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
+import { noSerialize } from "@qwik.dev/core";
 import {
   collectNodes,
+  eventHandler,
   findNode,
   findNodes,
   isRenderedNode,
@@ -86,7 +88,7 @@ describe("shared ui runtime smoke", () => {
     const { AppDialog } = await import("~/lib/shared/ui/AppDialog");
     const show = { value: true };
 
-    const tree = renderNode(
+    const tree = await renderNode(
       AppDialog({
         title: "Диалог",
         description: "Описание",
@@ -118,7 +120,7 @@ describe("shared ui runtime smoke", () => {
     const { AppToast } = await import("~/lib/shared/components/AppToast");
     const dismiss = vi.fn();
 
-    const tree = renderNode(
+    const tree = await renderNode(
       AppToast({
         toast: {
           title: "Готово",
@@ -144,7 +146,7 @@ describe("shared ui runtime smoke", () => {
   it("AppPopover preserves public props and trigger/panel composition", async () => {
     const { AppPopover } = await import("~/lib/shared/ui/AppPopover");
 
-    const tree = renderNode(
+    const tree = await renderNode(
       AppPopover({ id: "popover-a", floating: "right", gutter: 12 }),
     );
 
@@ -172,9 +174,9 @@ describe("shared ui runtime smoke", () => {
     const { AppCombobox, forwardComboboxValue } = await import(
       "~/lib/shared/ui/AppCombobox"
     );
-    const handleChange = vi.fn();
+    const handleChange = noSerialize(vi.fn());
 
-    const tree = renderNode(
+    const tree = await renderNode(
       AppCombobox({
         items: [
           { value: "one", label: "One" },
@@ -198,7 +200,7 @@ describe("shared ui runtime smoke", () => {
     expect(tree.props.filter).toBe(true);
     expect(tree.props.name).toBe("meeting-role");
     expect(tree.props.loop).toBe(false);
-    expect(typeof tree.props.onChange$).toBe("function");
+    expect(typeof eventHandler(tree, "change")).toBe("function");
     await forwardComboboxValue("two", handleChange);
     expect(handleChange).toHaveBeenCalledOnce();
     expect(handleChange).toHaveBeenCalledWith("two");

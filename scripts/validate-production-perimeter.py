@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+
+from _keycloak_guardrails import validate_portal_user_profile
 from _python_guardrails import (
     assert_contains,
     assert_not_contains,
@@ -74,6 +77,13 @@ def main() -> None:
     nginx_config_text = read_repo_text("deploy/nginx/portal.conf.example", "Nginx portal config")
     ip_bootstrap_config_text = read_repo_text("deploy/nginx/portal-ip.conf.example", "IP bootstrap config")
     application_prod_text = read_repo_text("backend/src/main/resources/application-prod.yml", "Spring production config")
+    realm_path = root / "pilot/keycloak/realm/production/jitsi-realm.json"
+    production_realm = json.loads(realm_path.read_text(encoding="utf-8"))
+    validate_portal_user_profile(
+        production_realm,
+        label="Production Keycloak realm",
+        require_seeded_tenants=False,
+    )
 
     required_networks = {
         "edge_net": False,
@@ -103,6 +113,41 @@ def main() -> None:
     jitsi_prosody = get_service_block(base_text, "jitsi-prosody")
     jitsi_jicofo = get_service_block(base_text, "jitsi-jicofo")
     jitsi_jvb = get_service_block(base_text, "jitsi-jvb")
+
+    approved_jitsi_images = {
+        "jitsi-web": (jitsi_web, "image: jitsi/web:stable-10978"),
+        "jitsi-prosody": (jitsi_prosody, "image: jitsi/prosody:stable-10978"),
+        "jitsi-jicofo": (jitsi_jicofo, "image: jitsi/jicofo:stable-10978"),
+        "jitsi-jvb": (jitsi_jvb, "image: jitsi/jvb:stable-10978"),
+    }
+    for service_name, (service_block, image) in approved_jitsi_images.items():
+        assert_contains(
+            service_block,
+            image,
+            f"{service_name} must use the approved Jitsi stable-10978 release.",
+        )
+    if base_text.count("image: jitsi/") != len(approved_jitsi_images):
+        fail("Production baseline must define exactly the four approved Jitsi service images.")
+    assert_not_contains(
+        base_text,
+        "stable-10741",
+        "Production baseline must not retain the retired Jitsi stable-10741 tag.",
+    )
+
+    issuer_contract = "${APP_MEETINGS_TOKEN_ISSUER:-https://portal.example.com}"
+    issuer_assignments = [
+        f"APP_MEETINGS_TOKEN_ISSUER={issuer_contract}",
+        f"JWT_APP_ID={issuer_contract}",
+        f"JWT_ACCEPTED_ISSUERS={issuer_contract}",
+    ]
+    expected_issuer_counts = [1, 2, 2]
+    for assignment, expected_count in zip(issuer_assignments, expected_issuer_counts):
+        if base_text.count(assignment) != expected_count:
+            fail(
+                "Production baseline must derive backend token issuance and both "
+                f"Jitsi validators from one APP_MEETINGS_TOKEN_ISSUER. Expected "
+                f"{expected_count} occurrence(s) of '{assignment}'."
+            )
 
     published_ports = {service_name: get_port_list(get_service_block(base_text, service_name)) for service_name in get_service_names(base_text)}
     allowed_published_ports = {"80:80", "443:443", "10000:10000/udp"}
@@ -145,6 +190,7 @@ def main() -> None:
     assert_contains(nginx, "${NGINX_PORTAL_CONFIG_PATH:-./deploy/nginx/portal.conf.example}", "Nginx must default to deploy/nginx/portal.conf.example for production baseline.")
     assert_not_contains(nginx, "./deploy/nginx/portal-ip.conf.example", "IP-only bootstrap config must not become the production baseline mount target.")
     assert_contains(keycloak, "KC_HOSTNAME_STRICT=true", "Keycloak must keep strict hostname mode enabled in production baseline.")
+    assert_contains(keycloak, "image: quay.io/keycloak/keycloak:26.7.0", "Production must use the approved Keycloak patch.")
     assert_contains(keycloak, "KC_PROXY_HEADERS=xforwarded", "Keycloak must use xforwarded proxy headers mode in production baseline.")
     assert_contains(keycloak, "KC_PROXY_TRUSTED_ADDRESSES=${KC_PROXY_TRUSTED_ADDRESSES:-172.28.240.10}", "Keycloak must trust only the pinned nginx reverse proxy address by default.")
     assert_not_contains(keycloak, "9000:", "Keycloak management port 9000 must not be published in production baseline.")

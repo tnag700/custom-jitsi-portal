@@ -1,8 +1,7 @@
-import { $, component$, useSignal, useTask$, type Signal } from "@qwik.dev/core";
+import { component$, useSignal, useTask$, type Signal } from "@qwik.dev/core";
 import { Form } from "@qwik.dev/router";
 import { ApiErrorAlert, AppDialog } from "~/lib/shared";
 import type { Room, RoomErrorPayload } from "../types";
-import { createRoomSchema, updateRoomSchema } from "../rooms.zod";
 
 interface RoomFormProps {
   action: unknown;
@@ -27,34 +26,6 @@ export const RoomForm = component$<RoomFormProps>(
     const nameValue = useSignal(room?.name ?? "");
     const descriptionValue = useSignal(room?.description ?? "");
     const configSetIdValue = useSignal(room?.configSetId ?? (configSets[0] ?? ""));
-    const validationErrors = useSignal<Record<string, string>>({});
-
-    const handleSubmit$ = $((event: Event) => {
-      const data = {
-        name: nameValue.value,
-        description: descriptionValue.value || undefined,
-        configSetId: configSetIdValue.value,
-      };
-
-      const schema = isEdit ? updateRoomSchema : createRoomSchema;
-      const result = schema.safeParse(data);
-
-      if (!result.success) {
-        const errors: Record<string, string> = {};
-        for (const issue of result.error.issues) {
-          const key = issue.path[0];
-          if (typeof key === "string") {
-            errors[key] = issue.message;
-          }
-        }
-        validationErrors.value = errors;
-        event.preventDefault();
-        return;
-      }
-
-      validationErrors.value = {};
-    });
-
     const errorMessage = error
       ? ERROR_MESSAGES[error.errorCode] ?? error.detail
       : null;
@@ -70,7 +41,6 @@ export const RoomForm = component$<RoomFormProps>(
       nameValue.value = room?.name ?? "";
       descriptionValue.value = room?.description ?? "";
       configSetIdValue.value = room?.configSetId ?? (configSets[0] ?? "");
-      validationErrors.value = {};
       void roomId;
     });
 
@@ -96,7 +66,7 @@ export const RoomForm = component$<RoomFormProps>(
             </div>
           )}
 
-          <Form id={formId} action={action as never} onSubmit$={handleSubmit$}>
+          <Form id={formId} action={action as never}>
             <div class="space-y-4">
             <div>
               <label class="mb-1 block text-sm font-medium text-text" for="room-name">
@@ -106,15 +76,14 @@ export const RoomForm = component$<RoomFormProps>(
                 id="room-name"
                 name="name"
                 type="text"
+                required
+                maxLength={255}
                 class="w-full rounded border border-border bg-bg px-3 py-2 text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 value={nameValue.value}
                 onInput$={(_, el) => {
                   nameValue.value = el.value;
                 }}
               />
-              {validationErrors.value.name && (
-                <p class="mt-1 text-xs text-red-600">{validationErrors.value.name}</p>
-              )}
             </div>
 
             <div>
@@ -126,16 +95,12 @@ export const RoomForm = component$<RoomFormProps>(
                 name="description"
                 class="w-full rounded border border-border bg-bg px-3 py-2 text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 rows={3}
+                maxLength={1000}
                 value={descriptionValue.value}
                 onInput$={(_, el) => {
                   descriptionValue.value = el.value;
                 }}
               />
-              {validationErrors.value.description && (
-                <p class="mt-1 text-xs text-red-600">
-                  {validationErrors.value.description}
-                </p>
-              )}
             </div>
 
             <div>
@@ -145,6 +110,7 @@ export const RoomForm = component$<RoomFormProps>(
               <select
                 id="room-config-set"
                 name="configSetId"
+                required
                 class="w-full rounded border border-border bg-bg px-3 py-2 text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 value={configSetIdValue.value}
                 onChange$={(_, el) => {
@@ -157,11 +123,6 @@ export const RoomForm = component$<RoomFormProps>(
                   </option>
                 ))}
               </select>
-              {validationErrors.value.configSetId && (
-                <p class="mt-1 text-xs text-red-600">
-                  {validationErrors.value.configSetId}
-                </p>
-              )}
             </div>
             </div>
 

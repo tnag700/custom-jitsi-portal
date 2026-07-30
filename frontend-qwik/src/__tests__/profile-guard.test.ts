@@ -59,28 +59,45 @@ describe("Profile Guard: barrel export (AC: all)", () => {
 });
 
 describe("Profile Guard: route integration (AC: 1, 2, 3, 4, 5, 6)", () => {
-  it("routes/profile/index.tsx should contain routeLoader$ and routeAction$", () => {
+  it("profile route should stay a thin composition boundary", () => {
     const tsx = readSrc("routes/profile/index.tsx");
-    expect(tsx).toContain("routeLoader$");
-    expect(tsx).toContain("routeAction$");
+    expect(tsx).toContain("ProfilePage");
+    expect(tsx).toContain("useMyProfile");
+    expect(tsx).toContain("useUpsertProfile");
+    expect(tsx).not.toContain("routeLoader$");
+    expect(tsx).not.toContain("routeAction$");
+    expect(tsx.split("\n").length).toBeLessThan(40);
   });
 
-  it("routes/profile/index.tsx should use fetchMyProfile and upsertMyProfile", () => {
-    const tsx = readSrc("routes/profile/index.tsx");
-    expect(tsx).toContain("fetchMyProfile");
-    expect(tsx).toContain("upsertMyProfile");
+  it("profile loader and action should own backend requests", () => {
+    const loader = readSrc("routes/profile/loader.ts");
+    const action = readSrc("routes/profile/action.ts");
+    expect(loader).toContain("routeLoader$");
+    expect(loader).toContain("fetchMyProfile");
+    expect(action).toContain("routeAction$");
+    expect(action).toContain("upsertMyProfile");
   });
 
-  it("routes/profile/index.tsx should build mutation context instead of inlining CSRF header logic", () => {
-    const tsx = readSrc("routes/profile/index.tsx");
-    expect(tsx).toContain("buildMutationRequestContext");
-    expect(tsx).toContain("buildServerRequestContext");
+  it("profile loader and action should use shared server request contexts", () => {
+    const loader = readSrc("routes/profile/loader.ts");
+    const action = readSrc("routes/profile/action.ts");
+    expect(loader).toContain("buildServerRequestContext");
+    expect(action).toContain("buildMutationRequestContext");
   });
 
-  it("routes/profile/index.tsx should validate with profileFormSchema and surface success via toast", () => {
-    const tsx = readSrc("routes/profile/index.tsx");
-    expect(tsx).toContain("profileFormSchema");
-    expect(tsx).toContain("showToast$");
-    expect(tsx).toContain("Профиль сохранён");
+  it("profile action should validate while page surfaces success via toast", () => {
+    const action = readSrc("routes/profile/action.ts");
+    const page = readSrc("routes/profile/profile-page.tsx");
+    expect(action).toContain("profileFormSchema");
+    expect(page).toContain("showToast$");
+    expect(page).toContain("Профиль сохранён");
+  });
+
+  it("profile page should explain data use and isolate role management", () => {
+    const page = readSrc("routes/profile/profile-page.tsx");
+    expect(page).toContain("Где используются данные");
+    expect(page).toContain("Системные");
+    expect(page).toContain("роли и права доступа здесь не изменяются");
+    expect(page).toContain("Изменить системную роль через профиль нельзя");
   });
 });

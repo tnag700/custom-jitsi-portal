@@ -73,6 +73,8 @@ describe("Meetings Guard: components (AC: 1-6)", () => {
     expect(tsx).toContain("preventdefault:submit");
     expect(tsx).toContain("submitAction(submission.payload)");
     expect(tsx).toContain("submission.payload");
+    expect(tsx).toContain('type="radio"');
+    expect(tsx).toContain("Формат встречи");
   });
 
   it("MeetingList.tsx should contain component$", () => {
@@ -110,14 +112,24 @@ describe("Meetings Guard: route (AC: 1-7)", () => {
     const tsx = readSrc("routes/meetings/index.tsx");
     expect(tsx).toContain("useMeetings");
     expect(tsx).toContain("useCreateInvite");
-    expect(tsx).toContain("./route-handlers");
+    expect(tsx).toContain("./loaders");
+    expect(tsx).toContain("./meeting-actions");
+    expect(tsx).toContain("./participant-actions");
+    expect(tsx).toContain("./invite-actions");
     expect(tsx).toContain("./meetings-page");
   });
 
-  it("routes/meetings/route-handlers.ts should contain routeLoader$ and routeAction$", () => {
-    const ts = readSrc("routes/meetings/route-handlers.ts");
-    expect(ts).toContain("routeLoader$");
-    expect(ts).toContain("routeAction$");
+  it("routes/meetings should separate loaders from mutation use cases", () => {
+    const loaders = readSrc("routes/meetings/loaders.ts");
+    const meetingActions = readSrc("routes/meetings/meeting-actions.ts");
+    const participantActions = readSrc(
+      "routes/meetings/participant-actions.ts",
+    );
+
+    expect(loaders).toContain("routeLoader$");
+    expect(loaders).not.toContain("routeAction$");
+    expect(meetingActions).toContain("routeAction$");
+    expect(participantActions).toContain("routeAction$");
   });
 
   it("routes/meetings confirmation dialogs should use Form for actions", () => {

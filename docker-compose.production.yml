@@ -167,7 +167,7 @@ services:
       - secret_net
 
   db:
-    image: postgres:18.1
+    image: postgres:18.4
     cap_drop:
       - ALL
     security_opt:
@@ -251,7 +251,7 @@ services:
       - ops_net
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.1.2
+    image: quay.io/keycloak/keycloak:26.7.0
     cap_drop:
       - ALL
     security_opt:
@@ -287,7 +287,7 @@ services:
       - identity_net
 
   jitsi-web:
-    image: jitsi/web:stable-10741
+    image: jitsi/web:stable-10978
     cap_drop:
       - ALL
     cap_add:
@@ -309,8 +309,8 @@ services:
       - ENABLE_AUTH=1
       - AUTH_TYPE=jwt
       - PROSODY_AUTH_TYPE=jwt
-      - JWT_APP_ID=${JWT_APP_ID:-https://portal.example.com}
-      - JWT_ACCEPTED_ISSUERS=${JWT_ACCEPTED_ISSUERS:-https://portal.example.com}
+      - JWT_APP_ID=${APP_MEETINGS_TOKEN_ISSUER:-https://portal.example.com}
+      - JWT_ACCEPTED_ISSUERS=${APP_MEETINGS_TOKEN_ISSUER:-https://portal.example.com}
       - JWT_ACCEPTED_AUDIENCES=${JWT_ACCEPTED_AUDIENCES:-jitsi-meet}
       - JWT_ALLOW_EMPTY=0
       - ENABLE_GUESTS=0
@@ -348,7 +348,7 @@ services:
       - realtime_net
 
   jitsi-prosody:
-    image: jitsi/prosody:stable-10741
+    image: jitsi/prosody:stable-10978
     cap_drop:
       - ALL
     security_opt:
@@ -365,8 +365,8 @@ services:
       - ENABLE_AUTH=1
       - AUTH_TYPE=jwt
       - PROSODY_AUTH_TYPE=jwt
-      - JWT_APP_ID=${JWT_APP_ID:-https://portal.example.com}
-      - JWT_ACCEPTED_ISSUERS=${JWT_ACCEPTED_ISSUERS:-https://portal.example.com}
+      - JWT_APP_ID=${APP_MEETINGS_TOKEN_ISSUER:-https://portal.example.com}
+      - JWT_ACCEPTED_ISSUERS=${APP_MEETINGS_TOKEN_ISSUER:-https://portal.example.com}
       - JWT_ACCEPTED_AUDIENCES=${JWT_ACCEPTED_AUDIENCES:-jitsi-meet}
       - JWT_ALLOW_EMPTY=0
       - ENABLE_GUESTS=0
@@ -396,7 +396,7 @@ services:
           - guest.meet.jitsi
 
   jitsi-jicofo:
-    image: jitsi/jicofo:stable-10741
+    image: jitsi/jicofo:stable-10978
     cap_drop:
       - ALL
     security_opt:
@@ -431,7 +431,7 @@ services:
       - realtime_net
 
   jitsi-jvb:
-    image: jitsi/jvb:stable-10741
+    image: jitsi/jvb:stable-10978
     cap_drop:
       - ALL
     security_opt:

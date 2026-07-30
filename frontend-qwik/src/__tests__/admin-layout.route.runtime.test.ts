@@ -52,6 +52,11 @@ describe("admin layout route helpers", () => {
         label: "Конфиг-наборы",
       },
       {
+        href: "/admin/framework-versions?environment=dev&returnTo=%2Fadmin%2Fincidents%3Fenvironment%3Ddev%26view%3Dcritical",
+        match: "/admin/framework-versions",
+        label: "Версии и CVE",
+      },
+      {
         href: "/admin/jitsi?environment=dev&returnTo=%2Fadmin%2Fincidents%3Fenvironment%3Ddev%26view%3Dcritical",
         match: "/admin/jitsi",
         label: "Доступ Jitsi",
@@ -68,7 +73,11 @@ describe("admin layout route helpers", () => {
       buildAdminSecondaryNavItems(currentUrl, "prod", false).map(
         (item) => item.match,
       ),
-    ).toEqual(["/admin/role-history", "/admin/config-sets"]);
+    ).toEqual([
+      "/admin/role-history",
+      "/admin/config-sets",
+      "/admin/framework-versions",
+    ]);
   });
 
   it("marks active admin navigation items by exact and nested route match", () => {

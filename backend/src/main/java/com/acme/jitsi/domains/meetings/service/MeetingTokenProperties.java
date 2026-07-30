@@ -26,7 +26,7 @@ class MeetingTokenProperties {
 
     static UnknownRolePolicy from(String value) {
       if (value == null || value.isBlank()) {
-        return FALLBACK_PARTICIPANT;
+        return DENY_ACCESS;
       }
 
       String normalized = value.trim().toLowerCase(java.util.Locale.ROOT);

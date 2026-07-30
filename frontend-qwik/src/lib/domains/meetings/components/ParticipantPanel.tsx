@@ -1,6 +1,7 @@
 import {
   $,
   component$,
+  sync$,
   useSignal,
   useTask$,
   type QRL,
@@ -145,7 +146,7 @@ export const ParticipantPanel = component$<ParticipantPanelProps>(
       );
     });
 
-    const confirmDelete$ = $((event: Event) => {
+    const confirmDelete$ = sync$((event: Event) => {
       if (
         typeof window !== "undefined" &&
         !window.confirm("Удалить участника из встречи?")
@@ -165,7 +166,6 @@ export const ParticipantPanel = component$<ParticipantPanelProps>(
         }}
         onKeyDown$={(event) => {
           if (event.key === "Escape") {
-            event.preventDefault();
             void requestClose$();
           }
         }}

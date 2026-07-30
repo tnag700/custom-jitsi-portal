@@ -4,6 +4,7 @@ import { join, relative } from "node:path";
 
 const SRC_DIR = join(__dirname, "..");
 const PROJECT_DIR = join(SRC_DIR, "..");
+const REPOSITORY_DIR = join(PROJECT_DIR, "..");
 
 /**
  * Recursively collect all files matching extensions under a directory.
@@ -60,6 +61,65 @@ describe("Migration Guard: Qwik patterns MUST be present", () => {
 });
 
 describe("Story 14.1 Guard: framework and infrastructure baseline", () => {
+  it("pins one supported Node LTS runtime across development and containers", () => {
+    const packageJson = readProject("package.json");
+    const serverPackageJson = readProject("server/package.json");
+    const dockerfile = readProject("Dockerfile");
+    const nvmrc = readFileSync(join(REPOSITORY_DIR, ".nvmrc"), "utf-8").trim();
+    const devMonitoring = readFileSync(
+      join(REPOSITORY_DIR, "docker-compose.monitoring.yml"),
+      "utf-8",
+    );
+    const productionMonitoring = readFileSync(
+      join(REPOSITORY_DIR, "docker-compose.production.monitoring.yml"),
+      "utf-8",
+    );
+
+    expect(nvmrc).toBe("24.18.0");
+    expect(packageJson).toContain('"node": ">=24.18.0 <25"');
+    expect(serverPackageJson).toContain('"node": ">=24.18.0 <25"');
+    expect(dockerfile.match(/FROM node:24\.18\.0-alpine/g)).toHaveLength(2);
+    expect(devMonitoring).toContain("image: node:24.18.0-alpine");
+    expect(productionMonitoring).toContain("image: node:24.18.0-alpine");
+  });
+
+  it("pins one supported Keycloak patch across development and production", () => {
+    const devCompose = readFileSync(
+      join(REPOSITORY_DIR, "docker-compose.yml"),
+      "utf-8",
+    );
+    const productionCompose = readFileSync(
+      join(REPOSITORY_DIR, "docker-compose.production.yml"),
+      "utf-8",
+    );
+    const expectedImage = "image: quay.io/keycloak/keycloak:26.7.0";
+
+    expect(devCompose.split(expectedImage)).toHaveLength(2);
+    expect(productionCompose.split(expectedImage)).toHaveLength(2);
+    expect(devCompose).not.toContain("keycloak:26.1.2");
+    expect(productionCompose).not.toContain("keycloak:26.1.2");
+  });
+
+  it("pins one supported Jitsi release across all conference services", () => {
+    const composeFiles = [
+      "docker-compose.yml",
+      "docker-compose.production.yml",
+    ];
+    const services = ["web", "prosody", "jicofo", "jvb"];
+
+    for (const composeFile of composeFiles) {
+      const source = readFileSync(join(REPOSITORY_DIR, composeFile), "utf-8");
+
+      for (const service of services) {
+        expect(source).toContain(`image: jitsi/${service}:stable-10978`);
+      }
+      expect(
+        source.match(/image: jitsi\/(?:web|prosody|jicofo|jvb):/g),
+      ).toHaveLength(services.length);
+      expect(source).not.toContain("stable-10741");
+    }
+  });
+
   it("should NOT use legacy @builder.io import paths in source files", () => {
     const allFiles = collectFiles(SRC_DIR, [".tsx", ".ts"]);
     const sourceFiles = allFiles.filter((f) => !f.endsWith(".test.ts"));
@@ -105,6 +165,33 @@ describe("Story 14.1 Guard: framework and infrastructure baseline", () => {
     expect(plugin).toContain("buildDocumentContentSecurityPolicy");
     expect(plugin).toContain("shouldApplyDocumentSecurityHeaders");
   });
+
+  it("provides one reproducible repository gate without duplicate OpenAPI generation", () => {
+    const repositoryPackage = JSON.parse(
+      readFileSync(join(REPOSITORY_DIR, "package.json"), "utf-8"),
+    ) as { scripts: Record<string, string> };
+    const contractGuard = readFileSync(
+      join(REPOSITORY_DIR, "scripts", "check-contracts.mjs"),
+      "utf-8",
+    );
+    const repositoryGate = readFileSync(
+      join(REPOSITORY_DIR, "scripts", "verify-repository.mjs"),
+      "utf-8",
+    );
+
+    expect(repositoryPackage.scripts.verify).toBe(
+      "node scripts/verify-repository.mjs",
+    );
+    expect(repositoryPackage.scripts["contracts:check"]).toBe(
+      "node scripts/check-contracts.mjs",
+    );
+    expect(contractGuard.match(/generate-openapi\.mjs/g)).toHaveLength(1);
+    expect(repositoryGate.match(/check-contracts\.mjs/g)).toHaveLength(1);
+    expect(repositoryGate).toContain("--with-backend-gates");
+    expect(repositoryGate).not.toContain("gradlew");
+    expect(repositoryGate).not.toContain("check-openapi.mjs");
+    expect(repositoryGate).not.toContain("check-frontend-api-types.mjs");
+  });
 });
 
 describe("Migration Guard: Legacy Svelte/SvelteKit patterns MUST be absent", () => {
@@ -137,6 +224,51 @@ describe("Migration Guard: Legacy Svelte/SvelteKit patterns MUST be absent", () 
 });
 
 describe("Architecture Guard: routeLoader$/routeAction$ only in routes/", () => {
+  it("keeps the cabinet join route split by delivery concern", () => {
+    const routesDir = join(SRC_DIR, "routes");
+    const expectedModules = [
+      "join-loaders.ts",
+      "join-action.ts",
+      "join-page.tsx",
+    ];
+
+    for (const moduleName of expectedModules) {
+      expect(existsSync(join(routesDir, moduleName))).toBe(true);
+    }
+
+    const indexSource = readSrc(join(routesDir, "index.tsx"));
+    expect(indexSource).not.toContain("routeLoader$");
+    expect(indexSource).not.toContain("routeAction$");
+  });
+
+  it("keeps the profile route split by delivery concern", () => {
+    const profileDir = join(SRC_DIR, "routes", "profile");
+    const expectedModules = ["loader.ts", "action.ts", "profile-page.tsx"];
+
+    for (const moduleName of expectedModules) {
+      expect(existsSync(join(profileDir, moduleName))).toBe(true);
+    }
+
+    const indexSource = readSrc(join(profileDir, "index.tsx"));
+    expect(indexSource).not.toContain("routeLoader$");
+    expect(indexSource).not.toContain("routeAction$");
+  });
+
+  it("keeps meeting route orchestration split by use case", () => {
+    const meetingsRouteDir = join(SRC_DIR, "routes", "meetings");
+    const expectedModules = [
+      "loaders.ts",
+      "meeting-actions.ts",
+      "participant-actions.ts",
+      "invite-actions.ts",
+    ];
+
+    for (const moduleName of expectedModules) {
+      expect(existsSync(join(meetingsRouteDir, moduleName))).toBe(true);
+    }
+    expect(existsSync(join(meetingsRouteDir, "route-handlers.ts"))).toBe(false);
+  });
+
   it("should NOT export routeLoader$ or routeAction$ outside of routes/", () => {
     const allFiles = collectFiles(SRC_DIR, [".tsx", ".ts"]);
     const routesDir = join(SRC_DIR, "routes");

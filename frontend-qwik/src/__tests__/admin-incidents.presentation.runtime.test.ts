@@ -114,7 +114,7 @@ describe("admin incidents presentation", () => {
     const { AdminIncidentQueueOverview } = await import(
       "~/lib/domains/admin/components"
     );
-    const tree = renderNode(
+    const tree = await renderNode(
       AdminIncidentQueueOverview({
         currentUrl:
           "http://localhost:3000/admin/incidents?period=15m&environment=dev",
@@ -184,7 +184,7 @@ describe("admin incidents presentation", () => {
         },
       ],
     };
-    const tree = renderNode(
+    const tree = await renderNode(
       AdminIncidentQueueOverview({
         currentUrl:
           "http://localhost:3000/admin/incidents?period=15m&traceId=trace-1",
@@ -230,7 +230,7 @@ describe("admin incidents presentation", () => {
     incidents.selectedView = "critical";
     incidents.selectedQuickFacet = "warning";
     incidents.quickFacets[0].active = true;
-    const tree = renderNode(
+    const tree = await renderNode(
       AdminIncidentQueueOverview({
         currentUrl:
           "http://localhost:3000/admin/incidents?environment=prod&view=critical&facet=warning&category=AUTH&meetingId=meeting-7&requestId=request-7&limit=25&offset=25",

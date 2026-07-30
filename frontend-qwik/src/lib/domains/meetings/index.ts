@@ -42,3 +42,8 @@ export { MeetingForm } from "./components/MeetingForm";
 export type { MeetingFormAction } from "./components/MeetingForm";
 export { MeetingList } from "./components/MeetingList";
 export { ParticipantPanel } from "./components/ParticipantPanel";
+export {
+  MEETING_TYPE_OPTIONS,
+  getMeetingTypeOptions,
+  getMeetingTypePresentation,
+} from "./meeting-type-presentation";

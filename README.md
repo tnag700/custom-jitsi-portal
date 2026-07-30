@@ -18,10 +18,11 @@
 
 ## Технологический стек
 
-- Backend: Java 25, Spring Boot 4.0.3, Gradle.
+- Backend: Java 25, Spring Boot 4.0.7, Spring Modulith 2.0.7, Gradle 9.4.
 - Data: PostgreSQL 18, Redis 8, Flyway.
-- Security/SSO: Spring Security, OAuth2 client/resource server, Keycloak.
-- Frontend: Qwik City, Vite 7, TypeScript 5.9, ESLint 9, Vitest 3.
+- Security/SSO: Spring Security, OAuth2 client/resource server, Keycloak 26.7.0.
+- Conferencing: Jitsi Meet `stable-10978` (web, Prosody, Jicofo and JVB).
+- Frontend: Qwik 2, Qwik Router, Vite 7, TypeScript 5.9, ESLint 10, Vitest 3.
 - API contract: `openapi.yaml` и сгенерированный `openapi.generated.json`.
 - Observability: Spring Boot Actuator, OpenTelemetry, Prometheus, Alertmanager, Grafana.
 - Architecture governance: ArchUnit, PMD, CPD.
@@ -37,6 +38,10 @@
 - `docker-compose.production.yml` - production-oriented perimeter baseline с trust-zone сетями и закрытыми internal surfaces.
 - `docker-compose.production.monitoring.yml` - private-only monitoring overlay для production baseline.
 - `deploy/runtime/production-runtime-policy-matrix.md` - service-by-service runtime hardening matrix для least-privilege, read-only и writable exceptions.
+- `docs/access-control.md` - каноническая матрица платформенных ролей, ролей встречи и backend-разрешений.
+- `docs/threat-model.md` - модель угроз, trust boundaries, security invariants и обязательные release-проверки.
+- `docs/framework-version-monitoring.md` - инвентарь фреймворков, OSV-проверка, роли и порядок реакции на критические CVE.
+- `docs/refactoring-roadmap.md` - baseline ревью, приоритетный backlog, целевая архитектура и порядок обновления стека/UI.
 - `.env.example` - обязательные переменные окружения для docker-compose.
 
 ## Быстрый старт
@@ -66,12 +71,22 @@
    - `npm run prod:host:baseline:validate`
    - `npm run prod:host:baseline:simulate`
 10. Проверка Vault secret-plane baseline без запуска стенда: `npm run prod:secret:baseline:validate`
+11. Единый локальный quality gate перед публикацией изменений: `npm run verify`
 
 Все validator/smoke entrypoints из `package.json` теперь вызывают Python-скрипты из `scripts/`. Если удобнее обходиться без npm-обёрток, используйте прямой кроссплатформенный запуск через `python scripts/...`, например:
 
 - `python scripts/validate-dev-stack-config.py`
 - `python scripts/validate-production-perimeter.py`
 - `python scripts/run-observability-live-drill.py`
+
+`npm run verify` является каноническим воспроизводимым гейтом репозитория.
+Он одним Gradle build проверяет runtime OpenAPI contract, backend tests,
+ArchUnit/Spring Modulith, PMD и CPD; затем сверяет с тем же OpenAPI-снимком
+сгенерированные frontend-типы, запускает Vitest, TypeScript, client/SSR build,
+ESLint, frontend architecture boundaries и статические dev/production
+guardrails. Перед первым запуском установите зависимости командами `npm ci` и
+`npm --prefix frontend-qwik ci`. Этот гейт не заменяет container health и
+browser/media smoke на dev или staging.
 
 Важно: Postgres-данные в Docker Compose сохраняются в volume `pgdata`. Если раньше среда запускалась с некорректным маппингом volume и после перезапуска пропадали профили или другие данные, пересоздайте stack после исправления compose-конфигурации, чтобы Postgres 18 использовал ожидаемый mount path `/var/lib/postgresql` и image-managed data layout.
 

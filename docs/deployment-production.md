@@ -90,6 +90,52 @@ attribute, and assign only the required realm role (`admin`,
 `support-engineer`, or `participant`; elevated platform roles require a
 separate approval).
 
+The authoritative role and endpoint matrix is
+[`docs/access-control.md`](access-control.md). Do not introduce a Keycloak role
+without adding it to that matrix and to the backend allow-list with positive
+and negative authorization tests.
+
+`tenantId` is declared in both realm files as a managed, single-valued user
+profile attribute. Only the administrative context can view or edit it; portal
+users cannot change their own tenant. The stack validators reject a missing
+declaration, relaxed permissions, missing requirement, or a value outside the
+approved 1–64 character identifier format.
+
+The approved server image is `quay.io/keycloak/keycloak:26.7.0` in both Compose
+baselines. Treat every later Keycloak change as a database migration: stop all
+old nodes, back up the Keycloak data volume and realm/configuration artifacts,
+review every intervening migration note, then start exactly one upgraded node
+and wait for `/health/ready` before routing traffic. A schema upgraded by a
+newer Keycloak image must not be rolled back by starting the old image against
+the same volume; restore the matching pre-upgrade backup instead.
+
+## Jitsi
+
+The approved conference release is `stable-10978`. Web, Prosody, Jicofo and
+JVB are one compatibility group: never upgrade or roll back only a subset of
+the four images. The repository validators reject mixed tags.
+
+The backend and Jitsi must also share one token issuer. Development derives
+`APP_MEETINGS_TOKEN_ISSUER`, `JWT_APP_ID` and `JWT_ACCEPTED_ISSUERS` from
+`DEV_PORTAL_ORIGIN`; production derives all three assignments from
+`APP_MEETINGS_TOKEN_ISSUER`. Do not add an independent Jitsi issuer override:
+that makes correctly signed portal tokens fail at XMPP authentication.
+
+Before changing the Jitsi release, archive and checksum the active web,
+Prosody, Prosody custom-plugin, Jicofo and JVB configuration volumes. Preserve
+the matching backup during rollback. After recreation, verify all of the
+following before routing production traffic:
+
+1. all four containers use the same image tag and are healthy;
+2. root and both close-page paths redirect to the portal;
+3. a room without a portal-issued JWT returns to the portal;
+4. an issued JWT reaches the prejoin page and authenticates to the conference;
+5. `/xmpp-websocket` completes an HTTP 101 upgrade with the `xmpp`
+   subprotocol;
+6. JVB listens on UDP 10000 and the host publishes only the approved UDP port;
+7. leaving a joined conference returns the browser to the portal;
+8. two external clients complete real audio/video exchange.
+
 ## Vault internal-only secret zone
 
 Vault is an internal-only secret zone attached only to `secret_net` and
@@ -173,7 +219,7 @@ tunnel or a separately reviewed private reverse-proxy path.
 8. Prometheus evaluates the committed rules and Alertmanager sends both firing
    and resolved notifications during the controlled drill.
 
-For rollback, preserve PostgreSQL, Keycloak, and Vault data volumes, stop the
-new application containers, restore the previously tested image/tag set, and
-rerun the smoke checklist. Never remove persistent volumes as an application
-rollback step.
+For rollback, preserve PostgreSQL, Keycloak, Vault and Jitsi configuration
+volumes, stop the new application containers, restore the previously tested
+image/tag set and matching configuration backup, and rerun the smoke
+checklist. Never remove persistent volumes as an application rollback step.

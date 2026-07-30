@@ -2,6 +2,9 @@
   "name": "custom-jitsi-portal-ssr-runtime",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24.18.0 <25"
+  },
   "dependencies": {
     "express": "5.2.1",
     "openapi-fetch": "0.17.0"

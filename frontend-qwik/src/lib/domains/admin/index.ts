@@ -11,6 +11,8 @@ export {
   fetchAdminIncidents,
   fetchAdminIncidentDetail,
   fetchAdminRoleHistory,
+  fetchAdminFrameworkVersions,
+  refreshAdminFrameworkVersions,
   searchAdminIncidents,
   createAdminIncidentTicket,
   updateAdminIncidentCoordination,
@@ -58,6 +60,8 @@ export {
   AdminDashboardOverview,
   AdminIncidentDetailOverview,
   AdminIncidentQueueOverview,
+  AdminRoleHistoryOverview,
+  AdminFrameworkVersionsOverview,
 } from "./components";
 export {
   buildAdminPrimaryNavItems,
@@ -81,6 +85,13 @@ export {
   buildAdminRoleHistoryResetQueryUpdates,
   hasAdminRoleHistoryPrimaryFilter,
 } from "./admin-role-history.route-helpers";
+export {
+  describeAdminRoleTransition,
+  formatAdminEnvironment,
+  formatAdminMeetingRole,
+  formatAdminRoleHistoryDateTime,
+  hasAdminRoleHistoryAdvancedFilters,
+} from "./admin-role-history.presentation";
 export {
   fetchAdminConfigSets,
   fetchAdminConfigSet,
@@ -114,6 +125,7 @@ export type {
   AdminIncidentSearch,
   AdminIncidentTicket,
   AdminRoleHistory,
+  AdminFrameworkVersions,
   AdminDashboardSummary,
   AdminDashboardDrillDown,
   AdminDashboardErrorPayload,
@@ -122,15 +134,9 @@ export type {
   AdminDashboardDerivedState,
   AdminDashboardFilters,
 } from "./admin-dashboard.route-helpers";
-export type {
-  AdminLayoutNavItem,
-} from "./admin-layout.route-helpers";
-export type {
-  AdminConfigRouteFilters,
-} from "./admin-config.route-helpers";
-export type {
-  AdminRoleHistoryFilters,
-} from "./admin-role-history.route-helpers";
+export type { AdminLayoutNavItem } from "./admin-layout.route-helpers";
+export type { AdminConfigRouteFilters } from "./admin-config.route-helpers";
+export type { AdminRoleHistoryFilters } from "./admin-role-history.route-helpers";
 export type {
   IncidentQueueDerivedState,
   IncidentQueueFilters,
@@ -154,9 +160,18 @@ export {
   adminIncidentSearchSchema,
   adminIncidentTicketSchema,
   adminRoleHistorySchema,
+  adminFrameworkVersionsSchema,
   adminDashboardSummarySchema,
   adminDashboardDrillDownSchema,
 } from "./types";
+export {
+  canRefreshFrameworkVersions,
+  formatFrameworkCheckTime,
+  frameworkScanStatusLabel,
+  frameworkSecurityStatusLabel,
+  hasCriticalFrameworkAlert,
+  resolveFrameworkStatusTone,
+} from "./admin-framework-versions.presentation";
 export {
   adminConfigEnvironmentSchema,
   adminConfigSetCapabilitySchema,

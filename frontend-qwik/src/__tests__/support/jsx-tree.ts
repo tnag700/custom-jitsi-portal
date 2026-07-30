@@ -33,9 +33,10 @@ export function isRenderedNode(value: unknown): value is RenderedNode {
   );
 }
 
-export function renderNode(node: unknown): unknown {
+export async function renderNode(node: unknown): Promise<unknown> {
+  node = await node;
   if (Array.isArray(node)) {
-    return node.map((child) => renderNode(child));
+    return Promise.all(node.map((child) => renderNode(child)));
   }
   if (!isJsxLikeNode(node)) {
     return node;
@@ -44,22 +45,33 @@ export function renderNode(node: unknown): unknown {
     return renderNode(node.type(node.props ?? {}));
   }
   if (typeof node.type === "string") {
-    return { type: node.type, props: node.props ?? {} };
+    const props = node.props ?? {};
+    if (!("children" in props)) {
+      return { type: node.type, props };
+    }
+
+    const children = await renderNode(props.children);
+    return {
+      type: node.type,
+      props: {
+        ...props,
+        children,
+      },
+    };
   }
   return renderNode(node.props?.children);
 }
 
 export function collectNodes(node: unknown): RenderedNode[] {
-  const rendered = renderNode(node);
-  if (Array.isArray(rendered)) {
-    return rendered.flatMap((child) => collectNodes(child));
+  if (Array.isArray(node)) {
+    return node.flatMap((child) => collectNodes(child));
   }
-  if (!isRenderedNode(rendered)) {
+  if (!isRenderedNode(node)) {
     return [];
   }
   return [
-    rendered,
-    ...asArray(rendered.props.children).flatMap((child) => collectNodes(child)),
+    node,
+    ...asArray(node.props.children).flatMap((child) => collectNodes(child)),
   ];
 }
 
@@ -77,6 +89,20 @@ export function findNodes(
   return collectNodes(node).filter(predicate);
 }
 
+export function eventHandler(
+  node: RenderedNode | undefined,
+  eventName: string,
+): unknown {
+  if (!node) {
+    return undefined;
+  }
+
+  const normalizedEvent = eventName.toLowerCase();
+  const legacyProp =
+    `on${normalizedEvent[0]?.toUpperCase()}${normalizedEvent.slice(1)}$`;
+  return node.props[`q-e:${normalizedEvent}`] ?? node.props[legacyProp];
+}
+
 export function textContent(node: unknown): string {
   if (Array.isArray(node)) {
     return node.map((child) => textContent(child)).join("");
@@ -85,14 +111,13 @@ export function textContent(node: unknown): string {
     return String(node);
   }
 
-  const rendered = renderNode(node);
-  if (Array.isArray(rendered)) {
-    return rendered.map((child) => textContent(child)).join("");
+  if (Array.isArray(node)) {
+    return node.map((child) => textContent(child)).join("");
   }
-  if (!isRenderedNode(rendered)) {
+  if (!isRenderedNode(node)) {
     return "";
   }
-  return asArray(rendered.props.children)
+  return asArray(node.props.children)
     .map((child) => textContent(child))
     .join("");
 }

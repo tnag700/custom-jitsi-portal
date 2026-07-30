@@ -17,6 +17,16 @@ import org.springframework.http.HttpStatus;
 
 class MeetingRoleResolverTest {
 
+  @Test
+  void blankUnknownRolePolicyRemainsDenyByDefault() {
+    MeetingTokenProperties properties = new MeetingTokenProperties();
+
+    properties.setUnknownRolePolicy(" ");
+
+    assertThat(properties.unknownRolePolicy())
+        .isEqualTo(MeetingTokenProperties.UnknownRolePolicy.DENY_ACCESS);
+  }
+
   private static final List<MeetingRoleResolutionPolicy> DEFAULT_POLICIES = List.of(
       new BlockedSubjectMeetingRoleResolutionPolicy(),
       unknownMeetingPolicy(),

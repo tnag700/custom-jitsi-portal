@@ -108,8 +108,30 @@ export const MeetingsOverview = component$<MeetingsOverviewProps>(
         ) : (
           <>
             <section class="rounded-xl border border-border bg-surface p-4 sm:p-5">
-              <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                <div class="min-w-0 flex-1">
+              {rooms.length === 1 ? (
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p class="text-xs font-medium uppercase tracking-wide text-muted">
+                      Активная комната
+                    </p>
+                    <p class="mt-1 font-semibold text-text">{rooms[0].name}</p>
+                    <p class="mt-1 text-sm text-muted">
+                      {selectedRoomId
+                        ? "Расписание этой комнаты открыто."
+                        : "Откройте расписание, чтобы создать встречу или управлять участниками."}
+                    </p>
+                  </div>
+                  {!selectedRoomId && (
+                    <Link
+                      href={buildMeetingsHref(rooms[0].roomId)}
+                      class="inline-flex w-fit rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    >
+                      Открыть расписание
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div class="min-w-0">
                   <label
                     class="mb-1 block text-sm font-medium text-text"
                     for="room-selector"
@@ -136,27 +158,7 @@ export const MeetingsOverview = component$<MeetingsOverviewProps>(
                     ))}
                   </select>
                 </div>
-
-                <nav
-                  class="flex max-w-full gap-2 overflow-x-auto pb-1 lg:max-w-xl"
-                  aria-label="Быстрый выбор комнаты"
-                >
-                  {rooms.map((room) => (
-                    <Link
-                      key={room.roomId}
-                      href={buildMeetingsHref(room.roomId)}
-                      class={[
-                        "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium",
-                        selectedRoomId === room.roomId
-                          ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-200"
-                          : "border-border text-muted hover:bg-bg hover:text-text",
-                      ]}
-                    >
-                      {room.name}
-                    </Link>
-                  ))}
-                </nav>
-              </div>
+              )}
             </section>
 
             {selectedRoomId ? (

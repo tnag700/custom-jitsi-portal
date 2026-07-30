@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockResolveAuthRecoveryRedirectPath = vi.fn();
+const mockFetchAdminFrameworkVersions = vi.fn();
 
 vi.mock("@qwik.dev/core", async (importOriginal) => {
   const actual = await importOriginal();
@@ -35,7 +36,10 @@ vi.mock("~/lib/domains/admin", async () => {
   const helpers = await import(
     "~/lib/domains/admin/admin-layout.route-helpers"
   );
-  return helpers;
+  return {
+    ...helpers,
+    fetchAdminFrameworkVersions: mockFetchAdminFrameworkVersions,
+  };
 });
 
 function createCtx(user: unknown) {
@@ -47,6 +51,9 @@ function createCtx(user: unknown) {
       status,
       to,
     }),
+    cookie: {
+      get: () => undefined,
+    },
   };
 }
 
@@ -56,6 +63,7 @@ describe("admin layout route loader runtime", () => {
     mockResolveAuthRecoveryRedirectPath.mockReturnValue(
       "/auth?returnTo=%2Fadmin%3Fperiod%3D1h",
     );
+    mockFetchAdminFrameworkVersions.mockReset();
   });
 
   it("returns an authenticated admin profile", async () => {
@@ -99,5 +107,34 @@ describe("admin layout route loader runtime", () => {
       status: 302,
       to: "/",
     });
+  });
+
+  it("loads the cached framework alert only for admin-cabinet users", async () => {
+    const snapshot = {
+      criticalUpdateRequired: true,
+      criticalVulnerabilityCount: 1,
+    };
+    mockFetchAdminFrameworkVersions.mockResolvedValue(snapshot);
+    const mod = await import("~/routes/admin/layout");
+
+    await expect(
+      mod.useFrameworkVersionAlert(
+        createCtx({
+          id: "admin-1",
+          claims: ["ROLE_ADMIN"],
+        }) as never,
+      ),
+    ).resolves.toBe(snapshot);
+    expect(mockFetchAdminFrameworkVersions).toHaveBeenCalledOnce();
+
+    await expect(
+      mod.useFrameworkVersionAlert(
+        createCtx({
+          id: "participant-1",
+          claims: ["ROLE_PARTICIPANT"],
+        }) as never,
+      ),
+    ).resolves.toBeNull();
+    expect(mockFetchAdminFrameworkVersions).toHaveBeenCalledOnce();
   });
 });

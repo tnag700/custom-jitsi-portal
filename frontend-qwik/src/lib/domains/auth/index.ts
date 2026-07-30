@@ -1,4 +1,8 @@
-export { AuthContext, type AuthStore } from "./auth-context";
+export {
+	AuthContext,
+	synchronizeAuthStore,
+	type AuthStore,
+} from "./auth-context";
 export { mapAuthErrorCodeToPayload } from "./auth-error-map";
 export {
 	AUTH_PUBLIC_PATHS,

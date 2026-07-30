@@ -92,7 +92,7 @@ services:
       - ops_net
 
   mock-alert-receiver:
-    image: node:22-alpine
+    image: node:24.18.0-alpine
     cap_drop:
       - ALL
     security_opt:

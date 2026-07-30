@@ -47,4 +47,22 @@ describe("Jitsi web access policy", () => {
       expect(source).toContain("AUTH_TYPE=jwt");
     }
   });
+
+  it("uses one issuer contract for portal tokens and Jitsi validation", () => {
+    const devCompose = readWorkspaceFile("docker-compose.yml");
+    const productionCompose = readWorkspaceFile(
+      "docker-compose.production.yml",
+    );
+
+    expect(
+      devCompose.match(
+        /(?:APP_MEETINGS_TOKEN_ISSUER|JWT_APP_ID|JWT_ACCEPTED_ISSUERS)=\$\{DEV_PORTAL_ORIGIN:-http:\/\/localhost:3000\}/g,
+      ),
+    ).toHaveLength(5);
+    expect(
+      productionCompose.match(
+        /(?:APP_MEETINGS_TOKEN_ISSUER|JWT_APP_ID|JWT_ACCEPTED_ISSUERS)=\$\{APP_MEETINGS_TOKEN_ISSUER:-https:\/\/portal\.example\.com\}/g,
+      ),
+    ).toHaveLength(5);
+  });
 });

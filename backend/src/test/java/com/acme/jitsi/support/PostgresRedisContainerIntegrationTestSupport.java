@@ -13,7 +13,7 @@ import org.testcontainers.utility.DockerImageName;
 @ActiveProfiles("test")
 public abstract class PostgresRedisContainerIntegrationTestSupport {
 
-	private static final DockerImageName POSTGRES_IMAGE = DockerImageName.parse("postgres:18-alpine");
+	private static final DockerImageName POSTGRES_IMAGE = DockerImageName.parse("postgres:18.4-alpine");
 	private static final DockerImageName REDIS_IMAGE = DockerImageName.parse("redis:7-alpine");
 
 	@Container

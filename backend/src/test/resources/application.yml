@@ -1,4 +1,20 @@
+spring:
+  data:
+    redis:
+      repositories:
+        enabled: false
+  jpa:
+    open-in-view: false
+
+jdbc:
+  opentelemetry:
+    metrics:
+      enabled: false
+
 app:
+  version-monitor:
+    schedule:
+      enabled: false
   features:
     bulk-invites-enabled: false
     advanced-monitoring: false

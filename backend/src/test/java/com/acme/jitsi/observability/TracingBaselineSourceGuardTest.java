@@ -37,6 +37,9 @@ class TracingBaselineSourceGuardTest {
 
     assertThat(applicationYaml)
         .contains("management:")
+        .contains("jdbc:")
+        .contains("metrics:")
+        .contains("enabled: false")
         .contains("tracing:")
         .contains("sampling:")
         .contains("probability:")
@@ -71,7 +74,7 @@ class TracingBaselineSourceGuardTest {
         .contains("@DynamicPropertySource")
         .contains("PostgreSQLContainer")
         .contains("GenericContainer")
-        .contains("postgres:18-alpine")
+        .contains("postgres:18.4-alpine")
         .contains("redis:7-alpine");
 
     assertThat(redisTracingWiringTest)

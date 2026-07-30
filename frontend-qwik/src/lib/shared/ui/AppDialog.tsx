@@ -72,7 +72,6 @@ export const AppDialog = component$<AppDialogProps>(
         return;
       }
 
-      event.preventDefault();
       void closeOnNextFrame$();
     });
 

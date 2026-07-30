@@ -68,7 +68,7 @@ final class OidcUserEnrichmentService implements OAuth2UserService<OidcUserReque
     mergedUserInfoClaims.putAll(accessTokenClaims);
 
     return new DefaultOidcUser(
-        roleAuthoritiesMapper.mapAuthorities(user, accessTokenClaims),
+        roleAuthoritiesMapper.mapAuthorities(user, accessTokenClaims, clientId),
         user.getIdToken(),
         new OidcUserInfo(mergedUserInfoClaims));
   }

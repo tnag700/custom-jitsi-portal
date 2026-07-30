@@ -46,7 +46,6 @@ export const InviteForm = component$<InviteFormProps>(({ meetingId, isLoading, e
       return;
     }
 
-    event.preventDefault();
     void requestClose$();
   });
 

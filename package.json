@@ -1,4 +1,9 @@
 {
+  "name": "custom-jitsi-portal-workspace",
+  "private": true,
+  "engines": {
+    "node": ">=24.18.0 <25"
+  },
   "scripts": {
     "stack:prepare": "python scripts/prepare-dev-vault.py",
     "stack:validate": "python scripts/validate-dev-stack-config.py",
@@ -37,13 +42,11 @@
     "observability:drill:extended": "python scripts/run-observability-live-drill.py -Cycles 6 -CycleIntervalSeconds 10 -JoinSuccessRequestsPerCycle 3 -JoinFailureRequestsPerCycle 3 -RefreshPairsPerCycle 2 -PrometheusWaitSeconds 25",
     "observability:alerting:validate": "python scripts/validate-observability-alerting.py",
     "observability:alerting:smoke": "python scripts/run-observability-live-drill.py -Cycles 1 -JoinSuccessRequestsPerCycle 1 -JoinFailureRequestsPerCycle 0 -RefreshPairsPerCycle 2 -PrometheusWaitSeconds 20 -WaitForAlertState cycle -AlertName JitsiAuthRefreshReuseSpike -AlertWarmupSeconds 20 -AlertPollIntervalSeconds 5 -AlertWaitTimeoutSeconds 180 -QuietWindowSeconds 135",
-    "traceability:validate": "python scripts/validate-traceability-matrix.py",
     "openapi:generate": "node scripts/generate-openapi.mjs",
-    "openapi:check": "node scripts/check-openapi.mjs",
-    "frontend:api-types:check": "node scripts/check-frontend-api-types.mjs"
-  },
-  "dependencies": {
-    "@tanstack/svelte-query": "^6.0.18",
-    "@upstash/context7-mcp": "^2.1.2"
+    "frontend:api-types:generate": "node scripts/generate-frontend-api-types.mjs",
+    "contracts:check": "node scripts/check-contracts.mjs",
+    "openapi:check": "node scripts/check-contracts.mjs",
+    "frontend:api-types:check": "node scripts/check-contracts.mjs",
+    "verify": "node scripts/verify-repository.mjs"
   }
 }
