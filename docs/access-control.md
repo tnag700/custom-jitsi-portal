@@ -42,6 +42,7 @@ assignment controls the role embedded in the Jitsi JWT.
 | Admin dashboard, incidents and role history (`GET`) | Deny | Deny | Allow | Allow |
 | Config sets (`GET`) | Deny | Deny | Allow | Allow |
 | Framework version and CVE snapshot (`GET`) | Deny | Deny | Allow | Allow |
+| User profile administration (`GET`, `PUT`) | Deny | Deny | Deny | Own tenant |
 | Incident coordination/ticket mutations | Deny | Deny | Deny | Allow |
 | Force framework CVE refresh | Deny | Deny | Deny | Allow |
 | Config set mutations | Deny | Deny | Deny | Allow |
@@ -52,6 +53,12 @@ Tenant-scoped operations must resolve the tenant from the authenticated
 principal and reject a different requested tenant. Resource-level meeting
 access is resolved from participant assignments and defaults to deny when the
 role is missing or unknown.
+
+Profile administration can change only the portal-owned display fields:
+full name, organization and position. Subject ID, tenant, email, credentials
+and roles remain immutable through this API. Cross-tenant targets are returned
+as not found to avoid disclosing their existence, and successful changes emit
+an administrative audit event with actor, target, trace ID and changed fields.
 
 The Keycloak `tenantId` source attribute is managed and admin-only: an
 end-user cannot view or edit it through the account profile. Realm imports and

@@ -120,3 +120,50 @@ export async function upsertMyProfile(
 
   return parseOrThrow((d) => userProfileResponseSchema.parse(d), responseData, "PUT /api/v1/profile/me");
 }
+
+export async function fetchAdminUserProfiles(
+  context: ServerRequestContext,
+  query = "",
+): Promise<UserProfileResponse[]> {
+  const params = new URLSearchParams();
+  if (query.trim().length > 0) {
+    params.set("q", query.trim());
+  }
+  const suffix = params.size > 0 ? `?${params.toString()}` : "";
+  const response = await fetch(`${context.apiUrl}/admin/users${suffix}`, {
+    headers: context.headers,
+  });
+  if (!response.ok) {
+    throw new ProfileServiceError(await adaptProfileProblemDetails(response));
+  }
+  const responseData: unknown = await response.json();
+  return parseOrThrow(
+    (value) => userProfileResponseSchema.array().parse(value),
+    responseData,
+    "GET /api/v1/admin/users",
+  );
+}
+
+export async function updateAdminUserProfile(
+  context: MutationRequestContext,
+  subjectId: string,
+  data: UpsertProfileRequest,
+): Promise<UserProfileResponse> {
+  const response = await fetch(
+    `${context.apiUrl}/admin/users/${encodeURIComponent(subjectId)}`,
+    {
+      method: "PUT",
+      headers: context.headers,
+      body: JSON.stringify(data),
+    },
+  );
+  if (!response.ok) {
+    throw new ProfileServiceError(await adaptProfileProblemDetails(response));
+  }
+  const responseData: unknown = await response.json();
+  return parseOrThrow(
+    (value) => userProfileResponseSchema.parse(value),
+    responseData,
+    "PUT /api/v1/admin/users/{subjectId}",
+  );
+}

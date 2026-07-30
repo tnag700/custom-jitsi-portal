@@ -11,6 +11,8 @@ interface UserProfileJpaRepository extends JpaRepository<UserProfileEntity, Stri
 
   Optional<UserProfileEntity> findBySubjectId(String subjectId);
 
+  Optional<UserProfileEntity> findBySubjectIdAndTenantId(String subjectId, String tenantId);
+
   @Query("""
       SELECT p FROM UserProfileEntity p
       WHERE p.tenantId = :tenantId

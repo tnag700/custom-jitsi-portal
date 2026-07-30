@@ -57,6 +57,11 @@ describe("admin layout route helpers", () => {
         label: "Версии и CVE",
       },
       {
+        href: "/admin/users?environment=dev&returnTo=%2Fadmin%2Fincidents%3Fenvironment%3Ddev%26view%3Dcritical",
+        match: "/admin/users",
+        label: "Пользователи",
+      },
+      {
         href: "/admin/jitsi?environment=dev&returnTo=%2Fadmin%2Fincidents%3Fenvironment%3Ddev%26view%3Dcritical",
         match: "/admin/jitsi",
         label: "Доступ Jitsi",

@@ -37,6 +37,12 @@ class JpaUserProfileRepository implements UserProfileRepository {
   }
 
   @Override
+  public Optional<UserProfile> findBySubjectIdAndTenantId(String subjectId, String tenantId) {
+    return jpaRepository.findBySubjectIdAndTenantId(subjectId, tenantId)
+        .map(UserProfileEntity::toDomain);
+  }
+
+  @Override
   public List<UserProfile> searchByTenantId(String tenantId, String query, String organization, int limit) {
     return jpaRepository.searchByTenantId(tenantId, query, organization,
         PageRequest.of(0, limit, Sort.by("fullName").ascending())).stream()

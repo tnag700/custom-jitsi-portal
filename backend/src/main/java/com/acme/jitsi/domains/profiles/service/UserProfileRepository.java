@@ -6,6 +6,7 @@ import java.util.Optional;
 public interface UserProfileRepository {
   UserProfile save(UserProfile profile);
   Optional<UserProfile> findBySubjectId(String subjectId);
+  Optional<UserProfile> findBySubjectIdAndTenantId(String subjectId, String tenantId);
   List<UserProfile> searchByTenantId(String tenantId, String query, String organization, int limit);
   List<UserProfile> findBySubjectIds(List<String> subjectIds);
 }

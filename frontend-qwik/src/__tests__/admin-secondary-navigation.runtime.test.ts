@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAdminSecondaryNavItems,
   buildAdminSecondaryHref,
   resolveIncidentReturnTo,
-} from "~/lib/domains/admin/admin-incidents.route-helpers";
+} from "~/lib/domains/admin";
 
 describe("admin secondary navigation runtime", () => {
   it("buildAdminSecondaryHref preserves environment and queue context for role-history", () => {
@@ -48,6 +49,26 @@ describe("admin secondary navigation runtime", () => {
 
     expect(resolveIncidentReturnTo(currentUrl, "dev")).toBe(
       "/admin/incidents?environment=dev&subjectId=sub-1",
+    );
+  });
+
+  it("shows profile administration only to platform administrators", () => {
+    const currentUrl = new URL(
+      "https://portal.example.test/admin?environment=dev",
+    );
+
+    expect(
+      buildAdminSecondaryNavItems(currentUrl, "dev", false).some(
+        (item) => item.match === "/admin/users",
+      ),
+    ).toBe(false);
+    expect(
+      buildAdminSecondaryNavItems(currentUrl, "dev", true),
+    ).toContainEqual(
+      expect.objectContaining({
+        match: "/admin/users",
+        label: "Пользователи",
+      }),
     );
   });
 });

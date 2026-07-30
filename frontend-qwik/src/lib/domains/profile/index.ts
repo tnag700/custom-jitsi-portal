@@ -7,6 +7,8 @@ export type {
 export {
   fetchMyProfile,
   upsertMyProfile,
+  fetchAdminUserProfiles,
+  updateAdminUserProfile,
   ProfileServiceError,
   adaptProfileProblemDetails,
 } from "./profile.service";

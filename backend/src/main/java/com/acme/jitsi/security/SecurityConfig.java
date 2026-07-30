@@ -73,6 +73,11 @@ public class SecurityConfig {
     "/api/v1/admin/framework-versions/refresh"
   };
 
+  private static final String[] ADMIN_USER_ENDPOINTS = {
+    "/api/v1/admin/users",
+    "/api/v1/admin/users/**"
+  };
+
   private static final String[] ADMIN_ENDPOINTS = {
     "/api/v1/meetings/**",
     "/api/v1/rooms/**",
@@ -130,6 +135,8 @@ public class SecurityConfig {
     http.authorizeHttpRequests(auth -> auth
         .requestMatchers(publicEndpoints.toArray(String[]::new)).permitAll()
         .requestMatchers(AUTHENTICATED_ENDPOINTS).authenticated()
+        .requestMatchers(ADMIN_USER_ENDPOINTS)
+            .hasRole(PortalRole.ADMIN.claimValue())
       .requestMatchers(HttpMethod.GET, ADMIN_CABINET_ENDPOINTS)
         .hasAnyRole(
             PortalRole.ADMIN.claimValue(),

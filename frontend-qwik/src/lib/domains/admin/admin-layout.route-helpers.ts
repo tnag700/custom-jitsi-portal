@@ -68,6 +68,11 @@ export function buildAdminSecondaryNavItems(
 
   if (includePlatformAdminTools) {
     items.push({
+      href: buildAdminSecondaryHref(currentUrl, "/admin/users", fallbackEnvironment),
+      match: "/admin/users",
+      label: "Пользователи",
+    });
+    items.push({
       href: buildAdminSecondaryHref(currentUrl, "/admin/jitsi", fallbackEnvironment),
       match: "/admin/jitsi",
       label: "Доступ Jitsi",
