@@ -1,0 +1,135 @@
+{
+  "realm": "jitsi-dev",
+  "displayName": "Jitsi Portal Development",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Full tenant administration"
+      },
+      {
+        "name": "system-admin",
+        "description": "Platform administration"
+      },
+      {
+        "name": "security-admin",
+        "description": "Security administration"
+      },
+      {
+        "name": "support-engineer",
+        "description": "Read-only operational support"
+      },
+      {
+        "name": "participant",
+        "description": "Authenticated meeting participant"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "jitsi-backend",
+      "name": "Jitsi Portal Backend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${SSO_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "${OIDC_REDIRECT_BASE_URI}/login/oauth2/code/keycloak"
+      ],
+      "webOrigins": [
+        "${APP_FRONTEND_ORIGIN}"
+      ],
+      "protocolMappers": [
+        {
+          "name": "tenant-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "tenantId",
+            "claim.name": "tenantId",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "false"
+          }
+        },
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true",
+            "usermodel.realmRoleMapping.rolePrefix": ""
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "6a79b528-907e-4d17-a3fe-e827fd13d505",
+      "username": "dev-admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Development",
+      "lastName": "Administrator",
+      "email": "dev-admin@example.test",
+      "attributes": {
+        "tenantId": [
+          "tenant-1"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-admin-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ]
+    },
+    {
+      "id": "5b8dc63e-325e-4cf5-8a65-dc22292d5fd9",
+      "username": "dev-participant",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Development",
+      "lastName": "Participant",
+      "email": "dev-participant@example.test",
+      "attributes": {
+        "tenantId": [
+          "tenant-1"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "dev-participant-password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "participant"
+      ]
+    }
+  ]
+}

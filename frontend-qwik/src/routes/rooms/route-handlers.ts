@@ -8,6 +8,7 @@ import {
   createRoom,
   createRoomSchema,
   deleteRoom,
+  fetchActiveRoomConfigSetId,
   fetchRooms,
   updateRoom,
   updateRoomSchema,
@@ -17,6 +18,17 @@ import {
   buildServerRequestContext,
   mapRouteActionError,
 } from "~/lib/shared/routes/server-handlers";
+
+export const useRoomConfigSets = routeLoader$(async ({ sharedMap, cookie }) => {
+  const user = sharedMap.get("user") as SafeUserProfile;
+  const requestContext = buildServerRequestContext({ sharedMap, cookie });
+  const activeConfigSetId = await fetchActiveRoomConfigSetId(
+    requestContext,
+    user.tenant,
+    "DEV",
+  );
+  return [activeConfigSetId];
+});
 
 export const useRooms = routeLoader$(async ({ sharedMap, cookie }) => {
   const user = sharedMap.get("user") as SafeUserProfile;
@@ -60,10 +72,14 @@ export const useUpdateRoom = routeAction$(
       return mapRouteActionError(error, RoomServiceError, fail, "ROOM_UNKNOWN");
     }
   },
-  zod$(updateRoomSchema.extend({ roomId: z.string().min(1, "roomId обязателен") })),
+  zod$(
+    updateRoomSchema.extend({ roomId: z.string().min(1, "roomId обязателен") }),
+  ),
 );
 
-const roomIdSchema = z.object({ roomId: z.string().min(1, "roomId обязателен") });
+const roomIdSchema = z.object({
+  roomId: z.string().min(1, "roomId обязателен"),
+});
 
 export const useCloseRoom = routeAction$(
   async (data, { sharedMap, cookie, fail }) => {

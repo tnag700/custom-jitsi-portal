@@ -45,7 +45,7 @@ public class CreateRoomUseCase implements UseCase<CreateRoomCommand, Room> {
     String normalizedConfigSetId = TextInputNormalizer.normalizeRequired(command.configSetId());
 
     validateRequiredFields(normalizedName, normalizedTenantId, normalizedConfigSetId);
-    validateConfigSet(normalizedConfigSetId);
+    validateConfigSet(normalizedConfigSetId, normalizedTenantId);
     validateNameUniqueness(normalizedName, normalizedTenantId, null);
 
     Instant now = Instant.now(clock);
@@ -89,8 +89,8 @@ public class CreateRoomUseCase implements UseCase<CreateRoomCommand, Room> {
     return value == null || value.isBlank();
   }
 
-  private void validateConfigSet(String configSetId) {
-    if (!configSetValidator.isValid(configSetId)) {
+  private void validateConfigSet(String configSetId, String tenantId) {
+    if (!configSetValidator.isValid(configSetId, tenantId)) {
       throw new ConfigSetInvalidException(configSetId);
     }
   }

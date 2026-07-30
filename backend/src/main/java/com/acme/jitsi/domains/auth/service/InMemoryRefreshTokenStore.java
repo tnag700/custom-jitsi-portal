@@ -50,6 +50,31 @@ class InMemoryRefreshTokenStore implements RefreshTokenStore {
   }
 
   @Override
+  public synchronized ConsumeResult rotate(String tokenId, RefreshTokenState nextState) {
+    RefreshTokenState existing = tokens.get(tokenId);
+    if (existing == null) {
+      return new ConsumeResult(ConsumeStatus.MISSING, null);
+    }
+    if (existing.status() == TokenStatus.REVOKED) {
+      return new ConsumeResult(ConsumeStatus.REVOKED, existing);
+    }
+    if (existing.status() == TokenStatus.USED) {
+      return new ConsumeResult(ConsumeStatus.USED, existing);
+    }
+
+    RefreshTokenState consumed = new RefreshTokenState(
+        existing.tokenId(),
+        existing.subject(),
+        existing.meetingId(),
+        existing.absoluteExpiresAt(),
+        existing.idleExpiresAt(),
+        TokenStatus.USED);
+    tokens.put(tokenId, consumed);
+    tokens.put(nextState.tokenId(), nextState);
+    return new ConsumeResult(ConsumeStatus.CONSUMED, consumed);
+  }
+
+  @Override
   public void create(RefreshTokenState state) {
     tokens.put(state.tokenId(), state);
   }

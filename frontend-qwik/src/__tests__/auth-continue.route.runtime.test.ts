@@ -43,7 +43,11 @@ function createCtx() {
     cookie: {
       get: vi.fn(),
     },
-    redirect: (status: number, to: string) => ({ type: "redirect", status, to }),
+    redirect: (status: number, to: string) => ({
+      type: "redirect",
+      status,
+      to,
+    }),
   };
 }
 
@@ -59,7 +63,9 @@ describe("auth continue route runtime", () => {
         Cookie: "JSESSIONID=sess-1",
       },
     });
-    mockResolveAuthRedirectPath.mockReturnValue("/auth?error=AUTH_REQUIRED&returnTo=%2Fprofile");
+    mockResolveAuthRedirectPath.mockReturnValue(
+      "/auth?error=AUTH_REQUIRED&returnTo=%2Fprofile",
+    );
     mockResolvePostAuthRedirectPath.mockReturnValue("/profile");
     mockFetchAuthMe.mockResolvedValue({
       id: "u-1",
@@ -86,7 +92,10 @@ describe("auth continue route runtime", () => {
       to: "/auth?error=AUTH_REQUIRED&returnTo=%2Fprofile",
     });
 
-    expect(mockResolveAuthRedirectPath).toHaveBeenCalledWith(undefined, "/profile");
+    expect(mockResolveAuthRedirectPath).toHaveBeenCalledWith(
+      undefined,
+      "/profile",
+    );
   });
 
   it("falls back to stable manual auth entry when post-login profile fetch fails", async () => {
@@ -101,14 +110,19 @@ describe("auth continue route runtime", () => {
       to: "/auth?error=AUTH_REQUIRED&returnTo=%2Fprofile",
     });
 
-    expect(mockResolveAuthRedirectPath).toHaveBeenCalledWith(authError, "/profile");
+    expect(mockResolveAuthRedirectPath).toHaveBeenCalledWith(
+      authError,
+      "/profile",
+    );
   });
 
   it("stores the established user session and redirects to the safe destination", async () => {
     const sharedMap = new Map<string, unknown>();
     const mod = await import("~/routes/auth/continue/index");
 
-    await expect(mod.useAuthContinue({ ...createCtx(), sharedMap } as never)).rejects.toEqual({
+    await expect(
+      mod.useAuthContinue({ ...createCtx(), sharedMap } as never),
+    ).rejects.toEqual({
       type: "redirect",
       status: 302,
       to: "/profile",

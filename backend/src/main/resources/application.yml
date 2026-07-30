@@ -67,6 +67,8 @@ app:
     bulk-invites-enabled: false
     advanced-monitoring: false
     config-sets-from-db: false
+  invites:
+    mode: ${APP_INVITES_MODE:database}
   rooms:
     valid-config-sets: ${APP_ROOMS_VALID_CONFIG_SETS:config-1,config-2}
     config-sets:

@@ -46,6 +46,53 @@ function parseOrThrow<T>(parseFn: (d: unknown) => T, data: unknown, endpoint: st
   }
 }
 
+export async function fetchActiveRoomConfigSetId(
+  context: ServerRequestContext,
+  tenantId: string,
+  environmentType: "DEV" | "TEST" | "PROD" = "DEV",
+): Promise<string> {
+  const client = createApiClient(context.apiUrl);
+  const { data, error, response } = await client.GET(
+    "/api/v1/config-sets/active",
+    {
+      headers: context.headers,
+      params: {
+        query: { tenantId, environmentType },
+      },
+    },
+  );
+
+  if (!response.ok || error) {
+    throw new RoomServiceError(
+      await adaptProblemDetails(
+        error ?? response,
+        response.status,
+        (status) =>
+          status === 404
+            ? "CONFIG_SET_NOT_FOUND"
+            : fallbackErrorCode(status),
+        "Ошибка конфигурации комнаты",
+        "Не удалось определить активный конфиг-набор.",
+      ),
+    );
+  }
+
+  return parseOrThrow(
+    (payload) => {
+      const configSetId =
+        typeof payload === "object" && payload !== null
+          ? (payload as { configSetId?: unknown }).configSetId
+          : undefined;
+      if (typeof configSetId !== "string" || configSetId.trim().length === 0) {
+        throw new Error("configSetId отсутствует или пуст");
+      }
+      return configSetId;
+    },
+    data,
+    "GET /api/v1/config-sets/active",
+  );
+}
+
 export function fetchRooms(
   context: ServerRequestContext,
   tenantId: string,

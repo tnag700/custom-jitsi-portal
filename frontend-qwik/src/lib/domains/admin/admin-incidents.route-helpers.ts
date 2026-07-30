@@ -63,11 +63,11 @@ const SECONDARY_MODULE_PATHS = ["/admin/role-history", "/admin/config-sets"] as 
 const ROLE_HISTORY_CONTEXT_KEYS = ["subjectId", "roomId", "meetingId"] as const;
 const INCIDENT_MUTATION_CLAIMS = ["role_admin", "admin"] as const;
 const COORDINATION_STATUS_LABELS: Record<string, string> = {
-  triage: "Triage",
-  investigating: "Investigating",
-  "waiting-external": "Waiting external",
-  resolved: "Resolved",
-  "not-enabled": "Deferred",
+  triage: "Первичная оценка",
+  investigating: "Расследование",
+  "waiting-external": "Ожидание внешней команды",
+  resolved: "Решён",
+  "not-enabled": "Не включена",
 };
 
 type IncidentRelatedLink = AdminIncidentDetail["relatedLinks"][number];
@@ -151,6 +151,32 @@ export function buildIncidentQueueFilters(query: URLSearchParams): IncidentQueue
 
 export function resolveIncidentRelativeTimeLabel(value: string): string {
   return value.trim().length > 0 ? value : "Сводка активности недоступна";
+}
+
+function padIncidentDatePart(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+export function formatIncidentDateTime(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return [
+    `${padIncidentDatePart(parsed.getUTCDate())}.${padIncidentDatePart(parsed.getUTCMonth() + 1)}.${parsed.getUTCFullYear()}`,
+    `${padIncidentDatePart(parsed.getUTCHours())}:${padIncidentDatePart(parsed.getUTCMinutes())}:${padIncidentDatePart(parsed.getUTCSeconds())}`,
+    "UTC",
+  ].join(" ");
+}
+
+export function formatIncidentTimeWindow(
+  startedAt: string,
+  endedAt: string,
+): string {
+  const started = formatIncidentDateTime(startedAt);
+  const ended = formatIncidentDateTime(endedAt);
+  return started === ended ? started : `${started} — ${ended}`;
 }
 
 export function buildIncidentQueueDerivedState(

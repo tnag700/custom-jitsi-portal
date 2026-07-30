@@ -90,5 +90,4 @@ describe("Invites Guard: routes (AC: 1-6)", () => {
     expect(tsx).toContain("ApiErrorAlert");
     expect(tsx).toContain("Ошибка инвайта");
   });
-}
-);
+});

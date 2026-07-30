@@ -1,3 +1,5 @@
+import { hasPlatformAdminAccess } from "~/lib/shared/security/access-claims";
+
 export interface NavItem {
   label: string;
   href: string;
@@ -44,10 +46,23 @@ export const navItems: NavItem[] = [
   },
 ];
 
+export function isNavItemActive(pathname: string, href: string): boolean {
+  if (href === "/") {
+    return pathname === "/";
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function filterNavItemsForClaims(items: NavItem[], claims: readonly string[]): NavItem[] {
   const normalizedClaims = new Set(claims.map((claim) => claim.trim().toLowerCase()));
+  const hasAdminOperationsAccess = hasPlatformAdminAccess(claims);
 
   return items.filter((item) => {
+    if (item.href === "/rooms" || item.href === "/meetings") {
+      return hasAdminOperationsAccess;
+    }
+
     if (item.href !== "/admin") {
       return true;
     }

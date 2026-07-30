@@ -69,7 +69,10 @@ describe("profile.service runtime", () => {
   it("returns null for 404 (first-run)", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({}, 404));
 
-    const result = await fetchMyProfile("sess-1", "http://localhost:8080/api/v1");
+    const result = await fetchMyProfile(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+    );
 
     expect(result).toBeNull();
   });
@@ -84,9 +87,14 @@ describe("profile.service runtime", () => {
       createdAt: "2026-03-03T10:00:00Z",
       updatedAt: "2026-03-03T10:10:00Z",
     };
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    const result = await fetchMyProfile("sess-123", "http://localhost:8080/api/v1");
+    const result = await fetchMyProfile(
+      "sess-123",
+      "http://localhost:8080/api/v1",
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/profile/me",
@@ -110,13 +118,20 @@ describe("profile.service runtime", () => {
       createdAt: "2026-03-03T10:00:00Z",
       updatedAt: "2026-03-03T10:10:00Z",
     };
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    await upsertMyProfile("sess-123", "http://localhost:8080/api/v1", "csrf-456", {
-      fullName: "Jane Doe",
-      organization: "Acme",
-      position: "Lead",
-    });
+    await upsertMyProfile(
+      "sess-123",
+      "http://localhost:8080/api/v1",
+      "csrf-456",
+      {
+        fullName: "Jane Doe",
+        organization: "Acme",
+        position: "Lead",
+      },
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/profile/me",
@@ -156,7 +171,14 @@ describe("profile.service runtime", () => {
 
   it("fetchMyProfile throws ProfileServiceError with AUTH_REQUIRED on 401", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      jsonResponse({ errorCode: "AUTH_REQUIRED", title: "Unauthorized", detail: "No session" }, 401),
+      jsonResponse(
+        {
+          errorCode: "AUTH_REQUIRED",
+          title: "Unauthorized",
+          detail: "No session",
+        },
+        401,
+      ),
     );
 
     await expect(

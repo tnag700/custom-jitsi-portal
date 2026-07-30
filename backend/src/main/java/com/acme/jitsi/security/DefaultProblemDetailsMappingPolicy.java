@@ -41,6 +41,7 @@ public class DefaultProblemDetailsMappingPolicy implements ProblemDetailsMapping
           ErrorCode.INVITE_EXHAUSTED.code(), "Инвайт исчерпан",
           ErrorCode.INVITE_EXPIRED.code(), "Инвайт просрочен",
           ErrorCode.INVITE_REVOKED.code(), "Инвайт отозван",
+          ErrorCode.GUEST_ACCESS_DISABLED.code(), "Гостевой доступ отключён",
           ErrorCode.ROOM_CLOSED.code(), "Встреча недоступна",
           ErrorCode.MEETING_NOT_FOUND.code(), "Встреча не найдена",
           ErrorCode.MEETING_CANCELED.code(), "Встреча отменена",

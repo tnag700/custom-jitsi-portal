@@ -11,12 +11,14 @@ import {
 interface InviteListProps {
   invites: Invite[];
   totalElements: number;
+  canCreate: boolean;
   onRevoke$: QRL<(invite: Invite) => void>;
   onCopyLink$: QRL<(invite: Invite) => void>;
   onCreateClick$: QRL<() => void>;
 }
 
-export const InviteList = component$<InviteListProps>(({ invites, totalElements, onRevoke$, onCopyLink$, onCreateClick$ }) => {
+export const InviteList = component$<InviteListProps>(
+  ({ invites, totalElements, canCreate, onRevoke$, onCopyLink$, onCreateClick$ }) => {
   const visibilityFilter = useSignal<InviteVisibilityFilter>("active");
 
   const filteredInvites = useComputed$(() => applyInviteListState(invites, visibilityFilter.value));
@@ -31,7 +33,9 @@ export const InviteList = component$<InviteListProps>(({ invites, totalElements,
         <h2 class="text-2xl font-bold text-text">Инвайты</h2>
         <button
           type="button"
-          class="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          class="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!canCreate}
+          title={canCreate ? undefined : "Сначала включите гостевой доступ во встрече"}
           onClick$={() => onCreateClick$()}
         >
           Создать инвайт
@@ -111,4 +115,5 @@ export const InviteList = component$<InviteListProps>(({ invites, totalElements,
       )}
     </section>
   );
-});
+  },
+);

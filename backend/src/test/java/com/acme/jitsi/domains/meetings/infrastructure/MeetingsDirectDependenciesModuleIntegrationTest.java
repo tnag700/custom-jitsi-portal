@@ -121,7 +121,7 @@ class MeetingsDirectDependenciesModuleIntegrationTest {
       problemResponseFacade,
       tenantAccessGuard,
       problemDetailsMappingPolicy);
-    when(configSetValidator.isValid(Mockito.anyString())).thenReturn(true);
+    when(configSetValidator.isValid(Mockito.anyString(), Mockito.anyString())).thenReturn(true);
     when(meetingParticipantAssignmentRepository.findByMeetingId(Mockito.anyString())).thenReturn(java.util.List.of());
     when(meetingParticipantAssignmentRepository.findBySubjectId(Mockito.anyString())).thenReturn(java.util.List.of());
     when(meetingParticipantAssignmentRepository.findByMeetingIdAndSubjectId(Mockito.anyString(), Mockito.anyString()))

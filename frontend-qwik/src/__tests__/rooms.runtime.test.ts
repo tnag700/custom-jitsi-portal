@@ -4,6 +4,7 @@ import {
   closeRoom,
   createRoom,
   deleteRoom,
+  fetchActiveRoomConfigSetId,
   fetchRooms,
   updateRoom,
 } from "../lib/domains/rooms/rooms.service";
@@ -22,6 +23,53 @@ afterEach(() => {
 });
 
 describe("rooms.service runtime: fetchRooms", () => {
+  it("loads the active config set used by the room form", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse(
+        {
+          configSetId: "cfg-active",
+          name: "Active DEV",
+          tenantId: "tenant-1",
+          environmentType: "DEV",
+          status: "ACTIVE",
+          issuer: "https://issuer.example.test",
+          audience: "jitsi",
+          algorithm: "HS256",
+          roleClaim: "role",
+          signingSecret: "",
+          jwksUri: null,
+          accessTtlMinutes: 20,
+          refreshTtlMinutes: 60,
+          meetingsServiceUrl: "https://meet.example.test",
+          createdAt: "2026-07-29T00:00:00Z",
+          updatedAt: "2026-07-29T00:00:00Z",
+        },
+        200,
+      ),
+    );
+
+    const result = await fetchActiveRoomConfigSetId(
+      {
+        apiUrl: "http://localhost:8080/api/v1",
+        sessionCookie: "sess-1",
+        csrfToken: "",
+        headers: { Cookie: "JSESSIONID=sess-1" },
+      },
+      "tenant-1",
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/config-sets/active?tenantId=tenant-1&environmentType=DEV",
+      {
+        method: "GET",
+        headers: {
+          Cookie: "JSESSIONID=sess-1",
+        },
+      },
+    );
+    expect(result).toBe("cfg-active");
+  });
+
   it("calls rooms endpoint with tenant/page/size and cookie header", async () => {
     const payload = {
       content: [],
@@ -31,9 +79,17 @@ describe("rooms.service runtime: fetchRooms", () => {
       totalPages: 0,
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    const result = await fetchRooms("sess-1", "http://localhost:8080/api/v1", "tenant a/b", 2, 10);
+    const result = await fetchRooms(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      "tenant a/b",
+      2,
+      10,
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/rooms?tenantId=tenant%20a%2Fb&page=2&size=10",
@@ -57,7 +113,9 @@ describe("rooms.service runtime: fetchRooms", () => {
       }),
     );
 
-    await expect(fetchRooms("sess-1", "http://localhost:8080/api/v1", "tenant-1")).rejects.toMatchObject({
+    await expect(
+      fetchRooms("sess-1", "http://localhost:8080/api/v1", "tenant-1"),
+    ).rejects.toMatchObject({
       name: "RoomServiceError",
       payload: {
         errorCode: "ROOM_NOT_FOUND",
@@ -78,13 +136,21 @@ describe("rooms.service runtime: mutations", () => {
       createdAt: "2026-03-03T10:00:00Z",
       updatedAt: "2026-03-03T10:00:00Z",
     };
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(room, 201));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(room, 201));
 
-    const result = await createRoom("sess-1", "http://localhost:8080/api/v1", "csrf-1", "idem-1", {
-      name: "Room A",
-      tenantId: "tenant-1",
-      configSetId: "config-1",
-    });
+    const result = await createRoom(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      "csrf-1",
+      "idem-1",
+      {
+        name: "Room A",
+        tenantId: "tenant-1",
+        configSetId: "config-1",
+      },
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/rooms",
@@ -114,9 +180,16 @@ describe("rooms.service runtime: mutations", () => {
     );
 
     await expect(
-      updateRoom("sess-1", "http://localhost:8080/api/v1", "csrf-1", "idem-2", "room a/b", {
-        name: "Room B",
-      }),
+      updateRoom(
+        "sess-1",
+        "http://localhost:8080/api/v1",
+        "csrf-1",
+        "idem-2",
+        "room a/b",
+        {
+          name: "Room B",
+        },
+      ),
     ).rejects.toMatchObject({
       name: "RoomServiceError",
       payload: {
@@ -144,7 +217,13 @@ describe("rooms.service runtime: mutations", () => {
     );
 
     await expect(
-      closeRoom("sess-1", "http://localhost:8080/api/v1", "csrf-1", "idem-3", "room-1"),
+      closeRoom(
+        "sess-1",
+        "http://localhost:8080/api/v1",
+        "csrf-1",
+        "idem-3",
+        "room-1",
+      ),
     ).rejects.toMatchObject({
       name: "RoomServiceError",
       payload: {
@@ -154,10 +233,18 @@ describe("rooms.service runtime: mutations", () => {
   });
 
   it("deleteRoom sends DELETE and resolves with void on success", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
 
     await expect(
-      deleteRoom("sess-1", "http://localhost:8080/api/v1", "csrf-1", "idem-4", "room-1"),
+      deleteRoom(
+        "sess-1",
+        "http://localhost:8080/api/v1",
+        "csrf-1",
+        "idem-4",
+        "room-1",
+      ),
     ).resolves.toBeUndefined();
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -177,7 +264,13 @@ describe("rooms.service runtime: mutations", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({}, 500));
 
     try {
-      await deleteRoom("sess-1", "http://localhost:8080/api/v1", "csrf-1", "idem-5", "room-1");
+      await deleteRoom(
+        "sess-1",
+        "http://localhost:8080/api/v1",
+        "csrf-1",
+        "idem-5",
+        "room-1",
+      );
       throw new Error("Expected deleteRoom to throw RoomServiceError");
     } catch (error) {
       expect(error).toBeInstanceOf(RoomServiceError);

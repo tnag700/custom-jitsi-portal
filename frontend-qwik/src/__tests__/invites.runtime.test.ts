@@ -42,11 +42,14 @@ function invite(overrides: Partial<Invite>): Invite {
 
 describe("invites exchange runtime", () => {
   it("validateInviteToken calls GET validate endpoint and returns payload", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      jsonResponse({ valid: true, meetingId: "m-1" }, 200),
-    );
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse({ valid: true, meetingId: "m-1" }, 200));
 
-    const result = await validateInviteToken("http://localhost:8080/api/v1", "token-123");
+    const result = await validateInviteToken(
+      "http://localhost:8080/api/v1",
+      "token-123",
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/invites/token-123/validate",
@@ -71,7 +74,9 @@ describe("invites exchange runtime", () => {
       ),
     );
 
-    await expect(exchangeInvite("http://localhost:8080/api/v1", "token-1")).rejects.toMatchObject({
+    await expect(
+      exchangeInvite("http://localhost:8080/api/v1", "token-1", "Guest User"),
+    ).rejects.toMatchObject({
       payload: {
         errorCode: "INVITE_REVOKED",
       },
@@ -89,7 +94,9 @@ describe("invites exchange runtime", () => {
       ),
     );
 
-    await expect(exchangeInvite("http://localhost:8080/api/v1", "token-1")).rejects.toMatchObject({
+    await expect(
+      exchangeInvite("http://localhost:8080/api/v1", "token-1", "Guest User"),
+    ).rejects.toMatchObject({
       payload: {
         errorCode: "INVITE_EXPIRED",
       },
@@ -123,16 +130,30 @@ describe("invite list state", () => {
   const data: Invite[] = [
     invite({ id: "active-1", token: "t1" }),
     invite({ id: "expired-1", token: "t2", valid: false }),
-    invite({ id: "deleted-1", token: "t3", valid: false, revokedAt: "2026-03-10T10:00:00Z" }),
-    invite({ id: "deleted-2", token: "t4", valid: false, revokedAt: "2026-03-10T12:30:00Z" }),
+    invite({
+      id: "deleted-1",
+      token: "t3",
+      valid: false,
+      revokedAt: "2026-03-10T10:00:00Z",
+    }),
+    invite({
+      id: "deleted-2",
+      token: "t4",
+      valid: false,
+      revokedAt: "2026-03-10T12:30:00Z",
+    }),
   ];
 
   it("shows only non-deleted valid invites in active mode", () => {
-    expect(applyInviteListState(data, "active").map((item) => item.id)).toEqual(["active-1"]);
+    expect(applyInviteListState(data, "active").map((item) => item.id)).toEqual(
+      ["active-1"],
+    );
   });
 
   it("shows only revoked invites in deleted mode", () => {
-    expect(applyInviteListState(data, "deleted").map((item) => item.id)).toEqual(["deleted-1", "deleted-2"]);
+    expect(
+      applyInviteListState(data, "deleted").map((item) => item.id),
+    ).toEqual(["deleted-1", "deleted-2"]);
   });
 
   it("builds deleted summary with last deleted timestamp", () => {

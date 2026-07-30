@@ -39,5 +39,6 @@ export {
 
 export { MeetingCard } from "./components/MeetingCard";
 export { MeetingForm } from "./components/MeetingForm";
+export type { MeetingFormAction } from "./components/MeetingForm";
 export { MeetingList } from "./components/MeetingList";
 export { ParticipantPanel } from "./components/ParticipantPanel";

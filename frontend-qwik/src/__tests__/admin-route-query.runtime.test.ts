@@ -14,14 +14,18 @@ describe("admin route query helpers", () => {
   });
 
   it("builds hrefs while removing empty query params", () => {
-    const currentUrl = new URL("https://portal.example.test/admin/incidents?environment=dev&view=critical&traceId=trace-1");
+    const currentUrl = new URL(
+      "https://portal.example.test/admin/incidents?environment=dev&view=critical&traceId=trace-1",
+    );
 
-    expect(buildAdminQueryHref(currentUrl, {
-      view: "active",
-      traceId: null,
-      requestId: "req-1",
-      category: "",
-    })).toBe("/admin/incidents?environment=dev&view=active&requestId=req-1");
+    expect(
+      buildAdminQueryHref(currentUrl, {
+        view: "active",
+        traceId: null,
+        requestId: "req-1",
+        category: "",
+      }),
+    ).toBe("/admin/incidents?environment=dev&view=active&requestId=req-1");
   });
 
   it("normalizes numeric filters to safe bounded values", () => {
@@ -36,6 +40,8 @@ describe("admin route query helpers", () => {
   it("builds overview links with optional environment context", () => {
     expect(buildAdminOverviewHref("")).toBe("/admin");
     expect(buildAdminOverviewHref("prod")).toBe("/admin?environment=prod");
-    expect(buildAdminOverviewHref("prod blue")).toBe("/admin?environment=prod%20blue");
+    expect(buildAdminOverviewHref("prod blue")).toBe(
+      "/admin?environment=prod%20blue",
+    );
   });
 });

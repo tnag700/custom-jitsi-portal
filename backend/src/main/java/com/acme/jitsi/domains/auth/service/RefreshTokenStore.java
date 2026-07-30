@@ -33,6 +33,8 @@ interface RefreshTokenStore {
 
   ConsumeResult consume(String tokenId);
 
+  ConsumeResult rotate(String tokenId, RefreshTokenState nextState);
+
   void create(RefreshTokenState state);
 
   void revoke(String tokenId);

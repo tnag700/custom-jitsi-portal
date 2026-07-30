@@ -1,0 +1,50 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+
+function readWorkspaceFile(path: string): string {
+  return readFileSync(resolve(process.cwd(), "..", path), "utf8");
+}
+
+describe("Jitsi web access policy", () => {
+  it.each(["docker-compose.yml", "docker-compose.production.yml"])(
+    "%s redirects the welcome and close pages to the configured portal",
+    (composeFile) => {
+      const source = readWorkspaceFile(composeFile);
+
+      expect(source).toContain("jitsi-web-portal-access:");
+      expect(source).toContain("target: /config/nginx/custom-meet.conf");
+      expect(source).toContain("location = / {");
+      expect(source).toContain("location = /static/close.html {");
+      expect(source).toContain("location = /static/close2.html {");
+      expect(source).toContain("return 302 $$portal_return_url;");
+      expect(source).toContain(
+        'test: ["CMD", "wget", "-qO-", "http://localhost/config.js"]',
+      );
+    },
+  );
+
+  it("redirects room HTML without a portal-issued JWT", () => {
+    const source = readWorkspaceFile("pilot/jitsi/web/custom-config.js");
+
+    expect(source).toContain("config.portalReturnUrl");
+    expect(source).toContain(
+      "new URLSearchParams(window.location.hash.slice(1))",
+    );
+    expect(source).toContain('fragment.has("jwt")');
+    expect(source).toContain("window.location.replace(portalUrl.toString())");
+  });
+
+  it("keeps Jitsi authentication fail-closed in every compose baseline", () => {
+    for (const composeFile of [
+      "docker-compose.yml",
+      "docker-compose.production.yml",
+    ]) {
+      const source = readWorkspaceFile(composeFile);
+
+      expect(source).toContain("JWT_ALLOW_EMPTY=0");
+      expect(source).toContain("ENABLE_GUESTS=0");
+      expect(source).toContain("AUTH_TYPE=jwt");
+    }
+  });
+});

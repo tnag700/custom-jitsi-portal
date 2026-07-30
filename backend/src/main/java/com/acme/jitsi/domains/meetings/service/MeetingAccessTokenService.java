@@ -80,28 +80,29 @@ public class MeetingAccessTokenService implements MeetingTokenIssuer {
         true,
         () -> roleResolver.resolve(meetingId, subject),
       () -> joinPreparationHelper.resolveDisplayName(subject),
-        (accessTokenResult, displayName) ->
+        (accessTokenResult, resolvedDisplayName) ->
             new TokenResult(
                 joinPreparationHelper.buildJoinUrl(
-                    meetingId, accessTokenResult.accessToken(), displayName),
+                    meetingId, accessTokenResult.accessToken(), resolvedDisplayName),
                 accessTokenResult.expiresAt(),
             accessTokenResult.role(),
             joinPreparationHelper.resolveAuditRoomId(meetingId)));
   }
 
   @Override
-  public TokenResult issueGuestToken(String meetingId, String guestSubject) {
+  public TokenResult issueGuestToken(
+      String meetingId, String guestSubject, String displayName) {
     return executeIssue(
         meetingId,
         guestSubject,
         true,
         false,
         () -> MeetingRole.PARTICIPANT,
-      () -> joinPreparationHelper.resolveDisplayName(guestSubject),
-        (accessTokenResult, displayName) ->
+      () -> displayName,
+        (accessTokenResult, resolvedDisplayName) ->
             new TokenResult(
                 joinPreparationHelper.buildJoinUrl(
-                    meetingId, accessTokenResult.accessToken(), displayName),
+                    meetingId, accessTokenResult.accessToken(), resolvedDisplayName),
                 accessTokenResult.expiresAt(),
             accessTokenResult.role(),
             joinPreparationHelper.resolveAuditRoomId(meetingId)));

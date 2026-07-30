@@ -34,9 +34,15 @@ describe("participants.service runtime", () => {
       },
     ];
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    const result = await fetchParticipants("sess-1", "http://localhost:8080/api/v1", "meeting-1");
+    const result = await fetchParticipants(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      "meeting-1",
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/meetings/meeting-1/participants",
@@ -54,7 +60,9 @@ describe("participants.service runtime", () => {
       assignedAt: "2026-03-03T10:00:00Z",
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 201));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 201));
 
     const result = await assignParticipant(
       "sess-1",
@@ -99,7 +107,9 @@ describe("participants.service runtime", () => {
       },
     ];
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 201));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 201));
 
     const result = await bulkAssignParticipants(
       "sess-1",
@@ -128,11 +138,24 @@ describe("participants.service runtime", () => {
 
   it("searchUsers queries the tenant-scoped directory endpoint", async () => {
     const payload = [
-      { subjectId: "u-1", fullName: "Иванов Иван", organization: "ЦРБ", position: "Врач" },
+      {
+        subjectId: "u-1",
+        fullName: "Иванов Иван",
+        organization: "ЦРБ",
+        position: "Врач",
+      },
     ];
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    const result = await searchUsers("sess-1", "http://localhost:8080/api/v1", "tenant-1", "иван", "ЦРБ");
+    const result = await searchUsers(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      "tenant-1",
+      "иван",
+      "ЦРБ",
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/users/search?tenant_id=tenant-1&q=%D0%B8%D0%B2%D0%B0%D0%BD&organization=%D0%A6%D0%A0%D0%91",
@@ -173,10 +196,18 @@ describe("participants.service runtime", () => {
   });
 
   it("unassignParticipant resolves on 204", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
 
     await expect(
-      unassignParticipant("sess-1", "http://localhost:8080/api/v1", "csrf-1", "meeting-1", "u-1"),
+      unassignParticipant(
+        "sess-1",
+        "http://localhost:8080/api/v1",
+        "csrf-1",
+        "meeting-1",
+        "u-1",
+      ),
     ).resolves.toBeUndefined();
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -189,12 +220,20 @@ describe("participants.service runtime", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({}, 500));
 
     try {
-      await fetchParticipants("sess-1", "http://localhost:8080/api/v1", "meeting-1");
-      throw new Error("Expected fetchParticipants to throw MeetingServiceError");
+      await fetchParticipants(
+        "sess-1",
+        "http://localhost:8080/api/v1",
+        "meeting-1",
+      );
+      throw new Error(
+        "Expected fetchParticipants to throw MeetingServiceError",
+      );
     } catch (error) {
       expect(error).toBeInstanceOf(MeetingServiceError);
       const meetingError = error as MeetingServiceError;
-      expect(meetingError.payload.errorCode).toBe("MEETING_SERVICE_UNAVAILABLE");
+      expect(meetingError.payload.errorCode).toBe(
+        "MEETING_SERVICE_UNAVAILABLE",
+      );
     }
   });
 });

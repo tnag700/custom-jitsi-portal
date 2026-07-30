@@ -9,6 +9,10 @@ const PORT = parseInt(process.env["PORT"] ?? "3000", 10);
 async function startServer() {
   const app = express();
 
+  app.get("/healthz", (_request, response) => {
+    response.status(200).json({ status: "ok" });
+  });
+
   // Serve static assets from client build
   app.use(
     "/build",

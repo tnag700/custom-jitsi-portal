@@ -7,6 +7,7 @@ import com.acme.jitsi.domains.meetings.service.MeetingInviteRepository;
 import com.acme.jitsi.domains.meetings.service.MeetingNotFoundException;
 import com.acme.jitsi.domains.meetings.service.MeetingRepository;
 import com.acme.jitsi.domains.meetings.service.MeetingRole;
+import com.acme.jitsi.domains.meetings.service.MeetingStateGuard;
 import com.acme.jitsi.domains.meetings.service.SecureInviteTokenGenerator;
 import com.acme.jitsi.infrastructure.usecase.UseCase;
 import java.time.Clock;
@@ -21,6 +22,7 @@ public class CreateInviteUseCase implements UseCase<CreateInviteCommand, Meeting
 
   private final MeetingInviteRepository inviteRepository;
   private final MeetingRepository meetingRepository;
+  private final MeetingStateGuard meetingStateGuard;
   private final ApplicationEventPublisher eventPublisher;
   private final SecureInviteTokenGenerator tokenGenerator;
   private final Clock clock;
@@ -28,11 +30,13 @@ public class CreateInviteUseCase implements UseCase<CreateInviteCommand, Meeting
   public CreateInviteUseCase(
       MeetingInviteRepository inviteRepository,
       MeetingRepository meetingRepository,
+      MeetingStateGuard meetingStateGuard,
       ApplicationEventPublisher eventPublisher,
       SecureInviteTokenGenerator tokenGenerator,
       Clock clock) {
     this.inviteRepository = inviteRepository;
     this.meetingRepository = meetingRepository;
+    this.meetingStateGuard = meetingStateGuard;
     this.eventPublisher = eventPublisher;
     this.tokenGenerator = tokenGenerator;
     this.clock = clock;
@@ -44,9 +48,10 @@ public class CreateInviteUseCase implements UseCase<CreateInviteCommand, Meeting
     Meeting meeting = meetingRepository.findById(command.meetingId())
         .orElseThrow(() -> new MeetingNotFoundException(command.meetingId()));
 
+    meetingStateGuard.assertGuestJoinAllowed(meeting);
     validateRole(command.role());
     int uses = resolveUses(command.maxUses());
-    validateExpiresAt(command.expiresAt());
+    Instant expiresAt = resolveExpiresAt(command.expiresAt(), meeting);
 
     MeetingInvite saved = inviteRepository.save(new MeetingInvite(
         UUID.randomUUID().toString(),
@@ -55,7 +60,7 @@ public class CreateInviteUseCase implements UseCase<CreateInviteCommand, Meeting
         command.role(),
         uses,
         0,
-        command.expiresAt(),
+        expiresAt,
         null,
         Instant.now(clock),
         command.actorId(),
@@ -68,15 +73,15 @@ public class CreateInviteUseCase implements UseCase<CreateInviteCommand, Meeting
         meeting.roomId(),
         command.actorId(),
         command.traceId(),
-        "role=" + command.role().value() + ",maxUses=" + uses + ",expiresAt=" + command.expiresAt()
+        "role=" + command.role().value() + ",maxUses=" + uses + ",expiresAt=" + expiresAt
     ));
 
     return saved;
   }
 
   private void validateRole(MeetingRole role) {
-    if (role == MeetingRole.HOST) {
-      throw new IllegalArgumentException("Cannot create invite with HOST role");
+    if (role != MeetingRole.PARTICIPANT) {
+      throw new IllegalArgumentException("Guest invites support PARTICIPANT role only");
     }
   }
 
@@ -90,13 +95,19 @@ public class CreateInviteUseCase implements UseCase<CreateInviteCommand, Meeting
     return maxUses;
   }
 
-  private void validateExpiresAt(Instant expiresAt) {
+  private Instant resolveExpiresAt(Instant expiresAt, Meeting meeting) {
     if (expiresAt == null) {
-      return;
+      throw new IllegalArgumentException("Guest invite expiration is required");
     }
-    Instant maxExpiry = Instant.now(clock).plusSeconds(7L * 24 * 60 * 60);
+    Instant now = Instant.now(clock);
+    Instant maxExpiry = now.plusSeconds(7L * 24 * 60 * 60);
     if (expiresAt.isAfter(maxExpiry)) {
       throw new IllegalArgumentException("expiresInHours cannot exceed 168 (7 days)");
     }
+    Instant effectiveExpiry = expiresAt.isAfter(meeting.endsAt()) ? meeting.endsAt() : expiresAt;
+    if (!effectiveExpiry.isAfter(now)) {
+      throw new IllegalArgumentException("Guest invite expiration must be in the future");
+    }
+    return effectiveExpiry;
   }
 }

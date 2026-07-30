@@ -14,8 +14,10 @@ public class MeetingInviteJoinAdapter implements InviteJoinPort {
   }
 
   @Override
-  public JoinResult issueGuestJoin(String meetingId, String guestSubject) {
-    MeetingTokenIssuer.TokenResult tokenResult = meetingTokenIssuer.issueGuestToken(meetingId, guestSubject);
+  public JoinResult issueGuestJoin(
+      String meetingId, String guestSubject, String displayName) {
+    MeetingTokenIssuer.TokenResult tokenResult =
+        meetingTokenIssuer.issueGuestToken(meetingId, guestSubject, displayName);
     return new JoinResult(tokenResult.joinUrl(), tokenResult.expiresAt(), tokenResult.role());
   }
 }

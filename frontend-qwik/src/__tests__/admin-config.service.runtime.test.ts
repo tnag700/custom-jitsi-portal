@@ -53,13 +53,19 @@ describe("admin-config.service runtime", () => {
       totalPages: 1,
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    const result = await fetchAdminConfigSets("sess-1", "http://localhost:8080/api/v1", {
-      tenantId: "tenant-1",
-      page: 0,
-      size: 20,
-    });
+    const result = await fetchAdminConfigSets(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      {
+        tenantId: "tenant-1",
+        page: 0,
+        size: 20,
+      },
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/config-sets?tenantId=tenant-1&page=0&size=20",
@@ -77,21 +83,26 @@ describe("admin-config.service runtime", () => {
       totalPages: 0,
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    await fetchAdminConfigSets({
-      apiUrl: "http://localhost:8080/api/v1",
-      sessionCookie: "sess-ctx",
-      csrfToken: "csrf-ctx",
-      headers: {
-        Cookie: "JSESSIONID=sess-ctx",
-        Accept: "application/json",
+    await fetchAdminConfigSets(
+      {
+        apiUrl: "http://localhost:8080/api/v1",
+        sessionCookie: "sess-ctx",
+        csrfToken: "csrf-ctx",
+        headers: {
+          Cookie: "JSESSIONID=sess-ctx",
+          Accept: "application/json",
+        },
       },
-    }, {
-      tenantId: "tenant-ctx",
-      page: 1,
-      size: 10,
-    });
+      {
+        tenantId: "tenant-ctx",
+        page: 1,
+        size: 10,
+      },
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/config-sets?tenantId=tenant-ctx&page=1&size=10",
@@ -105,48 +116,68 @@ describe("admin-config.service runtime", () => {
   });
 
   it("fetchAdminConfigSet composes detail, compatibility and latest rollout using existing config-sets endpoints", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(jsonResponse({
-        configSetId: "cfg-1",
-        name: "Primary DEV",
-        tenantId: "tenant-1",
-        environmentType: "dev",
-        issuer: "issuer",
-        audience: "aud",
-        algorithm: "HS256",
-        roleClaim: "roles",
-        signingSecret: "***",
-        jwksUri: null,
-        accessTtlMinutes: 15,
-        refreshTtlMinutes: 60,
-        meetingsServiceUrl: "https://meet.dev",
-        status: "active",
-        createdAt: "2026-03-18T10:00:00Z",
-        updatedAt: "2026-03-18T11:00:00Z",
-      }, 200))
-      .mockResolvedValueOnce(jsonResponse({
-        status: "COMPATIBLE",
-        mismatches: [],
-        checkedAt: "2026-03-18T11:05:00Z",
-        traceId: "trace-compat-1",
-      }, 200))
-      .mockResolvedValueOnce(jsonResponse({
-        rolloutId: "rollout-1",
-        configSetId: "cfg-1",
-        previousConfigSetId: null,
-        tenantId: "tenant-1",
-        environmentType: "DEV",
-        status: "SUCCEEDED",
-        validationErrors: null,
-        startedAt: "2026-03-18T10:30:00Z",
-        completedAt: "2026-03-18T10:31:00Z",
-        actorId: "alice.admin",
-      }, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            configSetId: "cfg-1",
+            name: "Primary DEV",
+            tenantId: "tenant-1",
+            environmentType: "dev",
+            issuer: "issuer",
+            audience: "aud",
+            algorithm: "HS256",
+            roleClaim: "roles",
+            signingSecret: "***",
+            jwksUri: null,
+            accessTtlMinutes: 15,
+            refreshTtlMinutes: 60,
+            meetingsServiceUrl: "https://meet.dev",
+            status: "active",
+            createdAt: "2026-03-18T10:00:00Z",
+            updatedAt: "2026-03-18T11:00:00Z",
+          },
+          200,
+        ),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            status: "COMPATIBLE",
+            mismatches: [],
+            checkedAt: "2026-03-18T11:05:00Z",
+            traceId: "trace-compat-1",
+          },
+          200,
+        ),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            rolloutId: "rollout-1",
+            configSetId: "cfg-1",
+            previousConfigSetId: null,
+            tenantId: "tenant-1",
+            environmentType: "DEV",
+            status: "SUCCEEDED",
+            validationErrors: null,
+            startedAt: "2026-03-18T10:30:00Z",
+            completedAt: "2026-03-18T10:31:00Z",
+            actorId: "alice.admin",
+          },
+          200,
+        ),
+      );
 
-    const result = await fetchAdminConfigSet("sess-1", "http://localhost:8080/api/v1", {
-      configSetId: "cfg-1",
-      tenantId: "tenant-1",
-    });
+    const result = await fetchAdminConfigSet(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      {
+        configSetId: "cfg-1",
+        tenantId: "tenant-1",
+      },
+    );
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
@@ -167,12 +198,106 @@ describe("admin-config.service runtime", () => {
   });
 
   it("create, update, compatibility, rollout and rollback reuse config-sets mutation endpoints with mutation headers", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(jsonResponse({ configSetId: "cfg-1", name: "Primary DEV", tenantId: "tenant-1", environmentType: "dev", issuer: "issuer", audience: "aud", algorithm: "HS256", roleClaim: "roles", signingSecret: "***", jwksUri: null, accessTtlMinutes: 15, refreshTtlMinutes: 60, meetingsServiceUrl: "https://meet.dev", status: "draft", createdAt: "2026-03-18T10:00:00Z", updatedAt: "2026-03-18T10:00:00Z" }, 201))
-      .mockResolvedValueOnce(jsonResponse({ configSetId: "cfg-1", name: "Primary DEV 2", tenantId: "tenant-1", environmentType: "dev", issuer: "issuer", audience: "aud", algorithm: "HS256", roleClaim: "roles", signingSecret: "***", jwksUri: null, accessTtlMinutes: 15, refreshTtlMinutes: 60, meetingsServiceUrl: "https://meet.dev", status: "draft", createdAt: "2026-03-18T10:00:00Z", updatedAt: "2026-03-18T10:01:00Z" }, 200))
-      .mockResolvedValueOnce(jsonResponse({ status: "INCOMPATIBLE", mismatches: [{ code: "URL", message: "Bad URL", expected: "https", actual: "http" }], checkedAt: "2026-03-18T10:10:00Z", traceId: "trace-compat-2" }, 200))
-      .mockResolvedValueOnce(jsonResponse({ rolloutId: "rollout-2", configSetId: "cfg-1", previousConfigSetId: null, tenantId: "tenant-1", environmentType: "DEV", status: "PENDING", validationErrors: null, startedAt: "2026-03-18T10:12:00Z", completedAt: null, actorId: "alice.admin" }, 200))
-      .mockResolvedValueOnce(jsonResponse({ rolloutId: "rollout-3", configSetId: "cfg-1", previousConfigSetId: "cfg-prev", tenantId: "tenant-1", environmentType: "DEV", status: "ROLLED_BACK", validationErrors: null, startedAt: "2026-03-18T10:13:00Z", completedAt: "2026-03-18T10:14:00Z", actorId: "alice.admin" }, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            configSetId: "cfg-1",
+            name: "Primary DEV",
+            tenantId: "tenant-1",
+            environmentType: "dev",
+            issuer: "issuer",
+            audience: "aud",
+            algorithm: "HS256",
+            roleClaim: "roles",
+            signingSecret: "***",
+            jwksUri: null,
+            accessTtlMinutes: 15,
+            refreshTtlMinutes: 60,
+            meetingsServiceUrl: "https://meet.dev",
+            status: "draft",
+            createdAt: "2026-03-18T10:00:00Z",
+            updatedAt: "2026-03-18T10:00:00Z",
+          },
+          201,
+        ),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            configSetId: "cfg-1",
+            name: "Primary DEV 2",
+            tenantId: "tenant-1",
+            environmentType: "dev",
+            issuer: "issuer",
+            audience: "aud",
+            algorithm: "HS256",
+            roleClaim: "roles",
+            signingSecret: "***",
+            jwksUri: null,
+            accessTtlMinutes: 15,
+            refreshTtlMinutes: 60,
+            meetingsServiceUrl: "https://meet.dev",
+            status: "draft",
+            createdAt: "2026-03-18T10:00:00Z",
+            updatedAt: "2026-03-18T10:01:00Z",
+          },
+          200,
+        ),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            status: "INCOMPATIBLE",
+            mismatches: [
+              {
+                code: "URL",
+                message: "Bad URL",
+                expected: "https",
+                actual: "http",
+              },
+            ],
+            checkedAt: "2026-03-18T10:10:00Z",
+            traceId: "trace-compat-2",
+          },
+          200,
+        ),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            rolloutId: "rollout-2",
+            configSetId: "cfg-1",
+            previousConfigSetId: null,
+            tenantId: "tenant-1",
+            environmentType: "DEV",
+            status: "PENDING",
+            validationErrors: null,
+            startedAt: "2026-03-18T10:12:00Z",
+            completedAt: null,
+            actorId: "alice.admin",
+          },
+          200,
+        ),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            rolloutId: "rollout-3",
+            configSetId: "cfg-1",
+            previousConfigSetId: "cfg-prev",
+            tenantId: "tenant-1",
+            environmentType: "DEV",
+            status: "ROLLED_BACK",
+            validationErrors: null,
+            startedAt: "2026-03-18T10:13:00Z",
+            completedAt: "2026-03-18T10:14:00Z",
+            actorId: "alice.admin",
+          },
+          200,
+        ),
+      );
 
     const mutationContext = {
       apiUrl: "http://localhost:8080/api/v1",
@@ -218,11 +343,18 @@ describe("admin-config.service runtime", () => {
       refreshTtlMinutes: 60,
       meetingsServiceUrl: "https://meet.dev",
     });
-    await checkAdminConfigSetCompatibility("sess-1", "http://localhost:8080/api/v1", {
+    await checkAdminConfigSetCompatibility(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      {
+        configSetId: "cfg-1",
+        tenantId: "tenant-1",
+      },
+    );
+    await rolloutAdminConfigSet(mutationContext, {
       configSetId: "cfg-1",
       tenantId: "tenant-1",
     });
-    await rolloutAdminConfigSet(mutationContext, { configSetId: "cfg-1", tenantId: "tenant-1" });
     await rollbackAdminConfigSet(mutationContext, {
       configSetId: "cfg-1",
       tenantId: "tenant-1",
@@ -232,12 +364,18 @@ describe("admin-config.service runtime", () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
       "http://localhost:8080/api/v1/config-sets",
-      expect.objectContaining({ method: "POST", headers: expect.objectContaining({ "Idempotency-Key": "idem-1" }) }),
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ "Idempotency-Key": "idem-1" }),
+      }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       "http://localhost:8080/api/v1/config-sets/cfg-1",
-      expect.objectContaining({ method: "PUT", headers: expect.objectContaining({ "X-CSRF-TOKEN": "csrf-1" }) }),
+      expect.objectContaining({
+        method: "PUT",
+        headers: expect.objectContaining({ "X-CSRF-TOKEN": "csrf-1" }),
+      }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       3,
@@ -270,10 +408,14 @@ describe("admin-config.service runtime", () => {
     );
 
     await expect(
-      fetchLatestAdminConfigSetRollout("sess-1", "http://localhost:8080/api/v1", {
-        tenantId: "tenant-1",
-        environmentType: "DEV",
-      }),
+      fetchLatestAdminConfigSetRollout(
+        "sess-1",
+        "http://localhost:8080/api/v1",
+        {
+          tenantId: "tenant-1",
+          environmentType: "DEV",
+        },
+      ),
     ).rejects.toBeInstanceOf(AdminConfigServiceError);
   });
 });

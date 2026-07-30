@@ -71,7 +71,11 @@ describe("Meetings runtime: list state", () => {
 
   it("sorts by title in locale-aware order", () => {
     const result = applyMeetingListState(data, "all", "title");
-    expect(result.map((item) => item.title)).toEqual(["Alpha", "Gamma", "Webinar B"]);
+    expect(result.map((item) => item.title)).toEqual([
+      "Alpha",
+      "Gamma",
+      "Webinar B",
+    ]);
   });
 
   it("sorts by startsAt ascending", () => {

@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
+
+# Run this only from a private operator path after init/unseal.
+if vault audit list | grep -q '^file/'; then
+  echo 'Vault file audit device is already enabled.'
+  vault audit list
+  exit 0
+fi
+
+vault audit enable file file_path=/vault/audit/vault-audit.log mode=0600 log_raw=false
+vault audit list

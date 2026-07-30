@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as AdminDomain from "~/lib/domains/admin";
 
 const mockFetchAdminDashboard = vi.fn();
 const mockFetchAdminDrillDown = vi.fn();
@@ -8,9 +9,19 @@ const mockBuildServerRequestContext = vi.fn();
 const mockResolveAuthRecoveryRedirectPath = vi.fn();
 
 class MockAdminDashboardServiceError extends Error {
-  payload: { title: string; detail: string; errorCode: string; traceId?: string };
+  payload: {
+    title: string;
+    detail: string;
+    errorCode: string;
+    traceId?: string;
+  };
 
-  constructor(payload: { title: string; detail: string; errorCode: string; traceId?: string }) {
+  constructor(payload: {
+    title: string;
+    detail: string;
+    errorCode: string;
+    traceId?: string;
+  }) {
     super(payload.detail);
     this.name = "AdminDashboardServiceError";
     this.payload = payload;
@@ -33,7 +44,9 @@ vi.mock("@qwik.dev/router", async (importOriginal) => {
     ...actual,
     routeLoader$: identity,
     routeLoaderQrl: identity,
-    useLocation: () => ({ url: new URL("http://localhost:3000/admin?period=1h") }),
+    useLocation: () => ({
+      url: new URL("http://localhost:3000/admin?period=1h"),
+    }),
   };
 });
 
@@ -51,7 +64,7 @@ vi.mock("~/lib/domains/auth", () => ({
 }));
 
 vi.mock("~/lib/domains/admin", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("~/lib/domains/admin")>();
+  const actual = await importOriginal<typeof AdminDomain>();
   return {
     ...actual,
     fetchAdminDashboard: mockFetchAdminDashboard,
@@ -62,7 +75,9 @@ vi.mock("~/lib/domains/admin", async (importOriginal) => {
 
 function createCtx(urlValue = "http://localhost:3000/admin?period=1h") {
   return {
-    sharedMap: new Map<string, unknown>([["apiUrl", "http://localhost:8080/api/v1"]]),
+    sharedMap: new Map<string, unknown>([
+      ["apiUrl", "http://localhost:8080/api/v1"],
+    ]),
     url: new URL(urlValue),
     query: new URL(urlValue).searchParams,
     cookie: {
@@ -73,7 +88,11 @@ function createCtx(urlValue = "http://localhost:3000/admin?period=1h") {
         return undefined;
       },
     },
-    redirect: (status: number, to: string) => ({ type: "redirect", status, to }),
+    redirect: (status: number, to: string) => ({
+      type: "redirect",
+      status,
+      to,
+    }),
   };
 }
 
@@ -84,6 +103,7 @@ function createDashboard() {
     traceId: "trace-1",
     sampleWindowLimited: false,
     priorityBanner: {
+      active: true,
       severity: "critical",
       headline: "Config drift",
       summary: "Config drift blocks joins.",
@@ -150,6 +170,8 @@ describe("admin dashboard route loader runtime", () => {
     mockFetchAdminDrillDown.mockResolvedValue(drillDown);
 
     const mod = await import("~/routes/admin/index");
+    // The Qwik loader is replaced with an identity mock; its static type no longer reflects the async runtime value.
+    // eslint-disable-next-line @typescript-eslint/await-thenable
     const result = await mod.useAdminDashboard(createCtx() as never);
 
     expect(mockFetchAdminDrillDown).toHaveBeenCalledWith(
@@ -188,13 +210,17 @@ describe("admin dashboard route loader runtime", () => {
   it("keeps the overview summary when drill-down fails with a non-auth service error", async () => {
     const dashboard = createDashboard();
     mockFetchAdminDashboard.mockResolvedValue(dashboard);
-    mockFetchAdminDrillDown.mockRejectedValue(new MockAdminDashboardServiceError({
-      title: "Invalid",
-      detail: "Broken drill-down payload",
-      errorCode: "ADMIN_DASHBOARD_RESPONSE_INVALID",
-    }));
+    mockFetchAdminDrillDown.mockRejectedValue(
+      new MockAdminDashboardServiceError({
+        title: "Invalid",
+        detail: "Broken drill-down payload",
+        errorCode: "ADMIN_DASHBOARD_RESPONSE_INVALID",
+      }),
+    );
 
     const mod = await import("~/routes/admin/index");
+    // The Qwik loader is replaced with an identity mock; its static type no longer reflects the async runtime value.
+    // eslint-disable-next-line @typescript-eslint/await-thenable
     const result = await mod.useAdminDashboard(createCtx() as never);
 
     expect(result).toEqual({
@@ -217,13 +243,63 @@ describe("admin dashboard route loader runtime", () => {
     });
   });
 
+  it("skips the drill-down request for a stable dashboard with healthy services", async () => {
+    const dashboard = createDashboard();
+    dashboard.priorityBanner.active = false;
+    dashboard.priorityBanner.severity = "info";
+    dashboard.topDegradations = [];
+    dashboard.latestSpikes = [];
+    dashboard.affectedScopeSummary = [];
+    dashboard.keyServiceStatuses = [
+      {
+        key: "backend",
+        label: "Backend",
+        status: "UP",
+        detail: "Healthy",
+        handoff: {
+          environment: "dev",
+          period: "15m",
+          severity: "info",
+          errorCode: null,
+          category: "CONFIG",
+          roomId: null,
+          meetingId: null,
+          incidentId: null,
+        },
+      },
+    ];
+    mockFetchAdminDashboard.mockResolvedValue(dashboard);
+
+    const mod = await import("~/routes/admin/index");
+    // eslint-disable-next-line @typescript-eslint/await-thenable
+    const result = await mod.useAdminDashboard(createCtx() as never);
+
+    expect(mockFetchAdminDrillDown).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      dashboard,
+      drillDown: null,
+      drillDownError: null,
+      loadError: null,
+      filters: {
+        period: "1h",
+        environment: "",
+        roomId: "",
+        meetingId: "",
+        errorCode: "",
+        category: "",
+      },
+    });
+  });
+
   it("redirects to auth when drill-down discovers a missing session", async () => {
     mockFetchAdminDashboard.mockResolvedValue(createDashboard());
-    mockFetchAdminDrillDown.mockRejectedValue(new MockAdminDashboardServiceError({
-      title: "Unauthorized",
-      detail: "Session missing",
-      errorCode: "AUTH_REQUIRED",
-    }));
+    mockFetchAdminDrillDown.mockRejectedValue(
+      new MockAdminDashboardServiceError({
+        title: "Unauthorized",
+        detail: "Session missing",
+        errorCode: "AUTH_REQUIRED",
+      }),
+    );
 
     const mod = await import("~/routes/admin/index");
 
@@ -234,7 +310,9 @@ describe("admin dashboard route loader runtime", () => {
     });
 
     expect(mockResolveAuthRecoveryRedirectPath).toHaveBeenCalledWith(
-      expect.objectContaining({ payload: expect.objectContaining({ errorCode: "AUTH_REQUIRED" }) }),
+      expect.objectContaining({
+        payload: expect.objectContaining({ errorCode: "AUTH_REQUIRED" }),
+      }),
       "/admin?period=1h",
     );
   });

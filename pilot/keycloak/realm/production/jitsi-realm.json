@@ -1,0 +1,92 @@
+{
+  "realm": "jitsi",
+  "displayName": "Jitsi Portal",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Full tenant administration"
+      },
+      {
+        "name": "system-admin",
+        "description": "Platform administration"
+      },
+      {
+        "name": "security-admin",
+        "description": "Security administration"
+      },
+      {
+        "name": "support-engineer",
+        "description": "Read-only operational support"
+      },
+      {
+        "name": "participant",
+        "description": "Authenticated meeting participant"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "jitsi-backend",
+      "name": "Jitsi Portal Backend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${SSO_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "${OIDC_REDIRECT_BASE_URI}/login/oauth2/code/keycloak"
+      ],
+      "webOrigins": [
+        "${APP_FRONTEND_ORIGIN}"
+      ],
+      "protocolMappers": [
+        {
+          "name": "tenant-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "tenantId",
+            "claim.name": "tenantId",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "false"
+          }
+        },
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true",
+            "usermodel.realmRoleMapping.rolePrefix": ""
+          }
+        }
+      ]
+    }
+  ],
+  "users": []
+}

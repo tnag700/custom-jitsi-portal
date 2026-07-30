@@ -54,13 +54,19 @@ describe("Admin Role History Guard: routes", () => {
     expect(tsx).toContain("actionType");
     expect(tsx).toContain("returnTo");
     expect(tsx).toContain("buildAdminRoleHistoryFilters(query)");
-    expect(tsx).toContain("const page = normalizeNonNegativeInteger(filters.page, 0)");
-    expect(tsx).toContain("const pageSize = normalizePositiveInteger(filters.pageSize, 20)");
+    expect(tsx).toContain(
+      "const page = normalizeNonNegativeInteger(filters.page, 0)",
+    );
+    expect(tsx).toContain(
+      "const pageSize = normalizePositiveInteger(filters.pageSize, 20)",
+    );
     expect(tsx).not.toContain("function hasPrimaryFilter");
   });
 
-  it("routes/admin/incidents/[incidentId]/index.tsx should expose deep-link to История ролей", () => {
-    const tsx = readSrc("routes/admin/incidents/[incidentId]/index.tsx");
+  it("AdminIncidentInvestigation should expose deep-link to История ролей", () => {
+    const tsx = readSrc(
+      "lib/domains/admin/components/AdminIncidentInvestigation.tsx",
+    );
     expect(tsx).toContain("buildIncidentRelatedHref");
     expect(tsx).toContain("relatedLinks");
     expect(tsx).toContain("Связанный контекст");

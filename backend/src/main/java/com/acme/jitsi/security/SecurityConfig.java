@@ -106,7 +106,9 @@ public class SecurityConfig {
       OidcLoginSuccessHandler oidcLoginSuccessHandler,
       @Value("${app.features.advanced-monitoring:false}") boolean advancedMonitoring) throws Exception {
     http.cors(Customizer.withDefaults());
-    http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()));
+    http.csrf(csrf -> csrf
+        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+        .ignoringRequestMatchers("/api/v1/invites/exchange"));
     http.headers(headers -> headers
       .contentTypeOptions(Customizer.withDefaults())
       .frameOptions(frameOptions -> frameOptions.deny())

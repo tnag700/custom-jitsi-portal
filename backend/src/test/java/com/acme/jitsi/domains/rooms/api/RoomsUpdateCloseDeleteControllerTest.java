@@ -70,7 +70,7 @@ class RoomsUpdateCloseDeleteControllerTest {
   private String createRoom(String name, String tenantId) throws Exception {
     String response = mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(TestFixtures.adminLogin())
+            .with(TestFixtures.adminLogin(tenantId))
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {
@@ -324,5 +324,4 @@ class RoomsUpdateCloseDeleteControllerTest {
         .andExpect(jsonPath("$.properties.requestId").value("trace-room-close-twice-1"));
   }
 }
-
 

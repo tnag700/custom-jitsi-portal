@@ -80,7 +80,12 @@ describe("join.service runtime: adaptJoinProblemDetails", () => {
   it("preserves traceId when present", async () => {
     const result = await adaptJoinProblemDetails(
       jsonResponse(
-        { title: "Error", detail: "Fail", errorCode: "JOIN_SERVICE_UNAVAILABLE", traceId: "trace-abc-123" },
+        {
+          title: "Error",
+          detail: "Fail",
+          errorCode: "JOIN_SERVICE_UNAVAILABLE",
+          traceId: "trace-abc-123",
+        },
         503,
       ),
     );
@@ -88,7 +93,9 @@ describe("join.service runtime: adaptJoinProblemDetails", () => {
   });
 
   it("omits traceId when absent", async () => {
-    const result = await adaptJoinProblemDetails(jsonResponse({ errorCode: "MEETING_ENDED" }, 409));
+    const result = await adaptJoinProblemDetails(
+      jsonResponse({ errorCode: "MEETING_ENDED" }, 409),
+    );
     expect(result.traceId).toBeUndefined();
   });
 });
@@ -104,9 +111,14 @@ describe("join.service runtime: fetchUpcomingMeetings", () => {
         joinAvailability: "available",
       },
     ];
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(mockMeetings, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(mockMeetings, 200));
 
-    const result = await fetchUpcomingMeetings("sess-123", "http://localhost:8080/api/v1");
+    const result = await fetchUpcomingMeetings(
+      "sess-123",
+      "http://localhost:8080/api/v1",
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/meetings/upcoming",
@@ -122,9 +134,18 @@ describe("join.service runtime: fetchUpcomingMeetings", () => {
 
   it("throws JoinServiceError on 401", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      jsonResponse({ title: "Unauthorized", detail: "Not authenticated", errorCode: "AUTH_REQUIRED" }, 401),
+      jsonResponse(
+        {
+          title: "Unauthorized",
+          detail: "Not authenticated",
+          errorCode: "AUTH_REQUIRED",
+        },
+        401,
+      ),
     );
-    await expect(fetchUpcomingMeetings("", "http://localhost:8080/api/v1")).rejects.toMatchObject({
+    await expect(
+      fetchUpcomingMeetings("", "http://localhost:8080/api/v1"),
+    ).rejects.toMatchObject({
       payload: { errorCode: "AUTH_REQUIRED" },
     });
   });
@@ -144,7 +165,9 @@ describe("join.service runtime: issueAccessToken", () => {
       expiresAt: "2026-03-03T10:00:00Z",
       role: "MODERATOR",
     };
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(tokenResponse, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(tokenResponse, 200));
 
     const result = await issueAccessToken(
       "sess-123",
@@ -168,10 +191,22 @@ describe("join.service runtime: issueAccessToken", () => {
 
   it("does not send request body (POST is body-less for access-token)", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      jsonResponse({ joinUrl: "https://meet.example.com/room", expiresAt: "2026-03-03T10:00:00Z", role: "ATTENDEE" }, 200),
+      jsonResponse(
+        {
+          joinUrl: "https://meet.example.com/room",
+          expiresAt: "2026-03-03T10:00:00Z",
+          role: "ATTENDEE",
+        },
+        200,
+      ),
     );
 
-    await issueAccessToken("sess", "http://localhost:8080/api/v1", "csrf", "m-1");
+    await issueAccessToken(
+      "sess",
+      "http://localhost:8080/api/v1",
+      "csrf",
+      "m-1",
+    );
 
     const callArgs = fetchMock.mock.calls[0][1] as RequestInit;
     expect(callArgs.body).toBeUndefined();
@@ -179,17 +214,38 @@ describe("join.service runtime: issueAccessToken", () => {
 
   it("URL-encodes meetingId in the path", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      jsonResponse({ joinUrl: "https://meet.example.com/r", expiresAt: "2026-03-03T10:00:00Z", role: "ATTENDEE" }, 200),
+      jsonResponse(
+        {
+          joinUrl: "https://meet.example.com/r",
+          expiresAt: "2026-03-03T10:00:00Z",
+          role: "ATTENDEE",
+        },
+        200,
+      ),
     );
 
-    await issueAccessToken("sess", "http://localhost:8080/api/v1", "csrf", "meeting/with spaces");
+    await issueAccessToken(
+      "sess",
+      "http://localhost:8080/api/v1",
+      "csrf",
+      "meeting/with spaces",
+    );
 
-    expect(fetchMock.mock.calls[0][0] as string).toContain("meeting%2Fwith%20spaces");
+    expect(fetchMock.mock.calls[0][0] as string).toContain(
+      "meeting%2Fwith%20spaces",
+    );
   });
 
   it("throws JoinServiceError with AUTH_REQUIRED on 401", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      jsonResponse({ errorCode: "AUTH_REQUIRED", title: "Unauthorized", detail: "Session expired" }, 401),
+      jsonResponse(
+        {
+          errorCode: "AUTH_REQUIRED",
+          title: "Unauthorized",
+          detail: "Session expired",
+        },
+        401,
+      ),
     );
     await expect(
       issueAccessToken("", "http://localhost:8080/api/v1", "", "m-1"),
@@ -199,7 +255,12 @@ describe("join.service runtime: issueAccessToken", () => {
   it("throws JoinServiceError with MEETING_NOT_FOUND on 404", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({}, 404));
     await expect(
-      issueAccessToken("sess", "http://localhost:8080/api/v1", "csrf", "ghost-id"),
+      issueAccessToken(
+        "sess",
+        "http://localhost:8080/api/v1",
+        "csrf",
+        "ghost-id",
+      ),
     ).rejects.toMatchObject({ payload: { errorCode: "MEETING_NOT_FOUND" } });
   });
 
@@ -212,21 +273,39 @@ describe("join.service runtime: issueAccessToken", () => {
 
   it("rejects non-HTTPS joinUrl payloads as invalid response", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      jsonResponse({ joinUrl: "http://meet.example.com/room", expiresAt: "2026-03-03T10:00:00Z", role: "ATTENDEE" }, 200),
+      jsonResponse(
+        {
+          joinUrl: "http://meet.example.com/room",
+          expiresAt: "2026-03-03T10:00:00Z",
+          role: "ATTENDEE",
+        },
+        200,
+      ),
     );
 
     await expect(
       issueAccessToken("sess", "http://localhost:8080/api/v1", "csrf", "m-1"),
-    ).rejects.toMatchObject({ payload: { errorCode: "JOIN_RESPONSE_INVALID" } });
+    ).rejects.toMatchObject({
+      payload: { errorCode: "JOIN_RESPONSE_INVALID" },
+    });
   });
 
   it("rejects joinUrl payloads with credentials as invalid response", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      jsonResponse({ joinUrl: "https://user:pass@meet.example.com/room", expiresAt: "2026-03-03T10:00:00Z", role: "ATTENDEE" }, 200),
+      jsonResponse(
+        {
+          joinUrl: "https://user:pass@meet.example.com/room",
+          expiresAt: "2026-03-03T10:00:00Z",
+          role: "ATTENDEE",
+        },
+        200,
+      ),
     );
 
     await expect(
       issueAccessToken("sess", "http://localhost:8080/api/v1", "csrf", "m-1"),
-    ).rejects.toMatchObject({ payload: { errorCode: "JOIN_RESPONSE_INVALID" } });
+    ).rejects.toMatchObject({
+      payload: { errorCode: "JOIN_RESPONSE_INVALID" },
+    });
   });
 });

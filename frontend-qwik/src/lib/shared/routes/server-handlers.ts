@@ -25,6 +25,7 @@ interface ErrorPayload {
   detail: string;
   errorCode: string;
   traceId?: string;
+  httpStatus?: number;
 }
 
 type ErrorWithPayload = Error & { payload: ErrorPayload };
@@ -213,7 +214,8 @@ export function mapRouteActionError<TError extends ErrorWithPayload>(
   fallbackErrorCode: string,
 ) {
   if (error instanceof ErrorType) {
-    return fail(400, { error: error.payload });
+    const { httpStatus = 400, ...payload } = error.payload;
+    return fail(httpStatus, { error: payload });
   }
 
   console.error("[mapRouteActionError] unexpected error:", error);

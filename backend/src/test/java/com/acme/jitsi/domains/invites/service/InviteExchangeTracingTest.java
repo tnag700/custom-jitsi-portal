@@ -37,7 +37,8 @@ class InviteExchangeTracingTest {
   @Test
   void exchangeEmitsCanonicalSuccessObservationWithoutSensitiveValues() {
     inviteReservationCapability.reservation = InviteReservation.issue("reservation-1", "invite-token", "meeting-a");
-    when(inviteJoinPort.issueGuestJoin(eq("meeting-a"), startsWith("guest:")))
+    when(inviteJoinPort.issueGuestJoin(
+            eq("meeting-a"), startsWith("guest:"), eq("Guest User")))
         .thenReturn(new InviteJoinPort.JoinResult("https://meet.example/join", Instant.parse("2099-01-01T10:15:30Z"), "participant"));
 
     service.exchange("invite-token", "Guest User");
@@ -92,7 +93,8 @@ class InviteExchangeTracingTest {
   void exchangeMarksPartialFailureAndRollbackWhenGuestTokenIssuanceFails() {
     InviteReservation reservation = InviteReservation.issue("reservation-2", "invite-token", "meeting-a");
     inviteReservationCapability.reservation = reservation;
-    when(inviteJoinPort.issueGuestJoin(eq("meeting-a"), startsWith("guest:")))
+    when(inviteJoinPort.issueGuestJoin(
+            eq("meeting-a"), startsWith("guest:"), eq("Guest User")))
         .thenThrow(new IllegalStateException("token issue failed"));
 
     assertThatThrownBy(() -> service.exchange("invite-token", "Guest User"))
@@ -110,7 +112,8 @@ class InviteExchangeTracingTest {
     InviteReservation reservation = InviteReservation.issue("reservation-3", "invite-token", "meeting-a");
     inviteReservationCapability.reservation = reservation;
     inviteReservationCapability.rollbackFailure = new IllegalStateException("rollback also failed");
-    when(inviteJoinPort.issueGuestJoin(eq("meeting-a"), startsWith("guest:")))
+    when(inviteJoinPort.issueGuestJoin(
+            eq("meeting-a"), startsWith("guest:"), eq("Guest User")))
         .thenThrow(new IllegalStateException("token issue failed"));
 
     assertThatThrownBy(() -> service.exchange("invite-token", "Guest User"))

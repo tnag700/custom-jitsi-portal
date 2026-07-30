@@ -89,29 +89,33 @@ describe("auth.service runtime: fetchAuthMe", () => {
   });
 
   it("calls /auth/me with JSESSIONID cookie and normalizes profile payload", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        jsonResponse(
-          {
-            id: "u-1",
-            displayName: "Dev Admin",
-            email: "dev@example.com",
-            tenant: "acme",
-            claims: ["host", "moderator"],
-          },
-          200,
-        ),
-      );
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse(
+        {
+          id: "u-1",
+          displayName: "Dev Admin",
+          email: "dev@example.com",
+          tenant: "acme",
+          claims: ["host", "moderator"],
+        },
+        200,
+      ),
+    );
 
-    const profile = await fetchAuthMe("session-123", "http://localhost:8080/api/v1");
+    const profile = await fetchAuthMe(
+      "session-123",
+      "http://localhost:8080/api/v1",
+    );
 
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8080/api/v1/auth/me", {
-      method: "GET",
-      headers: {
-        Cookie: "JSESSIONID=session-123",
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/auth/me",
+      {
+        method: "GET",
+        headers: {
+          Cookie: "JSESSIONID=session-123",
+        },
       },
-    });
+    );
 
     expect(profile).toEqual({
       id: "u-1",

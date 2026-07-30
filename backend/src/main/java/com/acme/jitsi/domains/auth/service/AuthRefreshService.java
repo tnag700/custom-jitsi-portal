@@ -122,19 +122,11 @@ public class AuthRefreshService {
 
       RefreshTokenStore.ConsumeResult consumeResult;
       try {
-        observation.stage("consume_previous_token");
-        consumeResult = refreshTokenStore.consume(parsed.tokenId());
+        observation.stage("commit_rotated_token");
+        consumeResult = refreshTokenStore.rotate(parsed.tokenId(), rotationResult.nextState());
         refreshSessionValidatorChain.requireConsumable(consumeResult, parsed);
       } catch (RuntimeException ex) {
-        classifyRefreshFailure(observation, ex, "consume_previous_token");
-        throw ex;
-      }
-
-      try {
-        observation.stage("persist_rotated_token");
-        refreshTokenStore.create(rotationResult.nextState());
-      } catch (RuntimeException ex) {
-        classifyRefreshFailure(observation, ex, "persist_rotated_token");
+        classifyRefreshFailure(observation, ex, "commit_rotated_token");
         throw ex;
       }
 

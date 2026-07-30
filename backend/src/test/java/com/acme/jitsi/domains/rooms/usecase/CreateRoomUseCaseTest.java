@@ -45,7 +45,7 @@ class CreateRoomUseCaseTest {
 
   @Test
   void executeCreatesRoomAndPublishesEvent() {
-    when(configSetValidator.isValid("config-1")).thenReturn(true);
+    when(configSetValidator.isValid("config-1", "tenant-1")).thenReturn(true);
     when(roomRepository.existsByNameAndTenantId("Room A", "tenant-1")).thenReturn(false);
     when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -57,7 +57,7 @@ class CreateRoomUseCaseTest {
 
   @Test
   void executeThrowsWhenRoomNameAlreadyExists() {
-    when(configSetValidator.isValid("config-1")).thenReturn(true);
+    when(configSetValidator.isValid("config-1", "tenant-1")).thenReturn(true);
     when(roomRepository.existsByNameAndTenantId("Room A", "tenant-1")).thenReturn(true);
 
     assertThatThrownBy(() -> useCase.execute(new CreateRoomCommand("Room A", "desc", "tenant-1", "config-1", "actor-1", "trace-1")))

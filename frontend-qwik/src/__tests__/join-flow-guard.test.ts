@@ -91,7 +91,9 @@ describe("Join Flow Guard: route integration (AC: 1, 2, 3, 4, 5, 6)", () => {
 
   it("routes/index.tsx should bind loading state to joinAction.isRunning", () => {
     const tsx = readSrc("routes/index.tsx");
-    expect(tsx).toContain("joinAction.isRunning ? joiningMeetingId.value : null");
+    expect(tsx).toContain(
+      "joinAction.isRunning ? joiningMeetingId.value : null",
+    );
   });
 
   it("routes/index.tsx should guard against double submit before submit call", () => {

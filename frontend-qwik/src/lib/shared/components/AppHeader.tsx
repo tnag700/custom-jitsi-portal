@@ -6,6 +6,7 @@ export interface AppHeaderProps {
   isAuthenticated: boolean;
   showSidebarToggle: boolean;
   isSidebarExpanded: boolean;
+  isMobileSidebarOpen?: boolean;
   userDisplayName?: string | null;
   logoutAction?: ActionStore<never, Record<string, unknown>, true>;
   onToggleSidebar$: QRL<() => void>;
@@ -16,6 +17,7 @@ export const AppHeader = component$<AppHeaderProps>(
     isAuthenticated,
     showSidebarToggle,
     isSidebarExpanded,
+    isMobileSidebarOpen = false,
     userDisplayName,
     logoutAction,
     onToggleSidebar$,
@@ -26,8 +28,10 @@ export const AppHeader = component$<AppHeaderProps>(
           {showSidebarToggle && (
             <button
               type="button"
-              class="rounded p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-text focus-visible:outline focus-visible:outline-3 focus-visible:outline-primary focus-visible:outline-offset-2"
-              aria-label="Переключить боковую панель"
+              class="rounded p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-text focus-visible:outline focus-visible:outline-3 focus-visible:outline-primary focus-visible:outline-offset-2 lg:hidden"
+              aria-label={isMobileSidebarOpen ? "Закрыть меню" : "Открыть меню"}
+              aria-controls="mobile-navigation"
+              aria-expanded={isMobileSidebarOpen}
               onClick$={onToggleSidebar$}
             >
               <svg
@@ -46,8 +50,15 @@ export const AppHeader = component$<AppHeaderProps>(
               </svg>
             </button>
           )}
-          {(!isAuthenticated || !isSidebarExpanded) && (
-            <span class="text-sm font-semibold text-text">Jitsi Portal</span>
+          {(!isAuthenticated || !isSidebarExpanded || showSidebarToggle) && (
+            <span
+              class={[
+                "text-sm font-semibold text-text",
+                isAuthenticated && isSidebarExpanded && "lg:hidden",
+              ]}
+            >
+              Jitsi Portal
+            </span>
           )}
         </div>
 

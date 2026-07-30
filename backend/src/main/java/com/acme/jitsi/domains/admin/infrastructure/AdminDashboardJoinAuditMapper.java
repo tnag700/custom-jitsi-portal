@@ -1,13 +1,13 @@
 package com.acme.jitsi.domains.admin.infrastructure;
 
 import com.acme.jitsi.domains.admin.service.AdminDashboardReadModel;
+import com.acme.jitsi.domains.admin.service.AdminDashboardReasonCategory;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 final class AdminDashboardJoinAuditMapper {
 
@@ -23,14 +23,6 @@ final class AdminDashboardJoinAuditMapper {
       Map.entry("ROLE_MISMATCH", ROLE_MESSAGE),
       Map.entry("ROLE_CONFLICT", ROLE_MESSAGE),
       Map.entry("MEETING_ROLE_CONFLICT", ROLE_MESSAGE));
-
-  private static final Set<String> REASON_CATEGORIES = Set.of(
-      "SSO",
-      "TOKEN",
-      "ROLE",
-      "NETWORK",
-      "MEDIA",
-      "CONFIG");
 
   AdminDashboardJoinAuditMapper() {
   }
@@ -64,8 +56,9 @@ final class AdminDashboardJoinAuditMapper {
     if (reasonCategory == null || reasonCategory.isBlank()) {
       return null;
     }
-    String normalized = reasonCategory.trim().toUpperCase(Locale.ROOT);
-    return REASON_CATEGORIES.contains(normalized) ? normalized : null;
+    return AdminDashboardReasonCategory.fromToken(reasonCategory)
+        .map(AdminDashboardReasonCategory::token)
+        .orElse(null);
   }
 
   private Map<String, String> parseChangedFields(String changedFields) {

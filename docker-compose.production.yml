@@ -58,7 +58,7 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/healthz"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -87,6 +87,7 @@ services:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=${SPRING_DATA_REDIS_PORT:-6379}
+      - APP_FEATURES_CONFIG_SETS_FROM_DB=true
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://db:5432/jitsi}
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-jitsi}
       - APP_OPENAPI_SERVER_URL=${APP_OPENAPI_SERVER_URL:-https://portal.example.com}
@@ -103,9 +104,9 @@ services:
       - APP_SECURITY_JWT_ACCESS_TTL_MINUTES=${APP_SECURITY_JWT_ACCESS_TTL_MINUTES:-20}
       - APP_SECURITY_JWT_REFRESH_TTL_MINUTES=${APP_SECURITY_JWT_REFRESH_TTL_MINUTES:-60}
       - SSO_AUTHORIZATION_URI=${SSO_AUTHORIZATION_URI:-https://auth.example.com/realms/jitsi/protocol/openid-connect/auth}
-      - SSO_TOKEN_URI=${SSO_TOKEN_URI:-https://auth.example.com/realms/jitsi/protocol/openid-connect/token}
-      - SSO_JWK_SET_URI=${SSO_JWK_SET_URI:-https://auth.example.com/realms/jitsi/protocol/openid-connect/certs}
-      - SSO_USER_INFO_URI=${SSO_USER_INFO_URI:-https://auth.example.com/realms/jitsi/protocol/openid-connect/userinfo}
+      - SSO_TOKEN_URI=${SSO_TOKEN_URI:-http://keycloak:8080/realms/jitsi/protocol/openid-connect/token}
+      - SSO_JWK_SET_URI=${SSO_JWK_SET_URI:-http://keycloak:8080/realms/jitsi/protocol/openid-connect/certs}
+      - SSO_USER_INFO_URI=${SSO_USER_INFO_URI:-http://keycloak:8080/realms/jitsi/protocol/openid-connect/userinfo}
       - APP_SECURITY_SSO_EXPECTED_ISSUER=${APP_SECURITY_SSO_EXPECTED_ISSUER:-https://auth.example.com/realms/jitsi}
       - APP_FRONTEND_ORIGIN=${APP_FRONTEND_ORIGIN:-https://portal.example.com}
       - SSO_CLIENT_ID=${SSO_CLIENT_ID:-jitsi-backend}
@@ -204,7 +205,7 @@ services:
     expose:
       - "6379"
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$REDIS_PASSWORD\" ping | grep -q PONG"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -266,13 +267,15 @@ services:
       - ${KEYCLOAK_VAULT_ENV_FILE_PATH:-./deploy/vault/delivery/examples/keycloak.env.example}
     environment:
       - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN?Set KEYCLOAK_ADMIN}
+      - OIDC_REDIRECT_BASE_URI=${APP_FRONTEND_ORIGIN:-https://portal.example.com}
+      - APP_FRONTEND_ORIGIN=${APP_FRONTEND_ORIGIN:-https://portal.example.com}
       - KC_HOSTNAME=${KC_HOSTNAME:-https://auth.example.com}
       - KC_HOSTNAME_STRICT=true
       - KC_PROXY_HEADERS=xforwarded
       - KC_PROXY_TRUSTED_ADDRESSES=${KC_PROXY_TRUSTED_ADDRESSES:-172.28.240.10}
     volumes:
       - keycloak-data:/opt/keycloak/data
-      - ./pilot/keycloak/realm:/opt/keycloak/data/import:ro
+      - ./pilot/keycloak/realm/production:/opt/keycloak/data/import:ro
     expose:
       - "8080"
     healthcheck:
@@ -329,13 +332,15 @@ services:
       - jitsi-web-config:/config
       - ./pilot/jitsi/web/custom-config.js:/config/custom-config.js:ro
       - ./pilot/jitsi/web/close.js:/usr/share/jitsi-meet/static/close.js:ro
-      - ./pilot/jitsi/config/web/keys:/config/keys:ro
+    configs:
+      - source: jitsi-web-portal-access
+        target: /config/nginx/custom-meet.conf
     depends_on:
       - jitsi-prosody
       - jitsi-jicofo
       - jitsi-jvb
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      test: ["CMD", "wget", "-qO-", "http://localhost/config.js"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -449,6 +454,7 @@ services:
       - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
       - JVB_BREWERY_MUC=jvbbrewery
       - JVB_PORT=10000
+      - JVB_ADVERTISE_IPS=${JVB_ADVERTISE_IPS:?set JVB_ADVERTISE_IPS to the public NAT address}
       - TZ=UTC
     volumes:
       - jitsi-jvb-config:/config
@@ -463,6 +469,23 @@ services:
       retries: 5
     networks:
       - realtime_net
+
+configs:
+  jitsi-web-portal-access:
+    content: |
+      set $$portal_return_url "${APP_FRONTEND_ORIGIN:-https://portal.example.com}";
+
+      location = / {
+          return 302 $$portal_return_url;
+      }
+
+      location = /static/close.html {
+          return 302 $$portal_return_url;
+      }
+
+      location = /static/close2.html {
+          return 302 $$portal_return_url;
+      }
 
 volumes:
   pgdata:

@@ -2,6 +2,7 @@ export {
   useCloseRoom,
   useCreateRoom,
   useDeleteRoom,
+  useRoomConfigSets,
   useRooms,
   useUpdateRoom,
 } from "./route-handlers";

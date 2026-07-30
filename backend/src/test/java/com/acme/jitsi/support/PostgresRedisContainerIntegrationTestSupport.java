@@ -9,7 +9,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 @ActiveProfiles("test")
 public abstract class PostgresRedisContainerIntegrationTestSupport {
 

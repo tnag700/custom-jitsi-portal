@@ -4,15 +4,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockFetchRooms = vi.fn();
+const mockFetchActiveRoomConfigSetId = vi.fn();
 const mockCreateRoom = vi.fn();
 const mockUpdateRoom = vi.fn();
 const mockCloseRoom = vi.fn();
 const mockDeleteRoom = vi.fn();
 
 class MockRoomServiceError extends Error {
-  payload: { title: string; detail: string; errorCode: string; traceId?: string };
+  payload: {
+    title: string;
+    detail: string;
+    errorCode: string;
+    traceId?: string;
+  };
 
-  constructor(payload: { title: string; detail: string; errorCode: string; traceId?: string }) {
+  constructor(payload: {
+    title: string;
+    detail: string;
+    errorCode: string;
+    traceId?: string;
+  }) {
     super(payload.detail);
     this.name = "RoomServiceError";
     this.payload = payload;
@@ -59,6 +70,7 @@ vi.mock("~/lib/shared", () => ({
 }));
 
 vi.mock("~/lib/domains/rooms", () => ({
+  fetchActiveRoomConfigSetId: mockFetchActiveRoomConfigSetId,
   fetchRooms: mockFetchRooms,
   createRoom: mockCreateRoom,
   updateRoom: mockUpdateRoom,
@@ -95,7 +107,10 @@ function createCtx(overrides?: Partial<RouteCtx>): RouteCtx {
   };
 }
 
-function mockCsrfBootstrap(requestToken = "csrf-request-1", cookieToken = "csrf-cookie-1") {
+function mockCsrfBootstrap(
+  requestToken = "csrf-request-1",
+  cookieToken = "csrf-cookie-1",
+) {
   return vi.spyOn(globalThis, "fetch").mockResolvedValue({
     ok: true,
     headers: {
@@ -116,11 +131,20 @@ describe("rooms route runtime", () => {
   });
 
   it("useRooms loads rooms for tenant", async () => {
-    const payload = { content: [], page: 0, pageSize: 20, totalElements: 0, totalPages: 0 };
+    const payload = {
+      content: [],
+      page: 0,
+      pageSize: 20,
+      totalElements: 0,
+      totalPages: 0,
+    };
     mockFetchRooms.mockResolvedValue(payload);
 
     const mod = await import("~/routes/rooms/index");
-    const result = await mod.useRooms({ sharedMap: createCtx().sharedMap, cookie: createCtx().cookie } as never);
+    const result = await mod.useRooms({
+      sharedMap: createCtx().sharedMap,
+      cookie: createCtx().cookie,
+    } as never);
 
     expect(mockFetchRooms).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -136,6 +160,26 @@ describe("rooms route runtime", () => {
     expect(result).toEqual(payload);
   });
 
+  it("useRoomConfigSets exposes the active DEV config set", async () => {
+    mockFetchActiveRoomConfigSetId.mockResolvedValue("cfg-active");
+
+    const mod = await import("~/routes/rooms/index");
+    const result = await mod.useRoomConfigSets({
+      sharedMap: createCtx().sharedMap,
+      cookie: createCtx().cookie,
+    } as never);
+
+    expect(mockFetchActiveRoomConfigSetId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apiUrl: "http://localhost:8080/api/v1",
+        sessionCookie: "sess-1",
+      }),
+      "tenant-a",
+      "DEV",
+    );
+    expect(result).toEqual(["cfg-active"]);
+  });
+
   it("useCreateRoom returns success payload", async () => {
     vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("idem-1");
     mockCsrfBootstrap();
@@ -144,7 +188,10 @@ describe("rooms route runtime", () => {
 
     const mod = await import("~/routes/rooms/index");
     const ctx = createCtx();
-    const result = await mod.useCreateRoom({ name: "Room 1", timezone: "UTC" }, ctx as never);
+    const result = await mod.useCreateRoom(
+      { name: "Room 1", timezone: "UTC" },
+      ctx as never,
+    );
 
     expect(mockCreateRoom).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -160,7 +207,11 @@ describe("rooms route runtime", () => {
           "Content-Type": "application/json",
         }),
       }),
-      expect.objectContaining({ tenantId: "tenant-a", name: "Room 1", timezone: "UTC" }),
+      expect.objectContaining({
+        tenantId: "tenant-a",
+        name: "Room 1",
+        timezone: "UTC",
+      }),
     );
     expect(result).toEqual({ success: true, room });
   });
@@ -169,12 +220,19 @@ describe("rooms route runtime", () => {
     vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("idem-1");
     mockCsrfBootstrap();
     mockUpdateRoom.mockRejectedValue(
-      new MockRoomServiceError({ title: "Bad request", detail: "room invalid", errorCode: "VALIDATION_ERROR" }),
+      new MockRoomServiceError({
+        title: "Bad request",
+        detail: "room invalid",
+        errorCode: "VALIDATION_ERROR",
+      }),
     );
 
     const mod = await import("~/routes/rooms/index");
     const ctx = createCtx();
-    const result = await mod.useUpdateRoom({ roomId: "r1", name: "X" }, ctx as never);
+    const result = await mod.useUpdateRoom(
+      { roomId: "r1", name: "X" },
+      ctx as never,
+    );
 
     expect(result).toEqual({
       failed: true,
@@ -197,7 +255,10 @@ describe("rooms route runtime", () => {
 
     const mod = await import("~/routes/rooms/index");
     const ctx = createCtx();
-    const result = await mod.useUpdateRoom({ roomId: "r1", name: "Updated", timezone: "UTC" }, ctx as never);
+    const result = await mod.useUpdateRoom(
+      { roomId: "r1", name: "Updated", timezone: "UTC" },
+      ctx as never,
+    );
 
     expect(mockUpdateRoom).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -282,7 +343,10 @@ describe("rooms route runtime", () => {
     );
 
     const mod = await import("~/routes/rooms/index");
-    const result = await mod.useDeleteRoom({ roomId: "r1" }, createCtx() as never);
+    const result = await mod.useDeleteRoom(
+      { roomId: "r1" },
+      createCtx() as never,
+    );
 
     expect(result).toEqual({
       failed: true,

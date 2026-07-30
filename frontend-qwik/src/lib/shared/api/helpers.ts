@@ -3,6 +3,7 @@ export interface ApiErrorPayload {
   detail: string;
   errorCode: string;
   traceId?: string;
+  httpStatus?: number;
 }
 
 interface ProblemLike {
@@ -54,6 +55,7 @@ function sanitizeHeaderToken(value: string): string {
   }
 
   // Prevent response/request-splitting and cookie delimiter injection in composed headers.
+  // eslint-disable-next-line no-control-regex -- C0 controls and DEL are intentionally removed from header values.
   return value.replace(/[\r\n\u0000-\u001F\u007F;,]/g, "").trim();
 }
 
@@ -101,10 +103,16 @@ export async function adaptProblemDetails(
     readString(problem.properties?.errorCode) ??
     fallbackErrorCode(status);
 
-  return {
+  const payload: ApiErrorPayload = {
     title: readString(problem.title) ?? fallbackTitle,
     detail: readString(problem.detail) ?? fallbackDetail,
     errorCode,
     traceId: readString(problem.traceId) ?? readString(problem.properties?.traceId),
   };
+
+  Object.defineProperty(payload, "httpStatus", {
+    value: status,
+    enumerable: false,
+  });
+  return payload;
 }

@@ -31,30 +31,36 @@ class DatabaseConfigSetValidatorTest {
   @Test
   void returnsTrueWhenConfigSetExistsAndIsActive() {
     when(repository.findById("cs-1")).thenReturn(Optional.of(base(ConfigSetStatus.ACTIVE)));
-    assertThat(validator.isValid("cs-1")).isTrue();
+    assertThat(validator.isValid("cs-1", "tenant-1")).isTrue();
   }
 
   @Test
   void returnsTrueWhenConfigSetExistsAndIsDraft() {
     when(repository.findById("cs-1")).thenReturn(Optional.of(base(ConfigSetStatus.DRAFT)));
-    assertThat(validator.isValid("cs-1")).isTrue();
+    assertThat(validator.isValid("cs-1", "tenant-1")).isTrue();
   }
 
   @Test
   void returnsFalseWhenConfigSetExistsButIsInactive() {
     when(repository.findById("cs-1")).thenReturn(Optional.of(base(ConfigSetStatus.INACTIVE)));
-    assertThat(validator.isValid("cs-1")).isFalse();
+    assertThat(validator.isValid("cs-1", "tenant-1")).isFalse();
+  }
+
+  @Test
+  void returnsFalseWhenConfigSetBelongsToAnotherTenant() {
+    when(repository.findById("cs-1")).thenReturn(Optional.of(base(ConfigSetStatus.ACTIVE)));
+    assertThat(validator.isValid("cs-1", "tenant-2")).isFalse();
   }
 
   @Test
   void returnsFalseWhenConfigSetNotFound() {
     when(repository.findById("missing")).thenReturn(Optional.empty());
-    assertThat(validator.isValid("missing")).isFalse();
+    assertThat(validator.isValid("missing", "tenant-1")).isFalse();
   }
 
   @Test
   void returnsFalseWhenConfigSetIdIsBlank() {
-    assertThat(validator.isValid(" ")).isFalse();
+    assertThat(validator.isValid(" ", "tenant-1")).isFalse();
   }
 
   private ConfigSet base(ConfigSetStatus status) {

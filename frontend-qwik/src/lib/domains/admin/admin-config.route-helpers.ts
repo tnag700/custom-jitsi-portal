@@ -1,4 +1,5 @@
 import type { SafeUserProfile } from "../auth";
+import { hasPlatformAdminAccess } from "~/lib/shared/security";
 import {
   fetchLatestAdminConfigSetRollout,
   type ServerRequestContext,
@@ -11,7 +12,6 @@ import type {
   AdminConfigSetSummary,
 } from "./admin-config.types";
 
-const CONFIG_MUTATION_CLAIMS = ["role_admin", "admin"] as const;
 const KNOWN_OPERATOR_ROLES = ["support-engineer", "security-admin", "system-admin", "admin"] as const;
 
 export interface AdminConfigRouteFilters {
@@ -33,16 +33,13 @@ export function normalizeAdminConfigEnvironment(value: string): AdminConfigEnvir
 
 function resolveOperatorRoleClaims(claims: string[]): string {
   const claim = claims
-    .map((item) => item.trim().toLowerCase())
+    .map((item) => item.trim().toLowerCase().replace(/^role_/, ""))
     .find((item) => KNOWN_OPERATOR_ROLES.includes(item as (typeof KNOWN_OPERATOR_ROLES)[number]));
   return claim ?? "support-engineer";
 }
 
 export function resolveAdminConfigCapability(user: SafeUserProfile): AdminConfigSetCapability {
-  const normalizedClaims = user.claims.map((claim) => claim.trim().toLowerCase());
-  const canMutate = normalizedClaims.some(
-    (claim) => CONFIG_MUTATION_CLAIMS.includes(claim as (typeof CONFIG_MUTATION_CLAIMS)[number]),
-  );
+  const canMutate = hasPlatformAdminAccess(user.claims);
 
   return {
     role: resolveOperatorRoleClaims(user.claims),

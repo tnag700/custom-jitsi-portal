@@ -71,7 +71,7 @@ def main() -> None:
         assert_regex(service_block, token, f"{name} must consume a service-specific Vault delivery env file.")
 
     assert_contains(redis, "--requirepass", "Redis baseline must enforce a Vault-delivered password instead of anonymous runtime access.")
-    assert_regex(redis, r'redis-cli --no-auth-warning -a \\"\$\$?REDIS_PASSWORD\\" ping \| grep -q PONG', "Redis healthcheck must authenticate with the Vault-delivered password.")
+    assert_regex(redis, r'redis-cli --no-auth-warning -a \\"\$\$REDIS_PASSWORD\\" ping \| grep -q PONG', "Redis healthcheck must authenticate with the container-scoped Vault-delivered password without host-side Compose interpolation.")
 
     for needle, message in [
         ("database/static-creds/backend-app", "Backend fetch path must prefer static-role DB credentials for the current long-lived runtime."),

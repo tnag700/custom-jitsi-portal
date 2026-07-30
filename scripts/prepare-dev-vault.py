@@ -15,7 +15,10 @@ RUNTIME_DIR = LOCAL_DEV_ROOT / "runtime"
 PLACEHOLDER_ENV_FILES = {
     "postgres.env": "POSTGRES_PASSWORD=bootstrap-pending\n",
     "redis.env": "REDIS_PASSWORD=bootstrap-pending\n",
-    "keycloak.env": "KEYCLOAK_ADMIN_PASSWORD=bootstrap-pending\n",
+    "keycloak.env": (
+        "KEYCLOAK_ADMIN_PASSWORD=bootstrap-pending\n"
+        "SSO_CLIENT_SECRET=bootstrap-pending\n"
+    ),
     "jitsi-web.env": (
         "JWT_APP_SECRET=bootstrap-pending\n"
         "JICOFO_AUTH_PASSWORD=bootstrap-pending\n"

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+
 from _python_guardrails import (
+    assert_contains,
     assert_list_contains,
     assert_list_startswith,
     assert_not_contains,
@@ -88,12 +91,36 @@ def main() -> None:
     root = repo_root()
     base_text = read_repo_text("docker-compose.production.yml", "Production compose file")
     monitoring_text = read_repo_text("docker-compose.production.monitoring.yml", "Production monitoring compose file")
+    env_example_text = read_repo_text(".env.production.example", "Production environment example")
 
     invoke_compose_config_validation(root, ".env.production.example", ["docker-compose.production.yml"])
     invoke_compose_config_validation(root, ".env.production.example", ["docker-compose.production.yml", "docker-compose.production.monitoring.yml"])
 
     assert_no_dangerous_runtime_modes(base_text, "Production compose baseline")
     assert_no_dangerous_runtime_modes(monitoring_text, "Production monitoring overlay")
+
+    jvb_block = get_service_block(base_text, "jitsi-jvb")
+    assert_contains(
+        jvb_block,
+        "JVB_ADVERTISE_IPS=${JVB_ADVERTISE_IPS:?set JVB_ADVERTISE_IPS to the public NAT address}",
+        "JVB must require the public NAT address explicitly so WebRTC candidates do not advertise a private container address.",
+    )
+    assert_contains(
+        env_example_text,
+        "JVB_ADVERTISE_IPS=203.0.113.10",
+        "Production environment example must expose the documentation-only JVB public NAT placeholder.",
+    )
+
+    keycloak_block = get_service_block(base_text, "keycloak")
+    assert_contains(
+        keycloak_block,
+        "./pilot/keycloak/realm/production:/opt/keycloak/data/import:ro",
+        "Production Keycloak must import the production-only realm directory.",
+    )
+    production_realm_path = root / "pilot/keycloak/realm/production/jitsi-realm.json"
+    production_realm = json.loads(production_realm_path.read_text(encoding="utf-8"))
+    if production_realm.get("users"):
+        fail("Production Keycloak realm must not seed test users.")
 
     least_privilege_base_services = [
         "nginx",
@@ -154,6 +181,7 @@ def main() -> None:
 
     print("validate-production-runtime-baseline: OK")
     print("validate-production-runtime-baseline: verified least-privilege defaults, read-only targets, runtime limits and docker-socket prohibition")
+    print("validate-production-runtime-baseline: verified production-only Keycloak import and required JVB public NAT advertisement")
 
 
 if __name__ == "__main__":

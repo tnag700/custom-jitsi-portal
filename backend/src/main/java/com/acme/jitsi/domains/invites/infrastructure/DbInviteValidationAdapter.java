@@ -12,6 +12,7 @@ import com.acme.jitsi.domains.meetings.service.InviteNotFoundException;
 import com.acme.jitsi.domains.meetings.service.InviteRevokedException;
 import com.acme.jitsi.domains.meetings.service.MeetingInvite;
 import com.acme.jitsi.domains.meetings.service.MeetingInviteService;
+import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
 import com.acme.jitsi.domains.meetings.usecase.ConsumeInviteCommand;
 import com.acme.jitsi.domains.meetings.usecase.ConsumeInviteUseCase;
 import com.acme.jitsi.shared.ErrorCode;
@@ -114,6 +115,8 @@ public class DbInviteValidationAdapter implements InviteValidationPort {
       throw new InviteExchangeException(HttpStatus.GONE, ErrorCode.INVITE_EXPIRED.code(), "Срок действия инвайта истёк.", ex);
     } catch (InviteExhaustedException ex) {
       throw new InviteExchangeException(HttpStatus.CONFLICT, ErrorCode.INVITE_EXHAUSTED.code(), "Лимит использований инвайта исчерпан.", ex);
+    } catch (MeetingTokenException ex) {
+      throw new InviteExchangeException(ex.status(), ex.errorCode(), ex.getMessage(), ex);
     }
   }
 

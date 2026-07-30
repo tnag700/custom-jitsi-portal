@@ -50,7 +50,10 @@ describe("Layer Import Guard", () => {
   });
 
   it("domains do not import route layer and use shared barrel only", () => {
-    const domainFiles = collectFiles(join(SRC_DIR, "lib", "domains"), [".ts", ".tsx"]);
+    const domainFiles = collectFiles(join(SRC_DIR, "lib", "domains"), [
+      ".ts",
+      ".tsx",
+    ]);
 
     for (const file of domainFiles) {
       const content = readFileSync(file, "utf-8");
@@ -62,7 +65,7 @@ describe("Layer Import Guard", () => {
 
       const hasDeepSharedImport = specifiers.some((specifier) => {
         if (!specifier.startsWith("~/lib/shared/")) return false;
-        return specifier !== "~/lib/shared";
+        return specifier !== "~/lib/shared/security";
       });
 
       expect(
@@ -77,7 +80,10 @@ describe("Layer Import Guard", () => {
   });
 
   it("shared layer does not import domains or routes", () => {
-    const sharedFiles = collectFiles(join(SRC_DIR, "lib", "shared"), [".ts", ".tsx"]);
+    const sharedFiles = collectFiles(join(SRC_DIR, "lib", "shared"), [
+      ".ts",
+      ".tsx",
+    ]);
 
     for (const file of sharedFiles) {
       const content = readFileSync(file, "utf-8");

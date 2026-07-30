@@ -20,7 +20,37 @@ public class MeetingStateGuard {
   }
 
   public void assertJoinAllowed(String meetingId) {
-    Meeting meeting = meetingRepository.findById(meetingId)
+    Meeting meeting = loadMeeting(meetingId);
+
+    if (meeting == null) {
+      return;
+    }
+
+    assertJoinAllowed(meeting);
+  }
+
+  public void assertGuestJoinAllowed(String meetingId) {
+    Meeting meeting = loadMeeting(meetingId);
+
+    if (meeting == null) {
+      return;
+    }
+
+    assertGuestJoinAllowed(meeting);
+  }
+
+  public void assertGuestJoinAllowed(Meeting meeting) {
+    assertJoinAllowed(meeting);
+    if (!meeting.allowGuests()) {
+      throw new MeetingTokenException(
+          HttpStatus.FORBIDDEN,
+          ErrorCode.GUEST_ACCESS_DISABLED.code(),
+          "Гостевой доступ для этой встречи отключён.");
+    }
+  }
+
+  private Meeting loadMeeting(String meetingId) {
+    return meetingRepository.findById(meetingId)
         .orElseGet(() -> {
           if (tokenProperties.knownMeetingIds().contains(meetingId)) {
             return null;
@@ -30,12 +60,6 @@ public class MeetingStateGuard {
               ErrorCode.MEETING_NOT_FOUND.code(),
               "Встреча не найдена.");
         });
-
-    if (meeting == null) {
-      return;
-    }
-
-    assertJoinAllowed(meeting);
   }
 
   public void assertJoinAllowed(Meeting meeting) {

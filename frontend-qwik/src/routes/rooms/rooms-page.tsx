@@ -1,17 +1,24 @@
 import { $, component$, useSignal, useTask$ } from "@qwik.dev/core";
 import { Form } from "@qwik.dev/router";
-import { type Room, type RoomErrorPayload, RoomForm, RoomList } from "~/lib/domains/rooms";
+import {
+  type Room,
+  type RoomErrorPayload,
+  RoomForm,
+  RoomList,
+} from "~/lib/domains/rooms";
 import { ApiErrorAlert, AppDialog, AppToast, useAppToast } from "~/lib/shared";
 import {
   useCloseRoom,
   useCreateRoom,
   useDeleteRoom,
+  useRoomConfigSets,
   useRooms,
   useUpdateRoom,
 } from "./route-handlers";
 
 export default component$(() => {
   const roomsData = useRooms();
+  const configSetsData = useRoomConfigSets();
   const createAction = useCreateRoom();
   const updateAction = useUpdateRoom();
   const closeAction = useCloseRoom();
@@ -68,7 +75,10 @@ export default component$(() => {
     const result = track(() => updateAction.value);
     if (result && "success" in result && result.success) {
       showEditForm.value = false;
-      await showToast$({ message: "Изменения комнаты сохранены", tone: "success" });
+      await showToast$({
+        message: "Изменения комнаты сохранены",
+        tone: "success",
+      });
     }
   });
 
@@ -100,7 +110,7 @@ export default component$(() => {
     }
   });
 
-  const configSets = ["default"];
+  const configSets = configSetsData.value;
 
   const createError: RoomErrorPayload | undefined =
     createAction.value && "error" in createAction.value
@@ -188,11 +198,16 @@ export default component$(() => {
         )}
 
         <p class="text-sm text-muted">
-          После закрытия создать новую встречу в этой комнате будет нельзя, пока вы не откроете другой сценарий работы.
+          После закрытия создать новую встречу в этой комнате будет нельзя, пока
+          вы не откроете другой сценарий работы.
         </p>
 
         <Form q:slot="actions" action={closeAction}>
-          <input type="hidden" name="roomId" value={confirmClose.value?.roomId ?? ""} />
+          <input
+            type="hidden"
+            name="roomId"
+            value={confirmClose.value?.roomId ?? ""}
+          />
           <button
             type="submit"
             class="rounded bg-yellow-600 px-4 py-2 text-sm text-white hover:bg-yellow-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
@@ -215,7 +230,9 @@ export default component$(() => {
         closeLabel="Отмена"
         bind:show={showDeleteDialog}
       >
-        <p class="mb-4 text-sm font-semibold text-danger">Все данные комнаты будут потеряны.</p>
+        <p class="mb-4 text-sm font-semibold text-danger">
+          Все данные комнаты будут потеряны.
+        </p>
 
         {deleteErrorMessage && (
           <div class="mb-3" role="alert">
@@ -229,7 +246,11 @@ export default component$(() => {
         )}
 
         <Form q:slot="actions" action={deleteAction}>
-          <input type="hidden" name="roomId" value={confirmDelete.value?.roomId ?? ""} />
+          <input
+            type="hidden"
+            name="roomId"
+            value={confirmDelete.value?.roomId ?? ""}
+          />
           <button
             type="submit"
             class="rounded bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"

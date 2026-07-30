@@ -248,7 +248,7 @@ class MeetingAccessTokenServiceTest {
   }
 
   @Test
-  void issueGuestTokenUsesSharedPathWithoutMeetingStateGuard() {
+  void issueGuestTokenUsesSharedPathWithoutMeetingStateGuard() throws Exception {
     MeetingTokenProperties properties = new MeetingTokenProperties();
     properties.setIssuer("https://portal.example.test");
     properties.setAudience("jitsi-meet");
@@ -272,9 +272,19 @@ class MeetingAccessTokenServiceTest {
         Mockito.mock(TokenIssuanceCompatibilityPolicy.class),
         Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC));
 
-    MeetingTokenIssuer.TokenResult result = service.issueGuestToken("meeting-a", "guest-1");
+    MeetingTokenIssuer.TokenResult result =
+        service.issueGuestToken("meeting-a", "guest-1", "Иван Гость");
+    String token = extractToken(result.joinUrl());
+    SignedJWT jwt = SignedJWT.parse(token);
+    String decodedJoinUrl = URLDecoder.decode(result.joinUrl(), StandardCharsets.UTF_8);
 
     assertThat(result.role()).isEqualTo("participant");
+    assertThat(jwt.getJWTClaimsSet().getStringClaim("name")).isEqualTo("Иван Гость");
+    assertThat(jwt.getJWTClaimsSet().getJSONObjectClaim("context"))
+        .isEqualTo(java.util.Map.of("user", java.util.Map.of("name", "Иван Гость")));
+    assertThat(decodedJoinUrl)
+        .contains("userInfo.displayName=\"Иван Гость\"")
+        .contains("config.defaultLocalDisplayName=\"Иван Гость\"");
     verify(stateGuard, never()).assertJoinAllowed("meeting-a");
     verify(resolver, never()).resolve("meeting-a", "guest-1");
   }

@@ -19,7 +19,9 @@ describe("document security headers", () => {
     expect(csp).toContain("base-uri 'none'");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("object-src 'none'");
-    expect(csp).toContain("script-src 'self' 'nonce-nonce-123' 'strict-dynamic'");
+    expect(csp).toContain(
+      "script-src 'self' 'nonce-nonce-123' 'strict-dynamic'",
+    );
     expect(csp).toContain("style-src 'self' 'unsafe-inline'");
     expect(csp).toContain("style-src-attr 'unsafe-inline'");
     expect(csp).toContain("img-src 'self' data: blob:");
@@ -33,12 +35,17 @@ describe("document security headers", () => {
       nonce: "nonce-123",
       apiUrl: "https://api.example.com/v1",
       publicApiUrl: "https://api.example.com/v1",
-      extraConnectSrc: "https://realtime.example.com ws://invalid 'unsafe-inline' garbage",
+      extraConnectSrc:
+        "https://realtime.example.com ws://invalid 'unsafe-inline' garbage",
     });
 
-    const connectDirective = csp.split("; ").find((directive) => directive.startsWith("connect-src "));
+    const connectDirective = csp
+      .split("; ")
+      .find((directive) => directive.startsWith("connect-src "));
 
-    expect(connectDirective).toBe("connect-src 'self' https://api.example.com https://realtime.example.com ws://invalid");
+    expect(connectDirective).toBe(
+      "connect-src 'self' https://api.example.com https://realtime.example.com ws://invalid",
+    );
     expect(connectDirective).not.toContain("'unsafe-inline'");
     expect(connectDirective).not.toContain("garbage");
   });
@@ -60,9 +67,15 @@ describe("document security headers", () => {
   it("applies document headers only to navigational HTML requests", () => {
     expect(shouldApplyDocumentSecurityHeaders("GET", "/")).toBe(true);
     expect(shouldApplyDocumentSecurityHeaders("HEAD", "/auth")).toBe(true);
-    expect(shouldApplyDocumentSecurityHeaders("GET", "/build/q-app.js")).toBe(false);
-    expect(shouldApplyDocumentSecurityHeaders("GET", "/assets/app.css")).toBe(false);
-    expect(shouldApplyDocumentSecurityHeaders("GET", "/favicon.svg")).toBe(false);
+    expect(shouldApplyDocumentSecurityHeaders("GET", "/build/q-app.js")).toBe(
+      false,
+    );
+    expect(shouldApplyDocumentSecurityHeaders("GET", "/assets/app.css")).toBe(
+      false,
+    );
+    expect(shouldApplyDocumentSecurityHeaders("GET", "/favicon.svg")).toBe(
+      false,
+    );
     expect(shouldApplyDocumentSecurityHeaders("POST", "/auth")).toBe(false);
   });
 

@@ -120,6 +120,9 @@ class InviteExchangeControllerTest {
     assertThat(jwt.getJWTClaimsSet().getStringClaim("meetingId")).isEqualTo("meeting-a");
     assertThat(jwt.getJWTClaimsSet().getStringClaim("role")).isEqualTo("participant");
     assertThat(jwt.getJWTClaimsSet().getBooleanClaim("guest")).isTrue();
+    assertThat(jwt.getJWTClaimsSet().getStringClaim("name")).isEqualTo("Guest Host");
+    assertThat(jwt.getJWTClaimsSet().getJSONObjectClaim("context"))
+        .isEqualTo(java.util.Map.of("user", java.util.Map.of("name", "Guest Host")));
     assertThat(lifetimeMinutes).isBetween(15L, 30L);
   }
 
@@ -128,20 +131,29 @@ class InviteExchangeControllerTest {
     mockMvc.perform(post("/api/v1/invites/exchange")
             .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{" + "\"inviteToken\":\"invite-exhausted\"}"))
+            .content(
+                "{"
+                    + "\"inviteToken\":\"invite-exhausted\","
+                    + "\"displayName\":\"Guest One\"}"))
         .andExpect(status().isOk());
 
     mockMvc.perform(post("/api/v1/invites/exchange")
             .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{" + "\"inviteToken\":\"invite-exhausted\"}"))
+            .content(
+                "{"
+                    + "\"inviteToken\":\"invite-exhausted\","
+                    + "\"displayName\":\"Guest Two\"}"))
         .andExpect(status().isOk());
 
     mockMvc.perform(post("/api/v1/invites/exchange")
             .with(csrf())
             .header("X-Trace-Id", "trace-exhausted")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{" + "\"inviteToken\":\"invite-exhausted\"}"))
+            .content(
+                "{"
+                    + "\"inviteToken\":\"invite-exhausted\","
+                    + "\"displayName\":\"Guest Three\"}"))
         .andExpect(status().isConflict())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
         .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVITE_EXHAUSTED.code()))
@@ -153,14 +165,20 @@ class InviteExchangeControllerTest {
     mockMvc.perform(post("/api/v1/invites/exchange")
             .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{" + "\"inviteToken\":\"invite-consumed\"}"))
+            .content(
+                "{"
+                    + "\"inviteToken\":\"invite-consumed\","
+                    + "\"displayName\":\"Guest Once\"}"))
         .andExpect(status().isOk());
 
     mockMvc.perform(post("/api/v1/invites/exchange")
             .with(csrf())
             .header("X-Trace-Id", "trace-consumed")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{" + "\"inviteToken\":\"invite-consumed\"}"))
+            .content(
+                "{"
+                    + "\"inviteToken\":\"invite-consumed\","
+                    + "\"displayName\":\"Guest Twice\"}"))
         .andExpect(status().isConflict())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
         .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVITE_EXHAUSTED.code()))
@@ -307,4 +325,3 @@ class InviteExchangeControllerTest {
     throw new IllegalStateException("JWT token is missing in joinUrl fragment");
   }
 }
-

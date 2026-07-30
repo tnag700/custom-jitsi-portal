@@ -52,7 +52,9 @@ describe("Migration Guard: Qwik patterns MUST be present", () => {
   });
 
   it("should keep server$ example outside of production route tree", () => {
-    const serverExample = readProject("src/dev-examples/server-function-example.tsx");
+    const serverExample = readProject(
+      "src/dev-examples/server-function-example.tsx",
+    );
     expect(serverExample).toContain("server$");
   });
 });
@@ -163,7 +165,9 @@ describe("Architecture Guard: routeLoader$/routeAction$ only in routes/", () => 
       const importLines = content
         .split(/\r?\n/)
         .map((line) => line.trim())
-        .filter((line) => line.startsWith("import ") && line.includes(" from "));
+        .filter(
+          (line) => line.startsWith("import ") && line.includes(" from "),
+        );
 
       const hasDeepDomainImport = importLines.some((line) => {
         const match = line.match(/from\s+["']([^"']+)["']/);

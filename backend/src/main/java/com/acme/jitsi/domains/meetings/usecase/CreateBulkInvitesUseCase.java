@@ -81,7 +81,7 @@ public class CreateBulkInvitesUseCase implements UseCase<CreateBulkInvitesComman
   private Meeting loadMeetingForInviteCreation(String meetingId) {
     Meeting meeting = meetingRepository.findById(meetingId)
         .orElseThrow(() -> new MeetingNotFoundException(meetingId));
-    meetingStateGuard.assertJoinAllowed(meeting);
+    meetingStateGuard.assertGuestJoinAllowed(meeting);
     return meeting;
   }
 

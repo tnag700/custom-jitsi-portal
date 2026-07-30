@@ -29,9 +29,17 @@ describe("invites.service runtime", () => {
       totalPages: 0,
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    const result = await fetchInvites("sess-1", "http://localhost:8080/api/v1", "meeting a/b", 1, 5);
+    const result = await fetchInvites(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      "meeting a/b",
+      1,
+      5,
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/meetings/meeting%20a%2Fb/invites?page=1&size=5",
@@ -63,7 +71,9 @@ describe("invites.service runtime", () => {
       updatedAt: "2026-03-03T10:00:00Z",
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(invite, 201));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(invite, 201));
 
     const result = await createInvite(
       "sess-1",
@@ -94,10 +104,18 @@ describe("invites.service runtime", () => {
   });
 
   it("revokeInvite sends DELETE without idempotency header", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
 
     await expect(
-      revokeInvite("sess-1", "http://localhost:8080/api/v1", "csrf-1", "meeting-1", "invite-1"),
+      revokeInvite(
+        "sess-1",
+        "http://localhost:8080/api/v1",
+        "csrf-1",
+        "meeting-1",
+        "invite-1",
+      ),
     ).resolves.toBeUndefined();
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -112,7 +130,8 @@ describe("invites.service runtime", () => {
     );
 
     const lastCall = fetchMock.mock.calls.at(-1);
-    const headers = (lastCall?.[1] as { headers?: Record<string, string> })?.headers;
+    const headers = (lastCall?.[1] as { headers?: Record<string, string> })
+      ?.headers;
     expect(headers?.["Idempotency-Key"]).toBeUndefined();
   });
 
@@ -126,7 +145,9 @@ describe("invites.service runtime", () => {
       }),
     );
 
-    await expect(fetchInvites("sess-1", "http://localhost:8080/api/v1", "meeting-1")).rejects.toMatchObject({
+    await expect(
+      fetchInvites("sess-1", "http://localhost:8080/api/v1", "meeting-1"),
+    ).rejects.toMatchObject({
       name: "InviteServiceError",
       payload: {
         errorCode: "INVITE_SERVICE_UNAVAILABLE",
@@ -138,7 +159,13 @@ describe("invites.service runtime", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({}, 404));
 
     try {
-      await revokeInvite("sess-1", "http://localhost:8080/api/v1", "csrf-1", "meeting-1", "invite-1");
+      await revokeInvite(
+        "sess-1",
+        "http://localhost:8080/api/v1",
+        "csrf-1",
+        "meeting-1",
+        "invite-1",
+      );
       throw new Error("Expected revokeInvite to throw InviteServiceError");
     } catch (error) {
       expect(error).toBeInstanceOf(InviteServiceError);

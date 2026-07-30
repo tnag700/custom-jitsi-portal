@@ -17,12 +17,15 @@ class DatabaseConfigSetValidator implements ConfigSetValidator {
   }
 
   @Override
-  public boolean isValid(String configSetId) {
-    if (configSetId == null || configSetId.isBlank()) {
+  public boolean isValid(String configSetId, String tenantId) {
+    if (configSetId == null || configSetId.isBlank() || tenantId == null || tenantId.isBlank()) {
       return false;
     }
     return configSetRepository.findById(configSetId)
-        .map(configSet -> configSet.status() == ConfigSetStatus.ACTIVE || configSet.status() == ConfigSetStatus.DRAFT)
+        .filter(configSet -> tenantId.equals(configSet.tenantId()))
+        .map(configSet ->
+            configSet.status() == ConfigSetStatus.ACTIVE
+                || configSet.status() == ConfigSetStatus.DRAFT)
         .orElse(false);
   }
 }

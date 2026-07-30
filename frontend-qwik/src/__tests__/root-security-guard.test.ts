@@ -23,6 +23,6 @@ describe("Root Security Guard", () => {
     const tsx = readSrc("root.tsx");
     expect(tsx).toContain("DocumentHeadTags");
     expect(tsx).toContain("RouterOutlet");
-    expect(tsx).toContain("rel=\"canonical\"");
+    expect(tsx).toContain('rel="canonical"');
   });
 });

@@ -56,7 +56,15 @@ final class AdminDashboardStatusBuilder {
         published
             ? "Портал публикует ссылку входа и server-side filters для оператора."
             : "Публичная join surface не опубликована в readiness snapshot.",
-        handoffFactory.buildHandoffContext(environment, period, SEVERITY_WARNING, null, "JOIN", roomId, meetingId, null));
+        handoffFactory.buildHandoffContext(
+            environment,
+            period,
+            SEVERITY_WARNING,
+            null,
+            null,
+            roomId,
+            meetingId,
+            null));
   }
 
   private AdminDashboardSummaryResponse.ServiceStatus buildBackendApiStatus(
@@ -78,7 +86,7 @@ final class AdminDashboardStatusBuilder {
             period,
             signalSupport.severityForHealth(health),
             null,
-            compatibility != null && !compatibility.compatible() ? CATEGORY_CONFIG : "HEALTH",
+            compatibility != null && !compatibility.compatible() ? CATEGORY_CONFIG : null,
             roomId,
             meetingId,
             null));
@@ -105,7 +113,7 @@ final class AdminDashboardStatusBuilder {
             period,
             signalSupport.severityForJoinStatus(joinStatus),
             signalSupport.primaryJoinErrorCode(joinReadiness.systemChecks()),
-            "JOIN",
+            null,
             roomId,
             meetingId,
             null));

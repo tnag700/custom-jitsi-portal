@@ -1,19 +1,26 @@
 import { z } from "zod";
 
 export const createInviteSchema = z.object({
-  role: z.enum(["participant", "moderator"]),
+  role: z.literal("participant"),
   maxUses: z.coerce.number().int().min(1).default(1),
-  expiresInHours: z
-    .union([z.literal(""), z.null(), z.undefined(), z.coerce.number().int().min(1).max(168)])
-    .transform((value) => {
-      if (value === "" || value == null) {
-        return undefined;
-      }
-      return value;
-    }),
+  expiresInHours: z.coerce.number().int().min(1).max(168),
 });
 
 export const exchangeInviteSchema = z.object({
   inviteToken: z.string().min(1, "inviteToken обязателен"),
-  displayName: z.string().trim().min(1).optional(),
+  displayName: z
+    .string()
+    .trim()
+    .min(2, "Введите имя длиной не менее 2 символов")
+    .max(80, "Имя не должно превышать 80 символов")
+    .refine(
+      (value) =>
+        Array.from(value).every((character) => {
+          const codePoint = character.codePointAt(0) ?? 0;
+          return codePoint >= 32 && codePoint !== 127;
+        }),
+      {
+        message: "Имя содержит недопустимые управляющие символы",
+      },
+    ),
 });

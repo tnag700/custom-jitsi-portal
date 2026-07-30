@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+
+: "${DEV_HOST:?Set DEV_HOST to the target VM LAN address}"
+
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-jitsi-dev-codex}"
+export DEV_FRONTEND_PORT="${DEV_FRONTEND_PORT:-3000}"
+export DEV_BACKEND_PORT="${DEV_BACKEND_PORT:-18080}"
+export DEV_KEYCLOAK_PORT="${DEV_KEYCLOAK_PORT:-18081}"
+export DEV_SWAGGER_PORT="${DEV_SWAGGER_PORT:-18082}"
+export DEV_JITSI_HTTP_PORT="${DEV_JITSI_HTTP_PORT:-18000}"
+export DEV_JITSI_HTTPS_PORT="${DEV_JITSI_HTTPS_PORT:-18443}"
+export DEV_JVB_UDP_PORT="${DEV_JVB_UDP_PORT:-10000}"
+
+export DEV_PORTAL_ORIGIN="${DEV_PORTAL_ORIGIN:-http://${DEV_HOST}:${DEV_FRONTEND_PORT}}"
+export DEV_BACKEND_ORIGIN="${DEV_BACKEND_ORIGIN:-http://${DEV_HOST}:${DEV_BACKEND_PORT}}"
+export DEV_KEYCLOAK_ORIGIN="${DEV_KEYCLOAK_ORIGIN:-http://${DEV_HOST}:${DEV_KEYCLOAK_PORT}}"
+export DEV_JITSI_ORIGIN="${DEV_JITSI_ORIGIN:-https://${DEV_HOST}:${DEV_JITSI_HTTPS_PORT}}"
+export DEV_PUBLIC_API_URL="${DEV_PUBLIC_API_URL:-${DEV_BACKEND_ORIGIN}/api/v1}"
+export JWT_APP_ID="${JWT_APP_ID:-${DEV_PORTAL_ORIGIN}}"
+export JWT_ACCEPTED_ISSUERS="${JWT_ACCEPTED_ISSUERS:-${DEV_PORTAL_ORIGIN}}"
+export JVB_ADVERTISE_IPS="${JVB_ADVERTISE_IPS:-${DEV_HOST}}"
+
+python3 scripts/validate-dev-stack-config.py
+python3 scripts/prepare-dev-vault.py
+docker compose config --quiet
+docker compose up --build -d
+docker compose ps

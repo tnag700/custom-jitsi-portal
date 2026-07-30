@@ -47,15 +47,21 @@ describe("admin role history service runtime", () => {
       ],
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    const result = await fetchAdminRoleHistory("sess-1", "http://localhost:8080/api/v1", {
-      environment: "dev",
-      subjectId: "user-1",
-      meetingId: "meeting-1",
-      page: 0,
-      pageSize: 20,
-    });
+    const result = await fetchAdminRoleHistory(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      {
+        environment: "dev",
+        subjectId: "user-1",
+        meetingId: "meeting-1",
+        page: 0,
+        pageSize: 20,
+      },
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/admin/role-history?environment=dev&subjectId=user-1&meetingId=meeting-1&page=0&pageSize=20",
@@ -78,7 +84,9 @@ describe("admin role history service runtime", () => {
     );
 
     await expect(
-      fetchAdminRoleHistory("sess-1", "http://localhost:8080/api/v1", { meetingId: "meeting-1" }),
+      fetchAdminRoleHistory("sess-1", "http://localhost:8080/api/v1", {
+        meetingId: "meeting-1",
+      }),
     ).rejects.toBeInstanceOf(AdminDashboardServiceError);
   });
 });

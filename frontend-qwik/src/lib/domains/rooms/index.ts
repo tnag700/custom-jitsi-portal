@@ -7,6 +7,7 @@ export type {
 } from "./types";
 
 export {
+  fetchActiveRoomConfigSetId,
   fetchRooms,
   createRoom,
   updateRoom,

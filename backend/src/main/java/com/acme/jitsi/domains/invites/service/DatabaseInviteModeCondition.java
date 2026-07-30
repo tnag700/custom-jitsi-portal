@@ -10,7 +10,7 @@ public class DatabaseInviteModeCondition implements Condition {
   @Override
   public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
     Environment env = context.getEnvironment();
-    String mode = env.getProperty("app.invites.mode", "properties");
+    String mode = env.getProperty("app.invites.mode", "database");
     return "database".equalsIgnoreCase(mode);
   }
 }

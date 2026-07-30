@@ -12,6 +12,8 @@ import {
   buildIncidentQueueViewQueryUpdates,
   buildIncidentRelatedHref,
   canManageIncidentTicket,
+  formatIncidentDateTime,
+  formatIncidentTimeWindow,
   getIncidentActionError,
   getIncidentCoordinationActionResult,
   getIncidentTicketActionResult,
@@ -20,7 +22,13 @@ import {
   resolveIncidentReturnTo,
 } from "../lib/domains/admin/admin-incidents.route-helpers";
 import type { SafeUserProfile } from "../lib/domains/auth";
-import type { AdminDashboardErrorPayload, AdminIncidentCoordination, AdminIncidentDetail, AdminIncidentList, AdminIncidentTicket } from "../lib/domains/admin";
+import type {
+  AdminDashboardErrorPayload,
+  AdminIncidentCoordination,
+  AdminIncidentDetail,
+  AdminIncidentList,
+  AdminIncidentTicket,
+} from "../lib/domains/admin";
 
 function createIncidentDetail(): AdminIncidentDetail {
   return {
@@ -49,7 +57,8 @@ function createIncidentDetail(): AdminIncidentDetail {
     coordination: {
       enabled: true,
       availability: "available",
-      explanation: "Coordination seam remains optional and investigation-first.",
+      explanation:
+        "Coordination seam remains optional and investigation-first.",
       owner: null,
       workflowStatus: "triage",
       ticketReference: null,
@@ -67,6 +76,19 @@ function createIncidentDetail(): AdminIncidentDetail {
 }
 
 describe("admin incidents route helpers", () => {
+  it("formats incident timestamps as compact deterministic UTC labels", () => {
+    expect(formatIncidentDateTime("2026-07-29T18:18:24.886661Z")).toBe(
+      "29.07.2026 18:18:24 UTC",
+    );
+    expect(
+      formatIncidentTimeWindow(
+        "2026-07-29T18:18:24.886661Z",
+        "2026-07-29T18:20:00Z",
+      ),
+    ).toBe("29.07.2026 18:18:24 UTC — 29.07.2026 18:20:00 UTC");
+    expect(formatIncidentDateTime("not-a-date")).toBe("not-a-date");
+  });
+
   it("detects admin-only incident mutation capability from mixed-case claims", () => {
     const adminUser = { claims: ["viewer", " Role_Admin "] } as SafeUserProfile;
     const readonlyUser = { claims: ["support-engineer"] } as SafeUserProfile;
@@ -86,7 +108,8 @@ describe("admin incidents route helpers", () => {
     const coordination = {
       enabled: true,
       availability: "available",
-      explanation: "Coordination seam remains optional and investigation-first.",
+      explanation:
+        "Coordination seam remains optional and investigation-first.",
       owner: "lead.support",
       workflowStatus: "investigating",
       ticketReference: "INC-42",
@@ -100,8 +123,12 @@ describe("admin incidents route helpers", () => {
       errorCode: "ACCESS_DENIED",
     } as AdminDashboardErrorPayload;
 
-    expect(getIncidentTicketActionResult({ success: true, ticket })).toEqual(ticket);
-    expect(getIncidentCoordinationActionResult({ success: true, coordination })).toEqual(coordination);
+    expect(getIncidentTicketActionResult({ success: true, ticket })).toEqual(
+      ticket,
+    );
+    expect(
+      getIncidentCoordinationActionResult({ success: true, coordination }),
+    ).toEqual(coordination);
     expect(getIncidentActionError({ error })).toEqual(error);
     expect(getIncidentTicketActionResult({ error })).toBeNull();
   });
@@ -134,7 +161,8 @@ describe("admin incidents route helpers", () => {
     const coordination = {
       enabled: true,
       availability: "available",
-      explanation: "Coordination seam remains optional and investigation-first.",
+      explanation:
+        "Coordination seam remains optional and investigation-first.",
       owner: "lead.support",
       workflowStatus: "resolved",
       ticketReference: null,
@@ -143,11 +171,17 @@ describe("admin incidents route helpers", () => {
       history: [],
     } as AdminIncidentCoordination;
 
-    const result = buildIncidentDetailDerivedState(incident, ticket, coordination);
+    const result = buildIncidentDetailDerivedState(
+      incident,
+      ticket,
+      coordination,
+    );
 
     expect(result.coordination.owner).toBe("lead.support");
     expect(result.effectiveTicketReference).toBe("INC-42");
-    expect(result.effectiveTicketUrl).toBe("https://tickets.example.test/INC-42");
+    expect(result.effectiveTicketUrl).toBe(
+      "https://tickets.example.test/INC-42",
+    );
     expect(result.effectiveTicketStatus).toBe("not-linked");
   });
 
@@ -181,8 +215,16 @@ describe("admin incidents route helpers", () => {
       environment: "prod",
       selectedView: "unknown-view",
       selectedQuickFacet: "custom-facet",
-      availableViews: [{ token: "critical", label: "Critical", summary: "Only critical incidents" }],
-      quickFacets: [{ token: "stale", label: "Stale", count: 2, active: false }],
+      availableViews: [
+        {
+          token: "critical",
+          label: "Critical",
+          summary: "Only critical incidents",
+        },
+      ],
+      quickFacets: [
+        { token: "stale", label: "Stale", count: 2, active: false },
+      ],
     } as AdminIncidentList;
 
     const state = buildIncidentQueueDerivedState(incidents, {
@@ -248,9 +290,17 @@ describe("admin incidents route helpers", () => {
       to: null,
       offset: "0",
     });
-    expect(buildIncidentQueueFacetQueryUpdates(filters, "triage", "stale", "stale").facet).toBeNull();
-    expect(buildIncidentQueueFacetQueryUpdates(filters, "triage", "stale", "fresh").facet).toBe("fresh");
-    expect(buildIncidentQueueResetFiltersQueryUpdates(filters, "triage", "stale")).toEqual({
+    expect(
+      buildIncidentQueueFacetQueryUpdates(filters, "triage", "stale", "stale")
+        .facet,
+    ).toBeNull();
+    expect(
+      buildIncidentQueueFacetQueryUpdates(filters, "triage", "stale", "fresh")
+        .facet,
+    ).toBe("fresh");
+    expect(
+      buildIncidentQueueResetFiltersQueryUpdates(filters, "triage", "stale"),
+    ).toEqual({
       period: "24h",
       environment: "prod",
       view: "triage",
@@ -270,35 +320,62 @@ describe("admin incidents route helpers", () => {
   });
 
   it("falls back to default incident freshness copy when source hint is empty", () => {
-    expect(resolveIncidentRelativeTimeLabel(" ")).toBe("Сводка активности недоступна");
-    expect(resolveIncidentRelativeTimeLabel("3 minutes ago")).toBe("3 minutes ago");
+    expect(resolveIncidentRelativeTimeLabel(" ")).toBe(
+      "Сводка активности недоступна",
+    );
+    expect(resolveIncidentRelativeTimeLabel("3 minutes ago")).toBe(
+      "3 minutes ago",
+    );
   });
 
   it("strips exact-match search params from returnTo while preserving queue state", () => {
-    const currentUrl = new URL("http://localhost:3000/admin/incidents?period=1h&environment=dev&view=critical&facet=severity%3Acritical&traceId=trace-1&requestId=req-1&errorCode=TOKEN_INVALID&from=2026-03-18T09%3A00%3A00Z&to=2026-03-18T10%3A00%3A00Z&meetingId=meeting-1");
+    const currentUrl = new URL(
+      "http://localhost:3000/admin/incidents?period=1h&environment=dev&view=critical&facet=severity%3Acritical&traceId=trace-1&requestId=req-1&errorCode=TOKEN_INVALID&from=2026-03-18T09%3A00%3A00Z&to=2026-03-18T10%3A00%3A00Z&meetingId=meeting-1",
+    );
 
     expect(buildIncidentQueueReturnHref(currentUrl)).toBe(
       "/admin/incidents?period=1h&environment=dev&view=critical&facet=severity%3Acritical",
     );
-    expect(buildIncidentDetailHref(currentUrl, "incident-1", "dev", buildIncidentQueueReturnHref(currentUrl))).toContain(
+    expect(
+      buildIncidentDetailHref(
+        currentUrl,
+        "incident-1",
+        "dev",
+        buildIncidentQueueReturnHref(currentUrl),
+      ),
+    ).toContain(
       "returnTo=%2Fadmin%2Fincidents%3Fperiod%3D1h%26environment%3Ddev%26view%3Dcritical%26facet%3Dseverity%253Acritical",
     );
   });
 
   it("falls back to queue route when detail page receives unsafe returnTo", () => {
-    const currentUrl = new URL("http://localhost:3000/admin/incidents/incident-1?environment=prod&returnTo=https%3A%2F%2Fevil.example%2Fphish&traceId=trace-1");
+    const currentUrl = new URL(
+      "http://localhost:3000/admin/incidents/incident-1?environment=prod&returnTo=https%3A%2F%2Fevil.example%2Fphish&traceId=trace-1",
+    );
 
-    expect(resolveIncidentReturnTo(currentUrl, "prod")).toBe("/admin/incidents?environment=prod");
-    expect(buildIncidentNextActionHref(
-      currentUrl,
-      { kind: "queue", label: "Вернуться", detail: "", target: "queue-return", externalUrl: null },
-      [],
-      "prod",
-    )).toBe("/admin/incidents?environment=prod");
+    expect(resolveIncidentReturnTo(currentUrl, "prod")).toBe(
+      "/admin/incidents?environment=prod",
+    );
+    expect(
+      buildIncidentNextActionHref(
+        currentUrl,
+        {
+          kind: "queue",
+          label: "Вернуться",
+          detail: "",
+          target: "queue-return",
+          externalUrl: null,
+        },
+        [],
+        "prod",
+      ),
+    ).toBe("/admin/incidents?environment=prod");
   });
 
   it("preserves detail return context for incident-scope drill-through", () => {
-    const currentUrl = new URL("http://localhost:3000/admin/incidents/incident-1?environment=dev&returnTo=%2Fadmin%2Fincidents%3Fperiod%3D1h%26environment%3Ddev");
+    const currentUrl = new URL(
+      "http://localhost:3000/admin/incidents/incident-1?environment=dev&returnTo=%2Fadmin%2Fincidents%3Fperiod%3D1h%26environment%3Ddev",
+    );
 
     const href = buildIncidentRelatedHref(
       currentUrl,
@@ -315,24 +392,30 @@ describe("admin incidents route helpers", () => {
       "dev",
     );
 
-    expect(href).toContain("returnTo=%2Fadmin%2Fincidents%2Fincident-1%3Fenvironment%3Ddev%26returnTo%3D%252Fadmin%252Fincidents%253Fperiod%253D1h%2526environment%253Ddev");
+    expect(href).toContain(
+      "returnTo=%2Fadmin%2Fincidents%2Fincident-1%3Fenvironment%3Ddev%26returnTo%3D%252Fadmin%252Fincidents%253Fperiod%253D1h%2526environment%253Ddev",
+    );
     expect(href).toContain("roomId=room-1");
     expect(href).toContain("meetingId=meeting-1");
   });
 
   it("treats meeting and time bounds as valid search inputs", () => {
-    expect(hasIncidentSearchQuery({
-      traceId: "",
-      requestId: "",
-      errorCode: "",
-      from: "",
-      to: "2026-03-18T10:00:00Z",
-      meetingId: "meeting-1",
-    })).toBe(true);
+    expect(
+      hasIncidentSearchQuery({
+        traceId: "",
+        requestId: "",
+        errorCode: "",
+        from: "",
+        to: "2026-03-18T10:00:00Z",
+        meetingId: "meeting-1",
+      }),
+    ).toBe(true);
   });
 
   it("materializes critical queue intent in dashboard handoff links", () => {
-    const currentUrl = new URL("http://localhost:3000/admin?period=1h&environment=dev");
+    const currentUrl = new URL(
+      "http://localhost:3000/admin?period=1h&environment=dev",
+    );
 
     const href = buildDashboardIncidentHref(
       currentUrl,

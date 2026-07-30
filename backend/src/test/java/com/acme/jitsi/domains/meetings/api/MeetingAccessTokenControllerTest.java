@@ -16,8 +16,10 @@ import com.nimbusds.jwt.SignedJWT;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.Test;
@@ -25,10 +27,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -80,8 +86,21 @@ import org.springframework.test.web.servlet.MvcResult;
       "app.meetings.token.assignments[4].role=admin"
     })
 @AutoConfigureMockMvc
-  @ExtendWith(OutputCaptureExtension.class)
+@ExtendWith(OutputCaptureExtension.class)
+@Import(MeetingAccessTokenControllerTest.FixedClockConfiguration.class)
 class MeetingAccessTokenControllerTest {
+
+  private static final Instant TEST_NOW = Instant.parse("2026-01-15T12:00:00Z");
+
+  @TestConfiguration(proxyBeanMethods = false)
+  static class FixedClockConfiguration {
+
+    @Bean
+    @Primary
+    Clock fixedClock() {
+      return Clock.fixed(TEST_NOW, ZoneOffset.UTC);
+    }
+  }
 
   @Autowired
   private MockMvc mockMvc;
@@ -559,5 +578,4 @@ class MeetingAccessTokenControllerTest {
     return null;
   }
 }
-
 

@@ -30,9 +30,15 @@ describe("meetings.service runtime", () => {
       totalPages: 0,
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    const result = await fetchMeetings("sess-1", "http://localhost:8080/api/v1", "room a/b");
+    const result = await fetchMeetings(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      "room a/b",
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/rooms/room%20a%2Fb/meetings?page=0&size=20",
@@ -58,7 +64,9 @@ describe("meetings.service runtime", () => {
       updatedAt: "2026-03-03T10:00:00Z",
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(meeting, 201));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(meeting, 201));
 
     const result = await createMeeting(
       "sess-1",
@@ -101,7 +109,13 @@ describe("meetings.service runtime", () => {
     );
 
     await expect(
-      updateMeeting("sess-1", "http://localhost:8080/api/v1", "csrf-1", "meeting a/b", { title: "New" }),
+      updateMeeting(
+        "sess-1",
+        "http://localhost:8080/api/v1",
+        "csrf-1",
+        "meeting a/b",
+        { title: "New" },
+      ),
     ).rejects.toMatchObject({
       payload: {
         errorCode: "MEETING_FINALIZED",
@@ -121,7 +135,12 @@ describe("meetings.service runtime", () => {
     );
 
     await expect(
-      cancelMeeting("sess-1", "http://localhost:8080/api/v1", "csrf-1", "meeting-1"),
+      cancelMeeting(
+        "sess-1",
+        "http://localhost:8080/api/v1",
+        "csrf-1",
+        "meeting-1",
+      ),
     ).rejects.toMatchObject({
       payload: {
         errorCode: "INVALID_SCHEDULE",
@@ -138,7 +157,9 @@ describe("meetings.service runtime", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(MeetingServiceError);
       const meetingError = error as MeetingServiceError;
-      expect(meetingError.payload.errorCode).toBe("MEETING_SERVICE_UNAVAILABLE");
+      expect(meetingError.payload.errorCode).toBe(
+        "MEETING_SERVICE_UNAVAILABLE",
+      );
     }
   });
 });

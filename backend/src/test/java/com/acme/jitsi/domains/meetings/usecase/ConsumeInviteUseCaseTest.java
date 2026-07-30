@@ -106,7 +106,7 @@ class ConsumeInviteUseCaseTest {
         Instant.now().plusSeconds(3600), null, Instant.now(), "creator");
     when(inviteRepository.findByToken("tok")).thenReturn(Optional.of(exhausted));
     doThrow(new MeetingTokenException(HttpStatus.CONFLICT, ErrorCode.MEETING_ENDED.code(), "Встреча завершена."))
-        .when(meetingStateGuard).assertJoinAllowed("meeting-1");
+        .when(meetingStateGuard).assertGuestJoinAllowed("meeting-1");
 
     assertThatThrownBy(() -> attemptExecutor.execute(new ConsumeInviteCommand("tok")))
         .isInstanceOf(MeetingTokenException.class)

@@ -17,10 +17,7 @@ export default defineConfig({
         "src/routes/**/*.ts",
         "src/routes/**/*.tsx",
       ],
-      exclude: [
-        "src/**/*.test.ts",
-        "src/__tests__/**",
-      ],
+      exclude: ["src/**/*.test.ts", "src/__tests__/**"],
     },
   },
 });

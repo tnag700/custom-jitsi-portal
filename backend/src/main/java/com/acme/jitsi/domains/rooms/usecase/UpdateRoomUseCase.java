@@ -47,7 +47,7 @@ public class UpdateRoomUseCase implements UseCase<UpdateRoomCommand, Room> {
     }
 
     if (isConfigSetChanged(command.configSetId(), existing.configSetId())) {
-      validateConfigSet(command.configSetId());
+      validateConfigSet(command.configSetId(), existing.tenantId());
     }
 
     Instant now = Instant.now(clock);
@@ -103,8 +103,8 @@ public class UpdateRoomUseCase implements UseCase<UpdateRoomCommand, Room> {
     return requestedConfigSetId != null && !requestedConfigSetId.equals(existingConfigSetId);
   }
 
-  private void validateConfigSet(String configSetId) {
-    if (!configSetValidator.isValid(configSetId)) {
+  private void validateConfigSet(String configSetId, String tenantId) {
+    if (!configSetValidator.isValid(configSetId, tenantId)) {
       throw new ConfigSetInvalidException(configSetId);
     }
   }

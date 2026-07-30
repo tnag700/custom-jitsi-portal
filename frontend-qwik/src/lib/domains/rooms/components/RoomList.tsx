@@ -32,25 +32,25 @@ export const RoomList = component$<RoomListProps>(
 
     return (
       <div>
-        <div class="mb-6 flex items-center justify-between">
+        <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 class="text-2xl font-bold text-text">Комнаты для встреч</h1>
           <button
             type="button"
-            class="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            class="w-full rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:w-auto"
             onClick$={() => onCreateClick$()}
           >
             Создать комнату
           </button>
         </div>
 
-        <div class="mb-4 flex gap-4">
-          <div class="flex items-center gap-2">
+        <div class="mb-4 grid gap-3 sm:grid-cols-2">
+          <div class="grid gap-1.5">
             <label class="text-sm text-muted" for="status-filter">
               Статус:
             </label>
             <select
               id="status-filter"
-              class="rounded border border-border bg-bg px-2 py-1 text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              class="w-full rounded border border-border bg-bg px-3 py-2 text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               value={statusFilter.value}
               onChange$={(_, el) => {
                 statusFilter.value = el.value as "all" | "active" | "closed";
@@ -62,13 +62,13 @@ export const RoomList = component$<RoomListProps>(
             </select>
           </div>
 
-          <div class="flex items-center gap-2">
+          <div class="grid gap-1.5">
             <label class="text-sm text-muted" for="sort-by">
               Сортировка:
             </label>
             <select
               id="sort-by"
-              class="rounded border border-border bg-bg px-2 py-1 text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              class="w-full rounded border border-border bg-bg px-3 py-2 text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               value={sortBy.value}
               onChange$={(_, el) => {
                 sortBy.value = el.value as "name" | "createdAt";
@@ -102,7 +102,7 @@ export const RoomList = component$<RoomListProps>(
             <p class="mb-4 text-sm text-muted">Создайте первую комнату</p>
             <button
               type="button"
-              class="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              class="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               onClick$={() => onCreateClick$()}
             >
               Создать комнату

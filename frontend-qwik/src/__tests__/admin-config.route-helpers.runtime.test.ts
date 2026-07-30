@@ -22,13 +22,23 @@ describe("admin config route helpers", () => {
       ...readOnlyUser,
       claims: ["ADMIN"],
     };
+    const keycloakAdminUser: SafeUserProfile = {
+      ...readOnlyUser,
+      claims: ["viewer", "ROLE_ADMIN"],
+    };
 
     expect(resolveAdminConfigCapability(readOnlyUser)).toEqual({
       role: "system-admin",
       canMutate: false,
-      reason: "Роли support-engineer, security-admin и system-admin могут только просматривать конфигурацию. Изменение, развёртывание и откат доступны только роли admin.",
+      reason:
+        "Роли support-engineer, security-admin и system-admin могут только просматривать конфигурацию. Изменение, развёртывание и откат доступны только роли admin.",
     });
     expect(resolveAdminConfigCapability(adminUser)).toEqual({
+      role: "admin",
+      canMutate: true,
+      reason: null,
+    });
+    expect(resolveAdminConfigCapability(keycloakAdminUser)).toEqual({
       role: "admin",
       canMutate: true,
       reason: null,
@@ -36,13 +46,15 @@ describe("admin config route helpers", () => {
   });
 
   it("normalizes filters and keeps create mode from triggering detail loading", () => {
-    const filters = buildAdminConfigRouteFilters(new URLSearchParams({
-      environment: " dev ",
-      status: " active ",
-      mode: " create ",
-      configSetId: "   ",
-      returnTo: " /admin/incidents?environment=dev ",
-    }));
+    const filters = buildAdminConfigRouteFilters(
+      new URLSearchParams({
+        environment: " dev ",
+        status: " active ",
+        mode: " create ",
+        configSetId: "   ",
+        returnTo: " /admin/incidents?environment=dev ",
+      }),
+    );
 
     expect(filters).toEqual({
       environment: "DEV",
@@ -51,15 +63,19 @@ describe("admin config route helpers", () => {
       configSetId: "",
       returnTo: "/admin/incidents?environment=dev",
     });
-    expect(resolveAdminConfigSelectedId(filters, [{ configSetId: "cfg-1" }])).toBe("cfg-1");
+    expect(
+      resolveAdminConfigSelectedId(filters, [{ configSetId: "cfg-1" }]),
+    ).toBe("cfg-1");
     expect(shouldLoadAdminConfigDetail(filters, "cfg-1")).toBe(false);
   });
 
   it("filters summaries and tolerates partial rollout fetch failures", async () => {
-    const filters = buildAdminConfigRouteFilters(new URLSearchParams({
-      environment: " dev ",
-      status: " active ",
-    }));
+    const filters = buildAdminConfigRouteFilters(
+      new URLSearchParams({
+        environment: " dev ",
+        status: " active ",
+      }),
+    );
     const items = [
       {
         configSetId: "cfg-dev",
@@ -73,10 +89,10 @@ describe("admin config route helpers", () => {
       },
     ];
 
-    const filtered = filterAdminConfigSummaries(
-      items as never,
-      { environment: filters.environment, status: filters.status },
-    );
+    const filtered = filterAdminConfigSummaries(items as never, {
+      environment: filters.environment,
+      status: filters.status,
+    });
 
     expect(filtered).toHaveLength(1);
     expect(filtered[0]?.configSetId).toBe("cfg-dev");

@@ -7,7 +7,11 @@ const serverEntry = resolve("server/entry.express.mjs");
 const distServerEntry = resolve("dist/server/entry.express.js");
 const distClientDir = resolve("dist/build");
 
-if (!existsSync(serverEntry) || !existsSync(distServerEntry) || !existsSync(distClientDir)) {
+if (
+  !existsSync(serverEntry) ||
+  !existsSync(distServerEntry) ||
+  !existsSync(distClientDir)
+) {
   console.error("Build artifacts are missing. Run `npm run build` first.");
   process.exit(1);
 }
@@ -22,7 +26,7 @@ function sleep(ms) {
 async function waitForServerReady(maxAttempts = 50) {
   for (let i = 0; i < maxAttempts; i += 1) {
     try {
-      const res = await fetch(`${baseUrl}/`);
+      const res = await fetch(`${baseUrl}/healthz`);
       if (res.ok) {
         return;
       }
@@ -54,19 +58,45 @@ async function main() {
   try {
     await waitForServerReady();
 
+    const healthRes = await fetch(`${baseUrl}/healthz`);
+    assert(
+      healthRes.status === 200,
+      `Expected /healthz to return 200, got ${healthRes.status}`,
+    );
+    assert(
+      (await healthRes.json()).status === "ok",
+      "Health endpoint returned an unexpected payload",
+    );
+
     const pageRes = await fetch(`${baseUrl}/auth`);
     assert(pageRes.ok, `Expected /auth to return 200, got ${pageRes.status}`);
 
     const html = await pageRes.text();
-    assert(html.includes("Вход в портал"), "SSR HTML does not include expected auth content");
-    assert(html.includes('q:container="paused"') || html.includes("q:container='paused'"), "Resumability marker q:container=paused is missing");
-    assert(html.includes("q:base=\"/build/\"") || html.includes("q:base='/build/'"), "Resumability base marker q:base=/build/ is missing");
+    assert(
+      html.includes("Вход в портал"),
+      "SSR HTML does not include expected auth content",
+    );
+    assert(
+      html.includes('q:container="paused"') ||
+        html.includes("q:container='paused'"),
+      "Resumability marker q:container=paused is missing",
+    );
+    assert(
+      html.includes('q:base="/build/"') || html.includes("q:base='/build/'"),
+      "Resumability base marker q:base=/build/ is missing",
+    );
 
     const chunkMatch = html.match(/\/build\/q-[A-Za-z0-9_-]+\.js/);
-    assert(Boolean(chunkMatch), "No lazy Qwik chunk reference found in SSR HTML");
+    assert(
+      Boolean(chunkMatch),
+      "No lazy Qwik chunk reference found in SSR HTML",
+    );
 
     const chunkRes = await fetch(`${baseUrl}${chunkMatch[0]}`);
-    assert(chunkRes.ok, `Expected JS chunk ${chunkMatch[0]} to return 200, got ${chunkRes.status}`);
+    assert(
+      chunkRes.ok,
+      `Expected JS chunk ${chunkMatch[0]} to return 200, got ${chunkRes.status}`,
+    );
 
     console.log("SSR/resumability smoke check passed");
   } finally {

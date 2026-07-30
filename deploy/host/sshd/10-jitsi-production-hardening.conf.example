@@ -1,0 +1,15 @@
+# Ubuntu 24 production SSH baseline for /etc/ssh/sshd_config.d/
+
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+ChallengeResponseAuthentication no
+AuthenticationMethods publickey
+PermitRootLogin no
+X11Forwarding no
+AllowTcpForwarding no
+AllowAgentForwarding no
+
+# Prefer ed25519 for newly issued operator keys, but do not hard-pin
+# accepted key algorithms in the shared baseline to avoid staged-rollout lockout.
+# Validate with: sshd -t

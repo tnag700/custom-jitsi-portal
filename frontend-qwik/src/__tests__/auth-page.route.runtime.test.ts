@@ -36,7 +36,10 @@ vi.mock("~/lib/domains/auth", () => ({
   shouldAutoResumeAuth: mockShouldAutoResumeAuth,
 }));
 
-function createCtx(urlValue: string, sharedEntries: Array<[string, unknown]> = []) {
+function createCtx(
+  urlValue: string,
+  sharedEntries: Array<[string, unknown]> = [],
+) {
   return {
     sharedMap: new Map<string, unknown>(sharedEntries),
     url: new URL(urlValue),
@@ -48,7 +51,11 @@ function createCtx(urlValue: string, sharedEntries: Array<[string, unknown]> = [
         return undefined;
       },
     },
-    redirect: (status: number, to: string) => ({ type: "redirect", status, to }),
+    redirect: (status: number, to: string) => ({
+      type: "redirect",
+      status,
+      to,
+    }),
   };
 }
 
@@ -56,7 +63,9 @@ describe("auth page route runtime", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    mockBuildAuthLoginHref.mockReturnValue("http://localhost:8080/api/v1/auth/login?returnTo=%2Fprofile");
+    mockBuildAuthLoginHref.mockReturnValue(
+      "http://localhost:8080/api/v1/auth/login?returnTo=%2Fprofile",
+    );
     mockResolveAuthRedirectPath.mockReturnValue("/auth?returnTo=%2Fprofile");
     mockResolvePostAuthRedirectPath.mockReturnValue("/profile");
     mockMapAuthErrorCodeToPayload.mockReturnValue({
@@ -72,7 +81,11 @@ describe("auth page route runtime", () => {
     const mod = await import("~/routes/auth/index");
 
     await expect(
-      mod.useAuthPage(createCtx("http://localhost:3000/auth?returnTo=%2Fprofile", [["user", { id: "u-1" }]]) as never),
+      mod.useAuthPage(
+        createCtx("http://localhost:3000/auth?returnTo=%2Fprofile", [
+          ["user", { id: "u-1" }],
+        ]) as never,
+      ),
     ).rejects.toEqual({
       type: "redirect",
       status: 302,
@@ -87,7 +100,11 @@ describe("auth page route runtime", () => {
     const mod = await import("~/routes/auth/index");
 
     await expect(
-      mod.useAuthPage(createCtx("http://localhost:3000/auth?mode=recover&returnTo=%2Fprofile") as never),
+      mod.useAuthPage(
+        createCtx(
+          "http://localhost:3000/auth?mode=recover&returnTo=%2Fprofile",
+        ) as never,
+      ),
     ).rejects.toEqual({
       type: "redirect",
       status: 302,
@@ -101,7 +118,9 @@ describe("auth page route runtime", () => {
     const mod = await import("~/routes/auth/index");
 
     await expect(
-      mod.useAuthPage(createCtx("http://localhost:3000/auth?returnTo=%2Fprofile") as never),
+      mod.useAuthPage(
+        createCtx("http://localhost:3000/auth?returnTo=%2Fprofile") as never,
+      ),
     ).resolves.toEqual({
       loginHref: "http://localhost:8080/api/v1/auth/login?returnTo=%2Fprofile",
       retryHref: "/auth?returnTo=%2Fprofile",
@@ -119,7 +138,11 @@ describe("auth page route runtime", () => {
     const mod = await import("~/routes/auth/index");
 
     await expect(
-      mod.useAuthPage(createCtx("http://localhost:3000/auth?mode=recover&error=ACCESS_DENIED&returnTo=%2Fadmin") as never),
+      mod.useAuthPage(
+        createCtx(
+          "http://localhost:3000/auth?mode=recover&error=ACCESS_DENIED&returnTo=%2Fadmin",
+        ) as never,
+      ),
     ).resolves.toEqual({
       loginHref: "http://localhost:8080/api/v1/auth/login?returnTo=%2Fprofile",
       retryHref: "/auth?returnTo=%2Fprofile",
@@ -131,6 +154,9 @@ describe("auth page route runtime", () => {
       },
     });
 
-    expect(mockShouldAutoResumeAuth).toHaveBeenCalledWith("ACCESS_DENIED", "recover");
+    expect(mockShouldAutoResumeAuth).toHaveBeenCalledWith(
+      "ACCESS_DENIED",
+      "recover",
+    );
   });
 });

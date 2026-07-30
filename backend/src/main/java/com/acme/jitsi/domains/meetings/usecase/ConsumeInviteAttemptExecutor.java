@@ -51,7 +51,7 @@ public class ConsumeInviteAttemptExecutor {
       throw new InviteExpiredException(token);
     }
 
-    meetingStateGuard.assertJoinAllowed(invite.meetingId());
+    meetingStateGuard.assertGuestJoinAllowed(invite.meetingId());
 
     if (invite.isExhausted()) {
       throw new InviteExhaustedException(token);

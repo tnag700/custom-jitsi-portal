@@ -17,8 +17,9 @@ FROM node:22-alpine
 WORKDIR /app
 
 COPY --from=build /app/dist ./dist
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/server ./server
+COPY server/package.json server/package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+COPY --from=build /app/server/entry.express.mjs ./server/entry.express.mjs
 
 RUN addgroup -S app && adduser -S -G app -h /app app \
 	&& chown -R app:app /app

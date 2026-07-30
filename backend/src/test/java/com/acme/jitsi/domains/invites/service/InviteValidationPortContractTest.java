@@ -344,7 +344,7 @@ class InviteValidationPortContractTest {
     MeetingStateGuard meetingStateGuard = mock(MeetingStateGuard.class);
     if (failMeetingStateGuard) {
       doThrow(new MeetingTokenException(HttpStatus.CONFLICT, ErrorCode.MEETING_ENDED.code(), "Встреча завершена."))
-          .when(meetingStateGuard).assertJoinAllowed("meeting-a");
+          .when(meetingStateGuard).assertGuestJoinAllowed("meeting-a");
     }
     MeetingRepository meetingRepository = mock(MeetingRepository.class);
     AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();

@@ -1,0 +1,108 @@
+groups:
+  - name: jitsi-portal-phase-one
+    interval: 30s
+    rules:
+      - alert: JitsiJoinSuccessRateLow
+        expr: |
+          (
+            sum(rate(jitsi_join_success_total[5m]))
+            /
+            clamp_min(sum(rate(jitsi_join_attempts_total[5m])), 0.001)
+          ) < 0.95
+          and sum(increase(jitsi_join_attempts_total[5m])) >= 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Jitsi join success rate is below 95%"
+          dashboard: "__MONITORING_GRAFANA_BASE_URL__/d/jitsi-portal-overview"
+          runbook: "__MONITORING_RUNBOOK_URL__"
+          sli_window: "5m"
+
+      - alert: JitsiJoinLatencyP95High
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(jitsi_join_latency_seconds_bucket{result="success"}[5m]))
+          ) > 1
+          and sum(increase(jitsi_join_latency_seconds_count{result="success"}[5m])) >= 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Jitsi join p95 latency exceeds one second"
+          dashboard: "__MONITORING_GRAFANA_BASE_URL__/d/jitsi-portal-overview"
+          runbook: "__MONITORING_RUNBOOK_URL__"
+          sli_window: "5m"
+
+      - alert: JitsiJoinLatencyP99High
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum by (le) (rate(jitsi_join_latency_seconds_bucket{result="success"}[5m]))
+          ) > 2
+          and sum(increase(jitsi_join_latency_seconds_count{result="success"}[5m])) >= 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Jitsi join p99 latency exceeds two seconds"
+          dashboard: "__MONITORING_GRAFANA_BASE_URL__/d/jitsi-portal-overview"
+          runbook: "__MONITORING_RUNBOOK_URL__"
+          sli_window: "5m"
+
+      - alert: JitsiAuthRefreshReuseSpike
+        expr: |
+          sum(increase(jitsi_auth_refresh_events_total{event_type="refresh_reuse",result="fail"}[5m])) >= 2
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Multiple refresh-token reuse events were detected"
+          dashboard: "__MONITORING_GRAFANA_BASE_URL__/d/jitsi-portal-overview"
+          runbook: "__MONITORING_RUNBOOK_URL__"
+          sli_window: "5m"
+
+      - alert: JitsiBackendUnavailable
+        expr: jitsi_service_backend_available < 1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Jitsi portal backend reports unavailable"
+          dashboard: "__MONITORING_GRAFANA_BASE_URL__/d/jitsi-portal-overview"
+          runbook: "__MONITORING_RUNBOOK_URL__"
+          sli_window: "2m"
+
+      - alert: JitsiConfigCompatibilityBroken
+        expr: jitsi_service_config_compatible < 1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Active Jitsi configuration is incompatible"
+          dashboard: "__MONITORING_GRAFANA_BASE_URL__/d/jitsi-portal-overview"
+          runbook: "__MONITORING_RUNBOOK_URL__"
+          sli_window: "2m"
+
+      - alert: JitsiJoinReadinessBlocked
+        expr: jitsi_service_join_readiness_blocked > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Jitsi join readiness is blocked"
+          dashboard: "__MONITORING_GRAFANA_BASE_URL__/d/jitsi-portal-overview"
+          runbook: "__MONITORING_RUNBOOK_URL__"
+          sli_window: "2m"
+
+      - alert: JitsiJoinReadinessDegradedTooLong
+        expr: jitsi_service_join_readiness_degraded > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Jitsi join readiness has remained degraded"
+          dashboard: "__MONITORING_GRAFANA_BASE_URL__/d/jitsi-portal-overview"
+          runbook: "__MONITORING_RUNBOOK_URL__"
+          sli_window: "15m"

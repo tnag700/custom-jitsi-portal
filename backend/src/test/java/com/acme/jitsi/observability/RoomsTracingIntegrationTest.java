@@ -2,11 +2,11 @@ package com.acme.jitsi.observability;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.acme.jitsi.shared.JwtTestProperties;
+import com.acme.jitsi.shared.TestFixtures;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.time.Duration;
@@ -20,7 +20,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest(
@@ -71,9 +70,7 @@ class RoomsTracingIntegrationTest {
 
     mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> attrs.put("sub", "trace-admin"))
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-room-span-1")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""

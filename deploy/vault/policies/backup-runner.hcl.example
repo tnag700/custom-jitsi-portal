@@ -1,0 +1,15 @@
+path "kv/data/backup/runner/*" {
+  capabilities = ["read"]
+}
+
+path "kv/metadata/backup/runner/*" {
+  capabilities = ["list"]
+}
+
+path "database/creds/backup-job" {
+  capabilities = ["read"]
+}
+
+path "database/static-creds/backup-job" {
+  capabilities = ["read"]
+}

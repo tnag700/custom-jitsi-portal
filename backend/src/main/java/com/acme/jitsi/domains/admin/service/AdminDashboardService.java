@@ -100,6 +100,7 @@ public class AdminDashboardService {
       String category) {
     AdminDashboardPeriod period = AdminDashboardPeriod.fromToken(periodToken);
     ConfigSetEnvironmentType environmentType = resolveEnvironment(tenantId, environmentToken);
+    String normalizedCategory = normalizeCategory(category);
     AdminDashboardReadModel.DrillDownOverview overview = readModel.loadDrillDown(new AdminDashboardReadModel.DrillDownFilter(
         tenantId,
         environmentType,
@@ -107,7 +108,7 @@ public class AdminDashboardService {
         roomId,
         meetingId,
         normalizeOptional(errorCode),
-        normalizeOptional(category),
+        normalizedCategory,
       SAMPLE_LIMIT));
 
     return new AdminDashboardDrillDownResponse(
@@ -132,6 +133,18 @@ public class AdminDashboardService {
                 record.userMessage()))
             .toList(),
         overview.sampleWindowLimited());
+  }
+
+  private String normalizeCategory(String category) {
+    String normalized = normalizeOptional(category);
+    if (normalized == null) {
+      return null;
+    }
+
+    return AdminDashboardReasonCategory.fromToken(normalized)
+        .map(AdminDashboardReasonCategory::token)
+        .orElseThrow(() -> new AdminDashboardInvalidRequestException(
+            "Параметр category содержит неподдерживаемое значение: " + category));
   }
 
   private String buildTraceUrl(String traceId) {

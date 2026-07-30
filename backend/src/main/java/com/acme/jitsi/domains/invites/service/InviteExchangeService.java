@@ -51,21 +51,32 @@ public class InviteExchangeService {
     return flowObservationFacade.observe("invite.exchange", observation -> {
       observation.guest(true).rollback("skipped");
 
-      InviteReservation reservation;
       try {
         observation.stage("validate");
+        inviteValidationCapability.validate(inviteToken);
+      } catch (RuntimeException ex) {
+        classifyReservationFailure(observation, ex);
+        throw ex;
+      }
+
+      String normalizedDisplayName = normalizeGuestDisplayName(displayName);
+      String guestSubject = buildGuestSubject(normalizedDisplayName);
+
+      InviteReservation reservation;
+      try {
+        observation.stage("reserve");
         reservation = inviteReservationCapability.reserve(inviteToken);
       } catch (RuntimeException ex) {
         classifyReservationFailure(observation, ex);
         throw ex;
       }
 
-      String guestSubject = buildGuestSubject(displayName);
-
       InviteJoinPort.JoinResult tokenResult;
       try {
         observation.stage("issue_token");
-        tokenResult = inviteJoinPort.issueGuestJoin(reservation.meetingId(), guestSubject);
+        tokenResult =
+            inviteJoinPort.issueGuestJoin(
+                reservation.meetingId(), guestSubject, normalizedDisplayName);
         observation.outcome("success");
       } catch (RuntimeException ex) {
         observation.outcome("partial_failure").stage("issue_token");
@@ -92,11 +103,7 @@ public class InviteExchangeService {
     return new ValidationResult(resolution.meetingId());
   }
 
-  private String buildGuestSubject(String displayName) {
-    String normalizedDisplayName = normalizeGuestDisplayName(displayName);
-    if (normalizedDisplayName == null) {
-      return "guest:" + UUID.randomUUID();
-    }
+  private String buildGuestSubject(String normalizedDisplayName) {
     return "guest:"
         + normalizedDisplayName.replaceAll("\\s+", "-").toLowerCase(Locale.ROOT)
         + ":"
@@ -105,10 +112,10 @@ public class InviteExchangeService {
 
   private String normalizeGuestDisplayName(String displayName) {
     String normalized = TextInputNormalizer.normalizeNullable(displayName);
-    if (normalized == null) {
-      return null;
-    }
-    if (normalized.isEmpty() || normalized.length() < 2 || normalized.length() > 80) {
+    if (normalized == null
+        || normalized.isEmpty()
+        || normalized.length() < 2
+        || normalized.length() > 80) {
       throw new InviteExchangeException(
           HttpStatus.BAD_REQUEST,
           ErrorCode.INVALID_INVITE.code(),

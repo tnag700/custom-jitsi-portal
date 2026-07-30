@@ -327,9 +327,9 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
     }
   }
 
-  // AC1: Create invite - moderator role
+  // AC1: Guest links cannot grant moderator role
   @Test
-  void createInviteWithModeratorRoleReturnsCreated() throws Exception {
+  void createInviteWithModeratorRoleReturnsBadRequest() throws Exception {
     mockMvc.perform(post("/api/v1/meetings/{meetingId}/invites", meetingId)
             .with(csrf())
             .with(oauth2Login()
@@ -347,12 +347,9 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
                   "expiresInHours": 48
                 }
                 """))
-        .andExpect(status().isCreated())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.id").exists())
-        .andExpect(jsonPath("$.token").exists())
-        .andExpect(jsonPath("$.role").value("moderator"))
-        .andExpect(jsonPath("$.maxUses").value(1));
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.VALIDATION_ERROR.code()));
   }
 
   // AC2: List invites returns paginated results
@@ -371,7 +368,8 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
             .content("""
                 {
                   "role": "participant",
-                  "maxUses": 5
+                  "maxUses": 5,
+                  "expiresInHours": 24
                 }
                 """))
         .andExpect(status().isCreated());
@@ -387,8 +385,9 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {
-                  "role": "moderator",
-                  "maxUses": 1
+                  "role": "participant",
+                  "maxUses": 1,
+                  "expiresInHours": 24
                 }
                 """))
         .andExpect(status().isCreated());
@@ -429,7 +428,8 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
             .content("""
                 {
                   "role": "participant",
-                  "maxUses": 5
+                  "maxUses": 5,
+                  "expiresInHours": 24
                 }
                 """))
         .andExpect(status().isCreated())
@@ -554,7 +554,8 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
             .content("""
                 {
                   "role": "participant",
-                  "maxUses": 5
+                  "maxUses": 5,
+                  "expiresInHours": 24
                 }
                 """))
         .andExpect(status().isUnauthorized());
@@ -797,5 +798,4 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
         .andExpect(jsonPath("$.pageSize").value(20));
   }
 }
-
 

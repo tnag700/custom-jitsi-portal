@@ -48,7 +48,7 @@ async function adaptExchangeProblemDetails(response: Response): Promise<InviteEr
 export async function exchangeInvite(
   apiUrl: string,
   inviteToken: string,
-  displayName?: string,
+  displayName: string,
 ): Promise<InviteExchangeResponse> {
   const response = await fetch(`${apiUrl}/invites/exchange`, {
     method: "POST",

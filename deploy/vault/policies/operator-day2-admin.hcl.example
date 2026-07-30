@@ -1,0 +1,55 @@
+path "sys/health" {
+  capabilities = ["read"]
+}
+
+path "sys/auth" {
+  capabilities = ["read", "list"]
+}
+
+path "auth/token/lookup-self" {
+  capabilities = ["read"]
+}
+
+path "auth/token/renew-self" {
+  capabilities = ["update"]
+}
+
+path "sys/capabilities-self" {
+  capabilities = ["update"]
+}
+
+path "identity/entity/id/*" {
+  capabilities = ["read"]
+}
+
+path "identity/entity-alias/id/*" {
+  capabilities = ["read"]
+}
+
+path "kv/metadata/app/backend/*" {
+  capabilities = ["list"]
+}
+
+path "kv/metadata/app/redis/*" {
+  capabilities = ["list"]
+}
+
+path "kv/metadata/identity/backend/*" {
+  capabilities = ["list"]
+}
+
+path "kv/metadata/identity/keycloak/*" {
+  capabilities = ["list"]
+}
+
+path "kv/metadata/realtime/jitsi/*" {
+  capabilities = ["list"]
+}
+
+path "kv/metadata/backup/backend/*" {
+  capabilities = ["list"]
+}
+
+path "kv/metadata/backup/runner/*" {
+  capabilities = ["list"]
+}

@@ -30,7 +30,8 @@ describe("admin.service runtime", () => {
         active: true,
         severity: "critical",
         headline: "Config mismatch blocks joins",
-        summary: "Config incompatibility is the dominant signal for the selected window.",
+        summary:
+          "Config incompatibility is the dominant signal for the selected window.",
         actionLabel: "Открыть очередь инцидентов",
         handoff: {
           environment: "dev",
@@ -47,7 +48,8 @@ describe("admin.service runtime", () => {
         {
           id: "config-compatibility",
           title: "Config compatibility requires immediate attention",
-          summary: "Role mismatch blocks join attempts in the active environment.",
+          summary:
+            "Role mismatch blocks join attempts in the active environment.",
           severity: "critical",
           actionLabel: "Открыть очередь инцидентов",
           handoff: {
@@ -85,7 +87,8 @@ describe("admin.service runtime", () => {
           errorCode: "CONFIG_INCOMPATIBLE",
           category: "CONFIG",
           count: 3,
-          summary: "Three recent failures share the same config incompatibility code.",
+          summary:
+            "Three recent failures share the same config incompatibility code.",
           handoff: {
             environment: "dev",
             period: "1h",
@@ -121,7 +124,10 @@ describe("admin.service runtime", () => {
         headline: "Есть активные сигналы",
         summary: "Use the priority queue handoff instead of secondary modules.",
         actions: [
-          { label: "Открыть очередь инцидентов", href: "/admin/incidents?period=1h&environment=dev" },
+          {
+            label: "Открыть очередь инцидентов",
+            href: "/admin/incidents?period=1h&environment=dev",
+          },
         ],
         recentResolvedSpikes: [],
       },
@@ -129,14 +135,20 @@ describe("admin.service runtime", () => {
       sampleWindowLimited: false,
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    const result = await fetchAdminDashboard("sess-1", "http://localhost:8080/api/v1", {
-      period: "1h",
-      environment: "dev",
-      roomId: "room a/b",
-      meetingId: "meeting-1",
-    });
+    const result = await fetchAdminDashboard(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      {
+        period: "1h",
+        environment: "dev",
+        roomId: "room a/b",
+        meetingId: "meeting-1",
+      },
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/admin/dashboard?period=1h&environment=dev&roomId=room+a%2Fb&meetingId=meeting-1",
@@ -160,13 +172,19 @@ describe("admin.service runtime", () => {
       sampleWindowLimited: false,
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    const result = await fetchAdminDrillDown("sess-1", "http://localhost:8080/api/v1", {
-      period: "15m",
-      environment: "dev",
-      category: "TOKEN",
-    });
+    const result = await fetchAdminDrillDown(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      {
+        period: "15m",
+        environment: "dev",
+        category: "TOKEN",
+      },
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/admin/dashboard/drill-down?period=15m&environment=dev&category=TOKEN",
@@ -189,7 +207,9 @@ describe("admin.service runtime", () => {
     );
 
     await expect(
-      fetchAdminDashboard("sess-1", "http://localhost:8080/api/v1", { period: "15m" }),
+      fetchAdminDashboard("sess-1", "http://localhost:8080/api/v1", {
+        period: "15m",
+      }),
     ).rejects.toBeInstanceOf(AdminDashboardServiceError);
   });
 });

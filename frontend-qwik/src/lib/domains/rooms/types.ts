@@ -35,4 +35,5 @@ export interface RoomErrorPayload {
   detail: string;
   errorCode: string;
   traceId?: string;
+  httpStatus?: number;
 }

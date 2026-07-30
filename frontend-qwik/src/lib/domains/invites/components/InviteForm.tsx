@@ -18,9 +18,8 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 export const InviteForm = component$<InviteFormProps>(({ meetingId, isLoading, error, onCancel$, action }) => {
-  const roleValue = useSignal<"participant" | "moderator">("participant");
   const maxUsesValue = useSignal("1");
-  const expiresInHoursValue = useSignal("");
+  const expiresInHoursValue = useSignal("24");
   const panelRef = useSignal<HTMLDivElement>();
 
   const errorMessage = error ? ERROR_MESSAGES[error.errorCode] ?? error.detail : null;
@@ -90,22 +89,14 @@ export const InviteForm = component$<InviteFormProps>(({ meetingId, isLoading, e
 
         <Form action={action as never}>
           <input type="hidden" name="meetingId" value={meetingId} />
+          <input type="hidden" name="role" value="participant" />
 
           <div class="space-y-4">
-            <div>
-              <label class="mb-1 block text-sm font-medium text-text" for="invite-role">Роль *</label>
-              <select
-                id="invite-role"
-                name="role"
-                value={roleValue.value}
-                class="w-full rounded border border-border bg-bg px-3 py-2 text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                onChange$={(_, el) => {
-                  roleValue.value = el.value as "participant" | "moderator";
-                }}
-              >
-                <option value="participant">participant</option>
-                <option value="moderator">moderator</option>
-              </select>
+            <div class="rounded-lg border border-border bg-bg px-3 py-2">
+              <p class="text-sm font-medium text-text">Роль: участник</p>
+              <p class="mt-1 text-xs text-muted">
+                Гостевая ссылка не выдаёт права организатора или модератора.
+              </p>
             </div>
 
             <div>
@@ -124,7 +115,9 @@ export const InviteForm = component$<InviteFormProps>(({ meetingId, isLoading, e
             </div>
 
             <div>
-              <label class="mb-1 block text-sm font-medium text-text" for="invite-expires">Истекает через (часы)</label>
+              <label class="mb-1 block text-sm font-medium text-text" for="invite-expires">
+                Истекает через (часы) *
+              </label>
               <input
                 id="invite-expires"
                 type="number"
@@ -132,12 +125,15 @@ export const InviteForm = component$<InviteFormProps>(({ meetingId, isLoading, e
                 value={expiresInHoursValue.value}
                 min={1}
                 max={168}
-                placeholder="Бессрочный"
+                required
                 class="w-full rounded border border-border bg-bg px-3 py-2 text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 onInput$={(_, el) => {
                   expiresInHoursValue.value = el.value;
                 }}
               />
+              <p class="mt-1 text-xs text-muted">
+                Не более 7 суток и не позднее завершения встречи.
+              </p>
             </div>
           </div>
 

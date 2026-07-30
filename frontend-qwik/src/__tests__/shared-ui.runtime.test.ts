@@ -1,78 +1,33 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
+import {
+  collectNodes,
+  findNode,
+  findNodes,
+  isRenderedNode,
+  renderNode,
+  textContent,
+} from "./support/jsx-tree";
 
-interface RenderedNode {
-  type: string;
-  props: Record<string, unknown>;
+function findHeadlessNode(
+  node: unknown,
+  name: string,
+): ReturnType<typeof findNode> {
+  return findNode(
+    node,
+    (candidate) => candidate.props["data-headless"] === name,
+  );
 }
 
-interface JsxLikeNode {
-  type?: unknown;
-  props?: Record<string, unknown>;
-}
-
-function asArray<T>(value: T | T[] | null | undefined): T[] {
-  if (value == null) {
-    return [];
-  }
-  return Array.isArray(value) ? value : [value];
-}
-
-function isJsxLikeNode(value: unknown): value is JsxLikeNode {
-  return typeof value === "object" && value !== null && ("type" in value || "props" in value);
-}
-
-function renderNode(node: unknown): RenderedNode | unknown {
-  if (!isJsxLikeNode(node)) {
-    return node;
-  }
-
-  const candidate = node;
-
-  if (typeof candidate.type === "function") {
-    return renderNode(candidate.type(candidate.props ?? {}));
-  }
-
-  if (typeof candidate.type === "string") {
-    return { type: candidate.type, props: candidate.props ?? {} };
-  }
-
-  return node;
-}
-
-function isRenderedNode(value: unknown): value is RenderedNode {
-  return typeof value === "object" && value !== null && "type" in value && "props" in value;
-}
-
-function renderChildren(node: { props?: Record<string, unknown> }): Array<RenderedNode | string> {
-  return asArray(node.props?.children).map((child) => renderNode(child)).filter(isRenderedNode);
-}
-
-function collectNodes(node: RenderedNode): RenderedNode[] {
-  const children = renderChildren(node).filter(isRenderedNode);
-  return [node, ...children.flatMap((child) => collectNodes(child))];
-}
-
-function findHeadlessNode(node: RenderedNode, name: string): RenderedNode | undefined {
-  return collectNodes(node).find((candidate) => candidate.props["data-headless"] === name);
-}
-
-function findHeadlessNodes(node: RenderedNode, name: string): RenderedNode[] {
-  return collectNodes(node).filter((candidate) => candidate.props["data-headless"] === name);
-}
-
-function textContent(node: unknown): string {
-  if (typeof node === "string") {
-    return node;
-  }
-
-  const rendered = isRenderedNode(node) ? node : renderNode(node);
-  if (!isRenderedNode(rendered)) {
-    return "";
-  }
-
-  return asArray(rendered.props.children).map((child) => textContent(child)).join("");
+function findHeadlessNodes(
+  node: unknown,
+  name: string,
+): ReturnType<typeof findNodes> {
+  return findNodes(
+    node,
+    (candidate) => candidate.props["data-headless"] === name,
+  );
 }
 
 vi.mock("@qwik.dev/core", async (importOriginal) => {
@@ -93,9 +48,8 @@ vi.mock("@qwik.dev/core", async (importOriginal) => {
 
 vi.mock("@qwik-ui/headless", async () => {
   const actual = await import("@qwik.dev/core");
-  const primitive =
-    (name: string) =>
-    (props: Record<string, unknown>) => actual.jsx("div", { ...props, "data-headless": name });
+  const primitive = (name: string) => (props: Record<string, unknown>) =>
+    actual.jsx("div", { ...props, "data-headless": name });
 
   return {
     Modal: {
@@ -190,7 +144,9 @@ describe("shared ui runtime smoke", () => {
   it("AppPopover preserves public props and trigger/panel composition", async () => {
     const { AppPopover } = await import("~/lib/shared/ui/AppPopover");
 
-    const tree = renderNode(AppPopover({ id: "popover-a", floating: "right", gutter: 12 }));
+    const tree = renderNode(
+      AppPopover({ id: "popover-a", floating: "right", gutter: 12 }),
+    );
 
     expect(isRenderedNode(tree)).toBe(true);
     if (!isRenderedNode(tree)) {
@@ -207,11 +163,15 @@ describe("shared ui runtime smoke", () => {
     expect(triggerNode).toBeDefined();
     expect(panelNode).toBeDefined();
     expect(triggerNode?.props["aria-label"]).toBe("Открыть popover");
-    expect(triggerNode?.props["data-focus-visible-contract"]).toBe("global-css");
+    expect(triggerNode?.props["data-focus-visible-contract"]).toBe(
+      "global-css",
+    );
   });
 
   it("AppCombobox keeps value bridge, defaults, pass-through root props and item composition", async () => {
-    const { AppCombobox, forwardComboboxValue } = await import("~/lib/shared/ui/AppCombobox");
+    const { AppCombobox, forwardComboboxValue } = await import(
+      "~/lib/shared/ui/AppCombobox"
+    );
     const handleChange = vi.fn();
 
     const tree = renderNode(
@@ -256,11 +216,16 @@ describe("shared ui runtime smoke", () => {
     expect(inputNode?.props.placeholder).toBe("Выберите значение");
     expect(inputNode?.props["data-focus-visible-contract"]).toBe("global-css");
     expect(triggerNode?.props["aria-label"]).toBe("Открыть список");
-    expect(triggerNode?.props["data-focus-visible-contract"]).toBe("global-css");
+    expect(triggerNode?.props["data-focus-visible-contract"]).toBe(
+      "global-css",
+    );
     expect(popoverNode).toBeDefined();
     expect(itemNodes).toHaveLength(2);
     expect(itemNodes[0]?.props.value).toBe("one");
     expect(itemNodes[1]?.props.value).toBe("two");
-    expect(itemLabelNodes.map((node) => textContent(node))).toEqual(["One", "Two"]);
+    expect(itemLabelNodes.map((node) => textContent(node))).toEqual([
+      "One",
+      "Two",
+    ]);
   });
 });

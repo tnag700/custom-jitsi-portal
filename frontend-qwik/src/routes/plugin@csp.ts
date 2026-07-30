@@ -11,21 +11,34 @@ import {
 const DEFAULT_SERVER_API_URL = "http://localhost:8080/api/v1";
 const DEFAULT_PUBLIC_API_URL = "http://localhost:8080/api/v1";
 
-function readConfiguredUrl(value: string | null | undefined): string | undefined {
-  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+function readConfiguredUrl(
+  value: string | null | undefined,
+): string | undefined {
+  return typeof value === "string" && value.trim().length > 0
+    ? value
+    : undefined;
 }
 
-export const onRequest: RequestHandler = ({ env, headers, request, sharedMap, url }) => {
-  if (isDev || !shouldApplyDocumentSecurityHeaders(request.method, url.pathname)) {
+export const onRequest: RequestHandler = ({
+  env,
+  headers,
+  request,
+  sharedMap,
+  url,
+}) => {
+  if (
+    isDev ||
+    !shouldApplyDocumentSecurityHeaders(request.method, url.pathname)
+  ) {
     return;
   }
 
   const nonce = createCspNonce();
   const apiUrl = readConfiguredUrl(env.get("API_URL"));
   const publicApiUrl =
-    readConfiguredUrl(env.get("PUBLIC_API_URL"))
-    ?? apiUrl
-    ?? DEFAULT_PUBLIC_API_URL;
+    readConfiguredUrl(env.get("PUBLIC_API_URL")) ??
+    apiUrl ??
+    DEFAULT_PUBLIC_API_URL;
   const documentApiUrl = resolveDocumentApiUrl({
     requestUrl: url,
     apiUrl,
@@ -35,7 +48,9 @@ export const onRequest: RequestHandler = ({ env, headers, request, sharedMap, ur
 
   sharedMap.set("@nonce", nonce);
 
-  for (const [headerName, headerValue] of Object.entries(STATIC_SECURITY_HEADERS)) {
+  for (const [headerName, headerValue] of Object.entries(
+    STATIC_SECURITY_HEADERS,
+  )) {
     headers.set(headerName, headerValue);
   }
 
@@ -45,7 +60,8 @@ export const onRequest: RequestHandler = ({ env, headers, request, sharedMap, ur
       nonce,
       apiUrl: documentApiUrl,
       publicApiUrl,
-      extraConnectSrc: readConfiguredUrl(env.get("FRONTEND_CSP_CONNECT_SRC")) ?? "",
+      extraConnectSrc:
+        readConfiguredUrl(env.get("FRONTEND_CSP_CONNECT_SRC")) ?? "",
     }),
   );
 };

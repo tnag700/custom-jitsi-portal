@@ -7,9 +7,19 @@ const mockValidateInviteToken = vi.fn();
 const mockExchangeInvite = vi.fn();
 
 class MockInviteExchangeError extends Error {
-  payload: { title: string; detail: string; errorCode: string; traceId?: string };
+  payload: {
+    title: string;
+    detail: string;
+    errorCode: string;
+    traceId?: string;
+  };
 
-  constructor(payload: { title: string; detail: string; errorCode: string; traceId?: string }) {
+  constructor(payload: {
+    title: string;
+    detail: string;
+    errorCode: string;
+    traceId?: string;
+  }) {
     super(payload.detail);
     this.name = "InviteExchangeError";
     this.payload = payload;
@@ -71,7 +81,9 @@ interface InviteActionCtx {
   fail: (status: number, payload: unknown) => unknown;
 }
 
-function createLoaderCtx(overrides?: Partial<InviteLoaderCtx>): InviteLoaderCtx {
+function createLoaderCtx(
+  overrides?: Partial<InviteLoaderCtx>,
+): InviteLoaderCtx {
   return {
     params: { inviteToken: "token-1" },
     sharedMap: new Map<string, unknown>(),
@@ -79,7 +91,9 @@ function createLoaderCtx(overrides?: Partial<InviteLoaderCtx>): InviteLoaderCtx 
   };
 }
 
-function createActionCtx(overrides?: Partial<InviteActionCtx>): InviteActionCtx {
+function createActionCtx(
+  overrides?: Partial<InviteActionCtx>,
+): InviteActionCtx {
   return {
     sharedMap: new Map<string, unknown>(),
     redirect: (status, to) => ({ type: "redirect", status, to }),
@@ -95,12 +109,18 @@ describe("invite route runtime", () => {
   });
 
   it("useInviteTokenLoader validates token using default API url", async () => {
-    mockValidateInviteToken.mockResolvedValue({ valid: true, meetingId: "m-1" });
+    mockValidateInviteToken.mockResolvedValue({
+      valid: true,
+      meetingId: "m-1",
+    });
 
     const mod = await import("~/routes/invite/[inviteToken]/index");
     const result = await mod.useInviteTokenLoader(createLoaderCtx() as never);
 
-    expect(mockValidateInviteToken).toHaveBeenCalledWith("http://localhost:8080/api/v1", "token-1");
+    expect(mockValidateInviteToken).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1",
+      "token-1",
+    );
     expect(result).toEqual({
       inviteToken: "token-1",
       isValid: true,
@@ -119,10 +139,15 @@ describe("invite route runtime", () => {
 
     const mod = await import("~/routes/invite/[inviteToken]/index");
     const result = await mod.useInviteTokenLoader(
-      createLoaderCtx({ sharedMap: new Map([["apiUrl", "http://api.local/v1"]]) }) as never,
+      createLoaderCtx({
+        sharedMap: new Map([["apiUrl", "http://api.local/v1"]]),
+      }) as never,
     );
 
-    expect(mockValidateInviteToken).toHaveBeenCalledWith("http://api.local/v1", "token-1");
+    expect(mockValidateInviteToken).toHaveBeenCalledWith(
+      "http://api.local/v1",
+      "token-1",
+    );
     expect(result).toEqual({
       inviteToken: "token-1",
       isValid: false,
@@ -139,32 +164,60 @@ describe("invite route runtime", () => {
 
     const mod = await import("~/routes/invite/[inviteToken]/index");
 
-    await expect(mod.useInviteTokenLoader(createLoaderCtx() as never)).rejects.toThrow("network down");
+    await expect(
+      mod.useInviteTokenLoader(createLoaderCtx() as never),
+    ).rejects.toThrow("network down");
   });
 
   it("useExchangeInviteAction redirects to joinUrl on success", async () => {
     mockExchangeInvite.mockResolvedValue({ joinUrl: "https://meet/join/abc" });
 
     const mod = await import("~/routes/invite/[inviteToken]/index");
-    const ctx = createActionCtx({ sharedMap: new Map([["apiUrl", "http://api.local/v1"]]) });
+    const ctx = createActionCtx({
+      sharedMap: new Map([["apiUrl", "http://api.local/v1"]]),
+    });
 
     await expect(
-      mod.useExchangeInviteAction({ inviteToken: "token-1", displayName: "Jane" }, ctx as never),
-    ).rejects.toEqual({ type: "redirect", status: 302, to: "https://meet/join/abc" });
+      mod.useExchangeInviteAction(
+        { inviteToken: "token-1", displayName: "Jane" },
+        ctx as never,
+      ),
+    ).rejects.toEqual({
+      type: "redirect",
+      status: 302,
+      to: "https://meet/join/abc",
+    });
 
-    expect(mockExchangeInvite).toHaveBeenCalledWith("http://api.local/v1", "token-1", "Jane");
+    expect(mockExchangeInvite).toHaveBeenCalledWith(
+      "http://api.local/v1",
+      "token-1",
+      "Jane",
+    );
   });
 
   it("useExchangeInviteAction uses default API URL when sharedMap has no apiUrl", async () => {
-    mockExchangeInvite.mockResolvedValue({ joinUrl: "https://meet/join/default" });
+    mockExchangeInvite.mockResolvedValue({
+      joinUrl: "https://meet/join/default",
+    });
 
     const mod = await import("~/routes/invite/[inviteToken]/index");
 
     await expect(
-      mod.useExchangeInviteAction({ inviteToken: "token-1", displayName: "Jane" }, createActionCtx() as never),
-    ).rejects.toEqual({ type: "redirect", status: 302, to: "https://meet/join/default" });
+      mod.useExchangeInviteAction(
+        { inviteToken: "token-1", displayName: "Jane" },
+        createActionCtx() as never,
+      ),
+    ).rejects.toEqual({
+      type: "redirect",
+      status: 302,
+      to: "https://meet/join/default",
+    });
 
-    expect(mockExchangeInvite).toHaveBeenCalledWith("http://localhost:8080/api/v1", "token-1", "Jane");
+    expect(mockExchangeInvite).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1",
+      "token-1",
+      "Jane",
+    );
   });
 
   it("useExchangeInviteAction maps InviteExchangeError to fail(400)", async () => {
@@ -201,7 +254,10 @@ describe("invite route runtime", () => {
     const mod = await import("~/routes/invite/[inviteToken]/index");
 
     await expect(
-      mod.useExchangeInviteAction({ inviteToken: "token-1", displayName: "Jane" }, createActionCtx() as never),
+      mod.useExchangeInviteAction(
+        { inviteToken: "token-1", displayName: "Jane" },
+        createActionCtx() as never,
+      ),
     ).rejects.toThrow("backend unavailable");
   });
 });

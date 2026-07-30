@@ -62,4 +62,12 @@ class SecurityStartupConfigValidatorTest {
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("must use https outside localhost");
   }
+
+  @Test
+  void allowsPrivateHttpOriginOnlyWhenExplicitlyEnabled() {
+    SecurityStartupConfigValidator validator =
+        new SecurityStartupConfigValidator("http://10.10.100.29:3000", "real-secret", true);
+
+    assertThatCode(validator::afterPropertiesSet).doesNotThrowAnyException();
+  }
 }

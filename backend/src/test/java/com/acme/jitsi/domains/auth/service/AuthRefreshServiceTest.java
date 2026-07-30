@@ -103,7 +103,7 @@ class AuthRefreshServiceTest {
         RefreshTokenStore.TokenStatus.ACTIVE);
 
     when(refreshTokenStore.createIfAbsent(any())).thenReturn(activeState);
-    when(refreshTokenStore.consume("happy-jti-1"))
+    when(refreshTokenStore.rotate(org.mockito.ArgumentMatchers.eq("happy-jti-1"), any()))
         .thenReturn(new RefreshTokenStore.ConsumeResult(RefreshTokenStore.ConsumeStatus.CONSUMED, activeState));
     when(accessTokenService.issueAccessToken("meeting-a", "u-host"))
         .thenReturn(new AuthAccessTokenIssuer.AccessTokenResult("access-token", issuedAt.plus(20, ChronoUnit.MINUTES), "host"));
@@ -114,7 +114,7 @@ class AuthRefreshServiceTest {
     assertThat(result.refreshToken()).isNotBlank();
     assertThat(result.role()).isEqualTo("host");
     assertThat(result.tokenType()).isEqualTo("Bearer");
-    verify(refreshTokenStore).create(argThat(state ->
+    verify(refreshTokenStore).rotate(org.mockito.ArgumentMatchers.eq("happy-jti-1"), argThat(state ->
         state.subject().equals("u-host")
             && state.meetingId().equals("meeting-a")
             && state.status() == RefreshTokenStore.TokenStatus.ACTIVE));
@@ -168,7 +168,7 @@ class AuthRefreshServiceTest {
         RefreshTokenStore.TokenStatus.ACTIVE);
 
     when(refreshTokenStore.createIfAbsent(any())).thenReturn(activeState);
-    when(refreshTokenStore.consume("reuse-jti-1"))
+    when(refreshTokenStore.rotate(org.mockito.ArgumentMatchers.eq("reuse-jti-1"), any()))
         .thenReturn(new RefreshTokenStore.ConsumeResult(RefreshTokenStore.ConsumeStatus.USED, activeState));
 
     assertThatThrownBy(() -> service.refresh(token))
@@ -295,6 +295,7 @@ class AuthRefreshServiceTest {
 
     verify(eventPublisher).publishEvent(any(AuthRefreshSecurityEvent.class));
     verify(refreshTokenStore, never()).consume(any());
+    verify(refreshTokenStore, never()).rotate(any(), any());
     verify(accessTokenService, never()).issueAccessToken(any(), any());
   }
 
@@ -343,8 +344,6 @@ class AuthRefreshServiceTest {
         RefreshTokenStore.TokenStatus.ACTIVE);
 
     when(refreshTokenStore.createIfAbsent(any())).thenReturn(activeState);
-    when(refreshTokenStore.consume("refresh-unsupported-alg"))
-        .thenReturn(new RefreshTokenStore.ConsumeResult(RefreshTokenStore.ConsumeStatus.CONSUMED, activeState));
     when(accessTokenService.issueAccessToken("meeting-a", "u-host"))
         .thenReturn(new AuthAccessTokenIssuer.AccessTokenResult("access-token", issuedAt.plus(20, ChronoUnit.MINUTES), "host"));
 
@@ -410,8 +409,6 @@ class AuthRefreshServiceTest {
         RefreshTokenStore.TokenStatus.ACTIVE);
 
     when(refreshTokenStore.createIfAbsent(any())).thenReturn(activeState);
-    when(refreshTokenStore.consume("refresh-config-incompatible"))
-        .thenReturn(new RefreshTokenStore.ConsumeResult(RefreshTokenStore.ConsumeStatus.CONSUMED, activeState));
     when(accessTokenService.issueAccessToken("meeting-a", "u-host"))
         .thenReturn(new AuthAccessTokenIssuer.AccessTokenResult("access-token", issuedAt.plus(20, ChronoUnit.MINUTES), "host"));
 
@@ -425,6 +422,7 @@ class AuthRefreshServiceTest {
 
         verify(refreshTokenStore, never()).consume(any());
         verify(refreshTokenStore, never()).create(any());
+        verify(refreshTokenStore, never()).rotate(any(), any());
   }
 
   private String buildRefreshToken(
@@ -451,5 +449,4 @@ class AuthRefreshServiceTest {
     return jwt.serialize();
   }
 }
-
 

@@ -68,6 +68,8 @@ class RoomsController {
       @AuthenticationPrincipal OAuth2User principal,
       HttpServletRequest httpRequest) {
 
+    tenantAccessGuard.assertAccess(request.tenantId(), principal);
+
     String traceId = problemResponseFacade.resolveTraceId(httpRequest);
     String subject = principal.getName();
 

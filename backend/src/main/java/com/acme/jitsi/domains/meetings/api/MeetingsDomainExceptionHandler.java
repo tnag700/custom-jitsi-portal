@@ -217,6 +217,8 @@ class MeetingsDomainExceptionHandler {
         || message.contains("defaultMaxUses")
         || message.contains("defaultTtlMinutes")
         || message.contains("defaultRole")
+        || message.contains("Guest invites")
+        || message.contains("Guest invite expiration")
         || message.contains("HOST role");
   }
 

@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.acme.jitsi.domains.meetings.service.MeetingInvite;
 import com.acme.jitsi.domains.meetings.service.MeetingInviteRepository;
+import com.acme.jitsi.domains.meetings.service.Meeting;
+import com.acme.jitsi.domains.meetings.service.MeetingRepository;
 import com.acme.jitsi.shared.ErrorCode;
 import com.acme.jitsi.shared.JwtTestProperties;
 import com.jayway.jsonpath.JsonPath;
@@ -43,7 +45,6 @@ import org.springframework.test.web.servlet.MockMvc;
       JwtTestProperties.CONTOUR_ACCESS_TTL_MINUTES,
       JwtTestProperties.CONTOUR_REFRESH_TTL_MINUTES,
       "app.meetings.token.join-url-template=https://meet.example/%s#jwt=%s",
-      "app.invites.mode=database",
       "app.rooms.valid-config-sets=config-1",
       "app.rooms.config-sets.config-1.issuer=https://portal.example.test",
       "app.rooms.config-sets.config-1.audience=jitsi-meet",
@@ -54,13 +55,16 @@ class InviteExchangeDatabaseModeControllerTest {
 
   private final MockMvc mockMvc;
   private final MeetingInviteRepository meetingInviteRepository;
+  private final MeetingRepository meetingRepository;
 
   @Autowired
   InviteExchangeDatabaseModeControllerTest(
       MockMvc mockMvc,
-      MeetingInviteRepository meetingInviteRepository) {
+      MeetingInviteRepository meetingInviteRepository,
+      MeetingRepository meetingRepository) {
     this.mockMvc = mockMvc;
     this.meetingInviteRepository = meetingInviteRepository;
+    this.meetingRepository = meetingRepository;
   }
 
   @Test
@@ -70,7 +74,6 @@ class InviteExchangeDatabaseModeControllerTest {
     CreatedInvite invite = createInvite(meetingId, "tenant-1", 3);
 
     mockMvc.perform(post("/api/v1/invites/exchange")
-            .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {
@@ -184,6 +187,89 @@ class InviteExchangeDatabaseModeControllerTest {
         .andExpect(jsonPath("$.properties.requestId").value("trace-db-not-found"));
   }
 
+  @Test
+  void guestAccessDisabledBlocksInviteCreationAndExistingInviteExchange() throws Exception {
+    String roomId = createRoom("Guest Policy Room", "tenant-policy");
+    String meetingId = createMeeting(roomId, "tenant-policy");
+    CreatedInvite invite = createInvite(meetingId, "tenant-policy", 1);
+    disableGuestAccess(meetingId);
+
+    mockMvc.perform(post("/api/v1/meetings/" + meetingId + "/invites")
+            .with(csrf())
+            .with(adminLogin("tenant-policy"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "role": "PARTICIPANT",
+                  "maxUses": 1,
+                  "expiresInHours": 24
+                }
+                """))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.properties.errorCode")
+            .value(ErrorCode.GUEST_ACCESS_DISABLED.code()));
+
+    mockMvc.perform(post("/api/v1/invites/exchange")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "inviteToken": "%s",
+                  "displayName": "Blocked Guest"
+                }
+                """.formatted(invite.token())))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.properties.errorCode")
+            .value(ErrorCode.GUEST_ACCESS_DISABLED.code()));
+
+    MeetingInvite unchanged = meetingInviteRepository.findByToken(invite.token()).orElseThrow();
+    org.assertj.core.api.Assertions.assertThat(unchanged.usedCount()).isZero();
+  }
+
+  @Test
+  void guestInviteRequiresParticipantRoleExpirationAndDisplayName() throws Exception {
+    String roomId = createRoom("Guest Validation Room", "tenant-validation");
+    String meetingId = createMeeting(roomId, "tenant-validation");
+
+    mockMvc.perform(post("/api/v1/meetings/" + meetingId + "/invites")
+            .with(csrf())
+            .with(adminLogin("tenant-validation"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "role": "MODERATOR",
+                  "maxUses": 1,
+                  "expiresInHours": 24
+                }
+                """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.VALIDATION_ERROR.code()));
+
+    mockMvc.perform(post("/api/v1/meetings/" + meetingId + "/invites")
+            .with(csrf())
+            .with(adminLogin("tenant-validation"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "role": "PARTICIPANT",
+                  "maxUses": 1
+                }
+                """))
+        .andExpect(status().isBadRequest());
+
+    CreatedInvite invite = createInvite(meetingId, "tenant-validation", 1);
+    mockMvc.perform(post("/api/v1/invites/exchange")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "inviteToken": "%s"
+                }
+                """.formatted(invite.token())))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVALID_INVITE.code()));
+  }
+
   private OAuth2LoginRequestPostProcessor adminLogin(String tenantId) {
     return oauth2Login()
         .attributes(attrs -> {
@@ -284,6 +370,24 @@ class InviteExchangeDatabaseModeControllerTest {
             invite.version());
 
     meetingInviteRepository.save(expiredInvite);
+  }
+
+  private void disableGuestAccess(String meetingId) {
+    Meeting meeting = meetingRepository.findById(meetingId).orElseThrow();
+    meetingRepository.save(new Meeting(
+        meeting.meetingId(),
+        meeting.roomId(),
+        meeting.title(),
+        meeting.description(),
+        meeting.meetingType(),
+        meeting.configSetId(),
+        meeting.status(),
+        meeting.startsAt(),
+        meeting.endsAt(),
+        false,
+        meeting.recordingEnabled(),
+        meeting.createdAt(),
+        meeting.updatedAt()));
   }
 
   private record CreatedInvite(String id, String token) {

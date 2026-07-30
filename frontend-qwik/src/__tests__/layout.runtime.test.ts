@@ -11,9 +11,19 @@ const mockBuildMutationRequestContext = vi.fn();
 const mockBuildServerRequestContext = vi.fn();
 
 class MockAuthServiceError extends Error {
-  payload: { title: string; reason: string; actions: string; errorCode: string };
+  payload: {
+    title: string;
+    reason: string;
+    actions: string;
+    errorCode: string;
+  };
 
-  constructor(payload: { title: string; reason: string; actions: string; errorCode: string }) {
+  constructor(payload: {
+    title: string;
+    reason: string;
+    actions: string;
+    errorCode: string;
+  }) {
     super(payload.reason);
     this.name = "AuthServiceError";
     this.payload = payload;
@@ -100,13 +110,19 @@ function createRequestCtx() {
       },
       set: vi.fn(),
     },
-    redirect: (status: number, to: string) => ({ type: "redirect", status, to }),
+    redirect: (status: number, to: string) => ({
+      type: "redirect",
+      status,
+      to,
+    }),
   };
 }
 
 function createActionCtx() {
   return {
-    sharedMap: new Map<string, unknown>([["apiUrl", "http://localhost:8080/api/v1"]]),
+    sharedMap: new Map<string, unknown>([
+      ["apiUrl", "http://localhost:8080/api/v1"],
+    ]),
     env: {
       get: (name: string) => {
         if (name === "AUTH_LOGOUT_ALLOWED_ORIGINS") {
@@ -124,7 +140,11 @@ function createActionCtx() {
       },
       set: vi.fn(),
     },
-    redirect: (status: number, to: string) => ({ type: "redirect", status, to }),
+    redirect: (status: number, to: string) => ({
+      type: "redirect",
+      status,
+      to,
+    }),
   };
 }
 
@@ -267,10 +287,14 @@ describe("layout route runtime", () => {
   });
 
   it("useLogout preserves successful provider redirect", async () => {
-    mockLogoutFromAuthSession.mockResolvedValue("https://issuer.example.test/protocol/openid-connect/logout");
+    mockLogoutFromAuthSession.mockResolvedValue(
+      "https://issuer.example.test/protocol/openid-connect/logout",
+    );
     const ctx = createActionCtx();
     ctx.env.get = (name: string) =>
-      name === "AUTH_LOGOUT_ALLOWED_ORIGINS" ? "https://issuer.example.test" : undefined;
+      name === "AUTH_LOGOUT_ALLOWED_ORIGINS"
+        ? "https://issuer.example.test"
+        : undefined;
 
     const mod = await import("~/routes/layout");
 
@@ -287,15 +311,19 @@ describe("layout route runtime", () => {
   it("useLogout falls back to centralized auth redirect on auth errors", async () => {
     const authError = new Error("expired");
     mockLogoutFromAuthSession.mockRejectedValue(authError);
-    mockResolveAuthRedirectPath.mockReturnValue("/auth?returnTo=%2Fadmin%2Fconfig-sets%3Fenvironment%3Ddev");
+    mockResolveAuthRedirectPath.mockReturnValue(
+      "/auth?returnTo=%2Fadmin%2Fconfig-sets%3Fenvironment%3Ddev",
+    );
 
     const mod = await import("~/routes/layout");
 
-    await expect(mod.useLogout({}, createActionCtx() as never)).rejects.toEqual({
-      type: "redirect",
-      status: 302,
-      to: "/auth?returnTo=%2Fadmin%2Fconfig-sets%3Fenvironment%3Ddev",
-    });
+    await expect(mod.useLogout({}, createActionCtx() as never)).rejects.toEqual(
+      {
+        type: "redirect",
+        status: 302,
+        to: "/auth?returnTo=%2Fadmin%2Fconfig-sets%3Fenvironment%3Ddev",
+      },
+    );
 
     expect(mockResolveAuthRedirectPath).toHaveBeenCalledWith(
       authError,
@@ -305,25 +333,35 @@ describe("layout route runtime", () => {
   });
 
   it("useLogout rejects unsafe external redirect targets", async () => {
-    mockLogoutFromAuthSession.mockResolvedValue("http://evil.example.test/logout");
-    mockResolveAuthRedirectPath.mockReturnValue("/auth?returnTo=%2Fadmin%2Fconfig-sets%3Fenvironment%3Ddev");
+    mockLogoutFromAuthSession.mockResolvedValue(
+      "http://evil.example.test/logout",
+    );
+    mockResolveAuthRedirectPath.mockReturnValue(
+      "/auth?returnTo=%2Fadmin%2Fconfig-sets%3Fenvironment%3Ddev",
+    );
 
     const mod = await import("~/routes/layout");
 
-    await expect(mod.useLogout({}, createActionCtx() as never)).rejects.toEqual({
-      type: "redirect",
-      status: 302,
-      to: "/auth?returnTo=%2Fadmin%2Fconfig-sets%3Fenvironment%3Ddev",
-    });
+    await expect(mod.useLogout({}, createActionCtx() as never)).rejects.toEqual(
+      {
+        type: "redirect",
+        status: 302,
+        to: "/auth?returnTo=%2Fadmin%2Fconfig-sets%3Fenvironment%3Ddev",
+      },
+    );
 
     expect(mockResolveAuthRedirectPath).toHaveBeenCalled();
   });
 
   it("useLogout allows configured external logout origin", async () => {
-    mockLogoutFromAuthSession.mockResolvedValue("https://issuer.example.test/protocol/openid-connect/logout");
+    mockLogoutFromAuthSession.mockResolvedValue(
+      "https://issuer.example.test/protocol/openid-connect/logout",
+    );
     const ctx = createActionCtx();
     ctx.env.get = (name: string) =>
-      name === "AUTH_LOGOUT_ALLOWED_ORIGINS" ? "https://issuer.example.test" : undefined;
+      name === "AUTH_LOGOUT_ALLOWED_ORIGINS"
+        ? "https://issuer.example.test"
+        : undefined;
 
     const mod = await import("~/routes/layout");
 
@@ -331,6 +369,31 @@ describe("layout route runtime", () => {
       type: "redirect",
       status: 302,
       to: "https://issuer.example.test/protocol/openid-connect/logout",
+    });
+  });
+
+  it("useLogout allows an explicitly configured private HTTP IdP in LAN development", async () => {
+    mockLogoutFromAuthSession.mockResolvedValue(
+      "http://10.10.100.29:18081/realms/jitsi-dev/protocol/openid-connect/logout",
+    );
+    const ctx = createActionCtx();
+    ctx.url = new URL("http://10.10.100.29:3000/");
+    ctx.env.get = (name: string) => {
+      if (name === "AUTH_LOGOUT_ALLOWED_ORIGINS") {
+        return "http://10.10.100.29:18081";
+      }
+      if (name === "AUTH_LOGOUT_ALLOW_INSECURE_PRIVATE_ORIGIN") {
+        return "true";
+      }
+      return undefined;
+    };
+
+    const mod = await import("~/routes/layout");
+
+    await expect(mod.useLogout({}, ctx as never)).rejects.toEqual({
+      type: "redirect",
+      status: 302,
+      to: "http://10.10.100.29:18081/realms/jitsi-dev/protocol/openid-connect/logout",
     });
   });
 });

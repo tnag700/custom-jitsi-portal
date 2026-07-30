@@ -16,7 +16,9 @@ afterEach(() => {
 describe("shared route server helpers", () => {
   it("buildServerRequestContext reads apiUrl and cookies without mutation-only fields", () => {
     const result = buildServerRequestContext({
-      sharedMap: new Map<string, unknown>([["apiUrl", "http://localhost:8080/api/v1"]]),
+      sharedMap: new Map<string, unknown>([
+        ["apiUrl", "http://localhost:8080/api/v1"],
+      ]),
       cookie: {
         get(name: string) {
           if (name === "JSESSIONID") {
@@ -62,7 +64,10 @@ describe("shared route server helpers", () => {
     const result = buildServerRequestContext({
       sharedMap: new Map<string, unknown>([
         ["apiUrl", "http://localhost:8080/api/v1"],
-        ["requestCookieHeader", "theme=light; JSESSIONID=sess-header-1; XSRF-TOKEN=csrf-header-1"],
+        [
+          "requestCookieHeader",
+          "theme=light; JSESSIONID=sess-header-1; XSRF-TOKEN=csrf-header-1",
+        ],
       ]),
       cookie: {
         get() {
@@ -85,7 +90,10 @@ describe("shared route server helpers", () => {
     const result = buildServerRequestContext({
       sharedMap: new Map<string, unknown>([
         ["apiUrl", "http://localhost:8080/api/v1"],
-        ["requestCookieHeader", "JSESSIONID=sess-1\r\nX-Test:1; XSRF-TOKEN=csrf;evil"],
+        [
+          "requestCookieHeader",
+          "JSESSIONID=sess-1\r\nX-Test:1; XSRF-TOKEN=csrf;evil",
+        ],
       ]),
       cookie: {
         get() {
@@ -103,7 +111,9 @@ describe("shared route server helpers", () => {
     vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("idem-shared-1");
 
     const result = await buildMutationRequestContext({
-      sharedMap: new Map<string, unknown>([["apiUrl", "http://localhost:8080/api/v1"]]),
+      sharedMap: new Map<string, unknown>([
+        ["apiUrl", "http://localhost:8080/api/v1"],
+      ]),
       cookie: {
         get() {
           return undefined;
@@ -133,12 +143,17 @@ describe("shared route server helpers", () => {
       headers: {
         getSetCookie: () => ["XSRF-TOKEN=csrf-cookie-2; Path=/; SameSite=Lax"],
       },
-      json: async () => ({ token: "csrf-request-2", headerName: "X-XSRF-TOKEN" }),
+      json: async () => ({
+        token: "csrf-request-2",
+        headerName: "X-XSRF-TOKEN",
+      }),
     } as Response);
     const set = vi.fn();
 
     const result = await buildMutationRequestContext({
-      sharedMap: new Map<string, unknown>([["apiUrl", "http://localhost:8080/api/v1"]]),
+      sharedMap: new Map<string, unknown>([
+        ["apiUrl", "http://localhost:8080/api/v1"],
+      ]),
       cookie: {
         get(name: string) {
           if (name === "JSESSIONID") {
@@ -150,12 +165,15 @@ describe("shared route server helpers", () => {
       },
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8080/api/v1/auth/csrf", {
-      method: "GET",
-      headers: {
-        Cookie: "JSESSIONID=sess-2",
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/auth/csrf",
+      {
+        method: "GET",
+        headers: {
+          Cookie: "JSESSIONID=sess-2",
+        },
       },
-    });
+    );
     expect(set).toHaveBeenCalledWith("XSRF-TOKEN", "csrf-cookie-2", {
       path: "/",
       sameSite: "lax",
@@ -187,7 +205,9 @@ describe("shared route server helpers", () => {
     const set = vi.fn();
 
     const result = await buildMutationRequestContext({
-      sharedMap: new Map<string, unknown>([["apiUrl", "http://localhost:8080/api/v1"]]),
+      sharedMap: new Map<string, unknown>([
+        ["apiUrl", "http://localhost:8080/api/v1"],
+      ]),
       cookie: {
         get(name: string) {
           if (name === "JSESSIONID") {
@@ -223,13 +243,20 @@ describe("shared route server helpers", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       headers: {
-        getSetCookie: () => ["XSRF-TOKEN=csrf-cookie-4\r\nInjected:1; Path=/; SameSite=Lax"],
+        getSetCookie: () => [
+          "XSRF-TOKEN=csrf-cookie-4\r\nInjected:1; Path=/; SameSite=Lax",
+        ],
       },
-      json: async () => ({ token: "csrf-request-4\r\nInjected:1", headerName: "X-XSRF-TOKEN" }),
+      json: async () => ({
+        token: "csrf-request-4\r\nInjected:1",
+        headerName: "X-XSRF-TOKEN",
+      }),
     } as Response);
 
     const result = await buildMutationRequestContext({
-      sharedMap: new Map<string, unknown>([["apiUrl", "http://localhost:8080/api/v1"]]),
+      sharedMap: new Map<string, unknown>([
+        ["apiUrl", "http://localhost:8080/api/v1"],
+      ]),
       cookie: {
         get(name: string) {
           if (name === "JSESSIONID") {
@@ -249,7 +276,11 @@ describe("shared route server helpers", () => {
   });
 
   it("mapRouteActionError preserves real domain error payload and status 400", () => {
-    const fail = vi.fn((status: number, payload: unknown) => ({ failed: true, status, payload }));
+    const fail = vi.fn((status: number, payload: unknown) => ({
+      failed: true,
+      status,
+      payload,
+    }));
 
     const result = mapRouteActionError(
       new RoomServiceError({
@@ -285,12 +316,55 @@ describe("shared route server helpers", () => {
     });
   });
 
+  it("mapRouteActionError preserves the upstream HTTP status without exposing transport metadata", () => {
+    const fail = vi.fn((status: number, payload: unknown) => ({
+      failed: true,
+      status,
+      payload,
+    }));
+
+    const result = mapRouteActionError(
+      new RoomServiceError({
+        title: "Conflict",
+        detail: "room already exists",
+        errorCode: "ROOM_NAME_CONFLICT",
+        traceId: "trace-conflict",
+        httpStatus: 409,
+      }),
+      RoomServiceError,
+      fail,
+      "ROOM_UNKNOWN",
+    );
+
+    expect(result).toEqual({
+      failed: true,
+      status: 409,
+      payload: {
+        error: {
+          title: "Conflict",
+          detail: "room already exists",
+          errorCode: "ROOM_NAME_CONFLICT",
+          traceId: "trace-conflict",
+        },
+      },
+    });
+  });
+
   it("mapRouteActionError maps unknown errors to fail(500) fallback payload", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-    const fail = vi.fn((status: number, payload: unknown) => ({ failed: true, status, payload }));
+    const fail = vi.fn((status: number, payload: unknown) => ({
+      failed: true,
+      status,
+      payload,
+    }));
 
-    const result = mapRouteActionError(new Error("boom"), RoomServiceError, fail, "MEETING_UNKNOWN");
+    const result = mapRouteActionError(
+      new Error("boom"),
+      RoomServiceError,
+      fail,
+      "MEETING_UNKNOWN",
+    );
 
     expect(fail).toHaveBeenCalledWith(500, {
       error: {

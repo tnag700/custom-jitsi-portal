@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -42,7 +43,8 @@ class InviteExchangeServiceTest {
   void exchangeRollsBackReservationWhenGuestTokenIssuanceFails() {
     InviteReservation reservation = InviteReservation.issue("reservation-1", "invite-token", "meeting-a");
     inviteReservationCapability.reservation = reservation;
-    when(inviteJoinPort.issueGuestJoin(eq("meeting-a"), startsWith("guest:")))
+    when(inviteJoinPort.issueGuestJoin(
+            eq("meeting-a"), startsWith("guest:"), eq("Guest User")))
         .thenThrow(new IllegalStateException("token issue failed"));
 
     assertThatThrownBy(() -> service.exchange("invite-token", "Guest User"))
@@ -58,7 +60,8 @@ class InviteExchangeServiceTest {
     InviteReservation reservation = InviteReservation.issue("reservation-rollback-fail", "invite-token", "meeting-a");
     inviteReservationCapability.reservation = reservation;
     inviteReservationCapability.rollbackFailure = new IllegalStateException("rollback failed");
-    when(inviteJoinPort.issueGuestJoin(eq("meeting-a"), startsWith("guest:")))
+    when(inviteJoinPort.issueGuestJoin(
+            eq("meeting-a"), startsWith("guest:"), eq("Guest User")))
         .thenThrow(new IllegalStateException("token issue failed"));
 
     assertThatThrownBy(() -> service.exchange("invite-token", "Guest User"))
@@ -79,7 +82,8 @@ class InviteExchangeServiceTest {
     InviteJoinPort.JoinResult tokenResult =
       new InviteJoinPort.JoinResult("https://meet.example/join", Instant.parse("2099-01-01T10:15:30Z"), "participant");
     inviteReservationCapability.reservation = reservation;
-    when(inviteJoinPort.issueGuestJoin(eq("meeting-a"), startsWith("guest:")))
+    when(inviteJoinPort.issueGuestJoin(
+            eq("meeting-a"), startsWith("guest:"), eq("Guest User")))
         .thenReturn(tokenResult);
 
     InviteExchangeService.ExchangeResult result = service.exchange("invite-token", "Guest User");
@@ -90,6 +94,8 @@ class InviteExchangeServiceTest {
     assertThat(result.meetingId()).isEqualTo("meeting-a");
     assertThat(inviteReservationCapability.lastReservedToken).isEqualTo("invite-token");
     assertThat(inviteReservationCapability.lastRolledBackReservation).isNull();
+    verify(inviteJoinPort)
+        .issueGuestJoin(eq("meeting-a"), startsWith("guest:guest-user:"), eq("Guest User"));
   }
 
   @Test
@@ -98,6 +104,7 @@ class InviteExchangeServiceTest {
         .isInstanceOf(InviteExchangeException.class)
         .hasMessage("displayName must be between 2 and 80 characters.");
 
+    assertThat(inviteReservationCapability.lastReservedToken).isNull();
     verifyNoInteractions(inviteJoinPort);
   }
 
@@ -107,6 +114,7 @@ class InviteExchangeServiceTest {
         .isInstanceOf(InviteExchangeException.class)
         .hasMessage("displayName must not contain control characters.");
 
+    assertThat(inviteReservationCapability.lastReservedToken).isNull();
     verifyNoInteractions(inviteJoinPort);
   }
 

@@ -15,7 +15,7 @@ public interface MeetingTokenIssuer {
 
   TokenResult issueToken(String meetingId, String subject);
 
-  TokenResult issueGuestToken(String meetingId, String guestSubject);
+  TokenResult issueGuestToken(String meetingId, String guestSubject, String displayName);
 
   AccessTokenResult issueAccessToken(String meetingId, String subject);
 }

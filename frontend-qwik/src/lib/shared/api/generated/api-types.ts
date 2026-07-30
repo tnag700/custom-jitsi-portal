@@ -758,9 +758,9 @@ export interface components {
         };
         AdminIncidentCoordinationUpdateRequest: {
             owner?: string | null;
-            workflowStatus?: string;
             ticketReference?: string | null;
             ticketStatus?: string | null;
+            workflowStatus?: string;
         };
         AdminIncidentDetailResponse: {
             affectedAttempts?: components["schemas"]["AffectedAttempt"][];
@@ -1733,7 +1733,9 @@ export interface operations {
     };
     login: {
         parameters: {
-            query?: never;
+            query?: {
+                returnTo?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1769,7 +1771,9 @@ export interface operations {
     };
     me: {
         parameters: {
-            query?: never;
+            query?: {
+                returnTo?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;

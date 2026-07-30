@@ -76,15 +76,15 @@ class DatabaseConfigSetValidatorIntegrationTest {
     repository.save(configSet("cs-draft", ConfigSetStatus.DRAFT, "draft-secret"));
 
     assertThat(validator).isInstanceOf(DatabaseConfigSetValidator.class);
-    assertThat(validator.isValid("cs-active")).isTrue();
-    assertThat(validator.isValid("cs-draft")).isTrue();
+    assertThat(validator.isValid("cs-active", "tenant-validator")).isTrue();
+    assertThat(validator.isValid("cs-draft", "tenant-validator")).isTrue();
   }
 
   @Test
   void rejectsInactiveStatusThroughTranslatorBackedRepository() {
     repository.save(configSet("cs-inactive", ConfigSetStatus.INACTIVE, "inactive-secret"));
 
-    assertThat(validator.isValid("cs-inactive")).isFalse();
+    assertThat(validator.isValid("cs-inactive", "tenant-validator")).isFalse();
   }
 
   private ConfigSet configSet(String configSetId, ConfigSetStatus status, String signingSecret) {

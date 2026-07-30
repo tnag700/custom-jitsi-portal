@@ -180,6 +180,9 @@ class AdminDashboardServiceTest {
         assertThat(response.priorityBanner().active()).isFalse();
         assertThat(response.topDegradations()).isEmpty();
         assertThat(response.safeStateSummary().stable()).isTrue();
+        assertThat(response.keyServiceStatuses())
+            .extracting(status -> status.handoff().category())
+            .doesNotContain("JOIN", "HEALTH");
         assertThat(response.safeStateSummary().actions()).extracting(AdminDashboardSummaryResponse.SafeStateAction::href)
             .contains("/admin/incidents?environment=dev&period=15m", "/admin/role-history?environment=dev", "/admin/config-sets?environment=dev");
     }
@@ -206,6 +209,20 @@ class AdminDashboardServiceTest {
     assertThat(response.selectionType()).isEqualTo("errorCode");
     assertThat(response.recentSamples()).hasSize(1);
     assertThat(response.recentSamples().get(0).traceUrl()).isEqualTo("https://logs.example.test/trace/trace-join-1");
+  }
+
+  @Test
+  void rejectsUnsupportedDrillDownCategoryBeforeQueryingTheReadModel() {
+    assertThatThrownBy(() -> service.getDrillDown(
+        "tenant-1",
+        "15m",
+        "dev",
+        null,
+        null,
+        null,
+        "JOIN"))
+        .isInstanceOf(AdminDashboardInvalidRequestException.class)
+        .hasMessageContaining("category");
   }
 
     @Test

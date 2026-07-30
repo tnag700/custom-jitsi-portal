@@ -31,14 +31,31 @@ describe("admin incidents service runtime", () => {
       selectedView: "active",
       selectedQuickFacet: "scope:room",
       availableViews: [
-        { token: "active", label: "Active", summary: "Открытые инциденты для triage" },
-        { token: "critical", label: "Critical", summary: "Критические сигналы выше остальных" },
+        {
+          token: "active",
+          label: "Active",
+          summary: "Открытые инциденты для triage",
+        },
+        {
+          token: "critical",
+          label: "Critical",
+          summary: "Критические сигналы выше остальных",
+        },
       ],
       quickFacets: [
         { token: "scope:room", label: "Комнаты", count: 3, active: true },
-        { token: "severity:critical", label: "Critical", count: 1, active: false },
+        {
+          token: "severity:critical",
+          label: "Critical",
+          count: 1,
+          active: false,
+        },
       ],
-      sort: { token: "queue", label: "Severity + freshness", direction: "desc" },
+      sort: {
+        token: "queue",
+        label: "Severity + freshness",
+        direction: "desc",
+      },
       pageSize: 50,
       offset: 0,
       totalElements: 1,
@@ -53,24 +70,31 @@ describe("admin incidents service runtime", () => {
           meetingId: "meeting-1",
           affectedSubjects: 2,
           severity: "warn",
-          affectedEntitySummary: "Комната room-1, встреча meeting-1, 2 затронутых субъекта",
+          affectedEntitySummary:
+            "Комната room-1, встреча meeting-1, 2 затронутых субъекта",
           freshnessHint: "Активность 2 минуты назад",
         },
       ],
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    const result = await fetchAdminIncidents("sess-1", "http://localhost:8080/api/v1", {
-      period: "1h",
-      environment: "dev",
-      view: "active",
-      facet: "scope:room",
-      roomId: "room-1",
-      severity: "warn",
-      limit: 50,
-      offset: 0,
-    });
+    const result = await fetchAdminIncidents(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      {
+        period: "1h",
+        environment: "dev",
+        view: "active",
+        facet: "scope:room",
+        roomId: "room-1",
+        severity: "warn",
+        limit: 50,
+        offset: 0,
+      },
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/admin/incidents?period=1h&environment=dev&view=active&facet=scope%3Aroom&roomId=room-1&severity=warn&limit=50&offset=0",
@@ -110,7 +134,8 @@ describe("admin incidents service runtime", () => {
       summaryBar: {
         title: "Token incident",
         refusalReason: "TOKEN_INVALID / TOKEN",
-        affectedScope: "Комната room-1, встреча meeting-1, 1 затронутый субъект",
+        affectedScope:
+          "Комната room-1, встреча meeting-1, 1 затронутый субъект",
         operationalStatus: "active-investigation",
         timeWindow: "2026-03-18T09:45:00Z → 2026-03-18T10:00:00Z",
         environment: "dev",
@@ -165,7 +190,8 @@ describe("admin incidents service runtime", () => {
       coordination: {
         enabled: true,
         availability: "available",
-        explanation: "Coordination seam remains optional and investigation-first.",
+        explanation:
+          "Coordination seam remains optional and investigation-first.",
         owner: "lead.support",
         workflowStatus: "investigating",
         ticketReference: "INC-42",
@@ -177,17 +203,31 @@ describe("admin incidents service runtime", () => {
             actorId: "admin-user",
             actionType: "coordination-updated",
             traceId: "trace-1",
-            fromState: "owner=<none>; workflowStatus=triage; ticketReference=<none>; ticketStatus=not-linked",
-            toState: "owner=lead.support; workflowStatus=investigating; ticketReference=INC-42; ticketStatus=linked",
+            fromState:
+              "owner=<none>; workflowStatus=triage; ticketReference=<none>; ticketStatus=not-linked",
+            toState:
+              "owner=lead.support; workflowStatus=investigating; ticketReference=INC-42; ticketStatus=linked",
           },
         ],
       },
-      ticketing: { available: false, ticketKey: null, ticketUrl: null, status: "disabled" },
+      ticketing: {
+        available: false,
+        ticketKey: null,
+        ticketUrl: null,
+        status: "disabled",
+      },
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    const result = await fetchAdminIncidentDetail("sess-1", "http://localhost:8080/api/v1", "incident-1", "dev");
+    const result = await fetchAdminIncidentDetail(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      "incident-1",
+      "dev",
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/admin/incidents/incident-1?environment=dev",
@@ -201,7 +241,9 @@ describe("admin incidents service runtime", () => {
     expect(result.nextActions[0]?.target).toBe("queue-return");
     expect(result.coordination.owner).toBe("lead.support");
     expect(result.coordination.workflowStatus).toBe("investigating");
-    expect(result.coordination.history[0]?.actionType).toBe("coordination-updated");
+    expect(result.coordination.history[0]?.actionType).toBe(
+      "coordination-updated",
+    );
     expect(result.ticketing.status).toBe("disabled");
   });
 
@@ -209,7 +251,8 @@ describe("admin incidents service runtime", () => {
     const payload = {
       enabled: true,
       availability: "available",
-      explanation: "Coordination seam remains optional and investigation-first.",
+      explanation:
+        "Coordination seam remains optional and investigation-first.",
       owner: "lead.support",
       workflowStatus: "waiting-external",
       ticketReference: "INC-42",
@@ -221,13 +264,17 @@ describe("admin incidents service runtime", () => {
           actorId: "admin-user",
           actionType: "coordination-updated",
           traceId: "trace-admin-incident",
-          fromState: "owner=<none>; workflowStatus=triage; ticketReference=<none>; ticketStatus=not-linked",
-          toState: "owner=lead.support; workflowStatus=waiting-external; ticketReference=INC-42; ticketStatus=waiting-external",
+          fromState:
+            "owner=<none>; workflowStatus=triage; ticketReference=<none>; ticketStatus=not-linked",
+          toState:
+            "owner=lead.support; workflowStatus=waiting-external; ticketReference=INC-42; ticketStatus=waiting-external",
         },
       ],
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
     const result = await updateAdminIncidentCoordination(
       {
@@ -239,7 +286,13 @@ describe("admin incidents service runtime", () => {
         headers: { cookie: "JSESSIONID=sess-1", "x-xsrf-token": "csrf-1" },
       },
       "incident-1",
-      { owner: "lead.support", workflowStatus: "investigating", environment: "dev", ticketReference: "INC-42", ticketStatus: "waiting-external" },
+      {
+        owner: "lead.support",
+        workflowStatus: "investigating",
+        environment: "dev",
+        ticketReference: "INC-42",
+        ticketStatus: "waiting-external",
+      },
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -260,23 +313,35 @@ describe("admin incidents service runtime", () => {
   });
 
   it("updateAdminIncidentCoordination keeps explicit clear semantics for owner and ticket link", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({
-      enabled: true,
-      availability: "available",
-      explanation: "Coordination seam remains optional and investigation-first.",
-      owner: null,
-      workflowStatus: "triage",
-      ticketReference: null,
-      ticketStatus: "not-linked",
-      ticketUrl: null,
-      history: [],
-    }, 200));
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse(
+        {
+          enabled: true,
+          availability: "available",
+          explanation:
+            "Coordination seam remains optional and investigation-first.",
+          owner: null,
+          workflowStatus: "triage",
+          ticketReference: null,
+          ticketStatus: "not-linked",
+          ticketUrl: null,
+          history: [],
+        },
+        200,
+      ),
+    );
 
     await updateAdminIncidentCoordination(
       "sess-1",
       "http://localhost:8080/api/v1",
       "incident-1",
-      { owner: "   ", workflowStatus: "triage", environment: "dev", ticketReference: "   ", ticketStatus: "waiting-external" },
+      {
+        owner: "   ",
+        workflowStatus: "triage",
+        environment: "dev",
+        ticketReference: "   ",
+        ticketStatus: "waiting-external",
+      },
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -300,16 +365,27 @@ describe("admin incidents service runtime", () => {
       detailUrl: null,
       message: "Уточните tenant или entity filters.",
       candidates: [
-        { incidentId: "incident-1", occurredAt: "2026-03-18T09:58:00Z", errorCode: "TOKEN_INVALID", meetingId: "meeting-1" },
+        {
+          incidentId: "incident-1",
+          occurredAt: "2026-03-18T09:58:00Z",
+          errorCode: "TOKEN_INVALID",
+          meetingId: "meeting-1",
+        },
       ],
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    const result = await searchAdminIncidents("sess-1", "http://localhost:8080/api/v1", {
-      environment: "dev",
-      traceId: "trace-1",
-    });
+    const result = await searchAdminIncidents(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      {
+        environment: "dev",
+        traceId: "trace-1",
+      },
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/admin/incidents/search?environment=dev&traceId=trace-1",
@@ -319,13 +395,18 @@ describe("admin incidents service runtime", () => {
   });
 
   it("searchAdminIncidents forwards broader bounded filters like meetingId and to", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({
-      outcome: "not-found",
-      incidentId: null,
-      detailUrl: null,
-      message: "Совпадений не найдено.",
-      candidates: [],
-    }, 200));
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse(
+        {
+          outcome: "not-found",
+          incidentId: null,
+          detailUrl: null,
+          message: "Совпадений не найдено.",
+          candidates: [],
+        },
+        200,
+      ),
+    );
 
     await searchAdminIncidents("sess-1", "http://localhost:8080/api/v1", {
       environment: "dev",
@@ -350,9 +431,16 @@ describe("admin incidents service runtime", () => {
       message: null,
     };
 
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(payload, 200));
 
-    const result = await createAdminIncidentTicket("sess-1", "http://localhost:8080/api/v1", "incident-1", "dev");
+    const result = await createAdminIncidentTicket(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      "incident-1",
+      "dev",
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/admin/incidents/incident-1/ticket?environment=dev",
@@ -375,7 +463,9 @@ describe("admin incidents service runtime", () => {
     );
 
     await expect(
-      fetchAdminIncidents("sess-1", "http://localhost:8080/api/v1", { period: "15m" }),
+      fetchAdminIncidents("sess-1", "http://localhost:8080/api/v1", {
+        period: "15m",
+      }),
     ).rejects.toBeInstanceOf(AdminDashboardServiceError);
   });
 });

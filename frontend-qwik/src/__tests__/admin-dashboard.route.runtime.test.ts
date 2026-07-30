@@ -6,8 +6,46 @@ import {
   buildAdminDashboardFilters,
   buildAdminDashboardIncidentHandoffHref,
   buildAdminDashboardSelectionHref,
+  isHealthyAdminServiceStatus,
   resolveAdminDashboardCardTone,
+  resolveAdminServiceStatusTone,
 } from "../lib/domains/admin/admin-dashboard.route-helpers";
+
+function createDashboardSummary(
+  handoff: AdminDashboardSummary["priorityBanner"]["handoff"],
+): AdminDashboardSummary {
+  return {
+    period: "24h",
+    environment: "prod",
+    tenantId: "tenant-1",
+    generatedAt: "2026-04-03T08:00:00Z",
+    traceId: "trace-1",
+    priorityBanner: {
+      active: true,
+      severity: "critical",
+      headline: "Config drift",
+      summary: "Config drift blocks joins.",
+      actionLabel: "Открыть сигнал",
+      handoff,
+    },
+    topDegradations: [],
+    latestSpikes: [],
+    affectedScopeSummary: [],
+    keyServiceStatuses: [],
+    safeStateSummary: {
+      stable: false,
+      headline: "",
+      summary: "",
+      actions: [],
+      recentResolvedSpikes: [],
+    },
+    entityFilter: {
+      roomId: null,
+      meetingId: null,
+    },
+    sampleWindowLimited: false,
+  };
+}
 
 describe("admin dashboard route helpers", () => {
   it("builds trimmed dashboard filters with default period", () => {
@@ -25,30 +63,19 @@ describe("admin dashboard route helpers", () => {
     });
   });
 
-  it("derives active dashboard context, default drill-down selection, and fallback environment in secondary links", () => {
-    const currentUrl = new URL("https://portal.example.test/admin?period=1h");
-    const dashboard = {
-      environment: "prod",
-      period: "24h",
-      priorityBanner: {
-        handoff: {
-          environment: "",
-          period: "",
-          severity: "critical",
-          errorCode: "CONFIG_INCOMPATIBLE",
-          category: "CONFIG",
-          roomId: "room-1",
-          meetingId: "meeting-1",
-          incidentId: null,
-        },
-      },
-      topDegradations: [],
-      latestSpikes: [],
-      affectedScopeSummary: [],
-      keyServiceStatuses: [],
-    } as AdminDashboardSummary;
+  it("derives active dashboard context and default drill-down selection", () => {
+    const dashboard = createDashboardSummary({
+      environment: "",
+      period: "",
+      severity: "critical",
+      errorCode: "CONFIG_INCOMPATIBLE",
+      category: "CONFIG",
+      roomId: "room-1",
+      meetingId: "meeting-1",
+      incidentId: null,
+    });
 
-    const state = buildAdminDashboardDerivedState(currentUrl, dashboard, {
+    const state = buildAdminDashboardDerivedState(dashboard, {
       period: "1h",
       environment: "",
       roomId: "",
@@ -69,64 +96,91 @@ describe("admin dashboard route helpers", () => {
       meetingId: "meeting-1",
       incidentId: "",
     });
-    expect(state.secondaryModuleLinks).toEqual([
-      {
-        label: "История ролей",
-        href: "/admin/role-history?environment=prod&returnTo=%2Fadmin%3Fperiod%3D1h",
-      },
-      {
-        label: "Конфиг-наборы",
-        href: "/admin/config-sets?environment=prod&returnTo=%2Fadmin%3Fperiod%3D1h",
-      },
-    ]);
   });
 
-  it("builds incident handoff hrefs from the derived dashboard context", () => {
-    const currentUrl = new URL("https://portal.example.test/admin?period=1h");
-
-    expect(buildAdminDashboardIncidentHandoffHref(
-      currentUrl,
+  it("does not derive a drill-down request from healthy stable-state cards", () => {
+    const dashboard = createDashboardSummary({
+      environment: "dev",
+      period: "15m",
+      severity: "info",
+      errorCode: null,
+      category: "CONFIG",
+      roomId: null,
+      meetingId: null,
+      incidentId: null,
+    });
+    dashboard.priorityBanner.active = false;
+    dashboard.priorityBanner.severity = "info";
+    dashboard.keyServiceStatuses = [
       {
-        environment: "",
-        period: "",
-        severity: "critical",
-        errorCode: "CONFIG_INCOMPATIBLE",
-        category: null,
-        roomId: null,
-        meetingId: null,
-        incidentId: null,
-      },
-      {
-        activeEnvironment: "prod",
-        activePeriod: "1h",
-      },
-    )).toContain("/admin/incidents?environment=prod&period=1h&view=critical&severity=critical&errorCode=CONFIG_INCOMPATIBLE");
-  });
-
-  it("honors explicit drill-down query over the derived default selection", () => {
-    const currentUrl = new URL("https://portal.example.test/admin?period=1h&errorCode=JOIN_BLOCKED&category=AUTH");
-    const dashboard = {
-      environment: "prod",
-      period: "24h",
-      priorityBanner: {
+        key: "backend",
+        label: "Backend",
+        status: "UP",
+        detail: "Healthy",
         handoff: {
-          environment: "prod",
-          period: "24h",
-          severity: "critical",
-          errorCode: "CONFIG_INCOMPATIBLE",
+          environment: "dev",
+          period: "15m",
+          severity: "info",
+          errorCode: null,
           category: "CONFIG",
           roomId: null,
           meetingId: null,
           incidentId: null,
         },
       },
-      topDegradations: [],
-      latestSpikes: [],
-      affectedScopeSummary: [],
-      keyServiceStatuses: [],
-    } as AdminDashboardSummary;
+    ];
 
-    const state = buildAdminDashboardDerivedState(currentUrl, dashboard, {
+    const state = buildAdminDashboardDerivedState(dashboard, {
+      period: "15m",
+      environment: "",
+      roomId: "",
+      meetingId: "",
+      errorCode: "",
+      category: "",
+    });
+
+    expect(state.activeDrillDownSelection).toBeNull();
+  });
+
+  it("builds incident handoff hrefs from the derived dashboard context", () => {
+    const currentUrl = new URL("https://portal.example.test/admin?period=1h");
+
+    expect(
+      buildAdminDashboardIncidentHandoffHref(
+        currentUrl,
+        {
+          environment: "",
+          period: "",
+          severity: "critical",
+          errorCode: "CONFIG_INCOMPATIBLE",
+          category: null,
+          roomId: null,
+          meetingId: null,
+          incidentId: null,
+        },
+        {
+          activeEnvironment: "prod",
+          activePeriod: "1h",
+        },
+      ),
+    ).toContain(
+      "/admin/incidents?environment=prod&period=1h&view=critical&severity=critical&errorCode=CONFIG_INCOMPATIBLE",
+    );
+  });
+
+  it("honors explicit drill-down query over the derived default selection", () => {
+    const dashboard = createDashboardSummary({
+      environment: "prod",
+      period: "24h",
+      severity: "critical",
+      errorCode: "CONFIG_INCOMPATIBLE",
+      category: "CONFIG",
+      roomId: null,
+      meetingId: null,
+      incidentId: null,
+    });
+
+    const state = buildAdminDashboardDerivedState(dashboard, {
       period: "1h",
       environment: "",
       roomId: "",
@@ -148,52 +202,78 @@ describe("admin dashboard route helpers", () => {
   });
 
   it("builds dashboard selection hrefs that normalize one active evidence context", () => {
-    const currentUrl = new URL("https://portal.example.test/admin?period=1h&environment=prod&errorCode=OLD&category=OLD");
+    const currentUrl = new URL(
+      "https://portal.example.test/admin?period=1h&environment=prod&errorCode=OLD&category=OLD",
+    );
 
-    expect(buildAdminDashboardSelectionHref(
-      currentUrl,
-      {
-        environment: "",
-        period: "",
-        severity: "warning",
-        errorCode: "TOKEN_REVOKED",
-        category: null,
-        roomId: "room-2",
-        meetingId: null,
-        incidentId: null,
-      },
-      {
-        activeEnvironment: "prod",
-        activePeriod: "1h",
-      },
-    )).toBe("/admin?period=1h&environment=prod&errorCode=TOKEN_REVOKED&roomId=room-2");
+    expect(
+      buildAdminDashboardSelectionHref(
+        currentUrl,
+        {
+          environment: "",
+          period: "",
+          severity: "warning",
+          errorCode: "TOKEN_REVOKED",
+          category: null,
+          roomId: "room-2",
+          meetingId: null,
+          incidentId: null,
+        },
+        {
+          activeEnvironment: "prod",
+          activePeriod: "1h",
+        },
+      ),
+    ).toBe(
+      "/admin?period=1h&environment=prod&errorCode=TOKEN_REVOKED&roomId=room-2",
+    );
   });
 
   it("builds incidents handoff from the active drill-down selection", () => {
-    const currentUrl = new URL("https://portal.example.test/admin?period=1h&environment=prod");
+    const currentUrl = new URL(
+      "https://portal.example.test/admin?period=1h&environment=prod",
+    );
 
-    expect(buildAdminDashboardActiveIncidentsHref(
-      currentUrl,
-      {
-        environment: "prod",
-        period: "1h",
-        severity: "critical",
-        errorCode: "TOKEN_REVOKED",
-        category: "AUTH",
-        roomId: "room-2",
-        meetingId: "meeting-7",
-        incidentId: "",
-      },
-      {
-        activeEnvironment: "prod",
-        activePeriod: "1h",
-      },
-    )).toContain("/admin/incidents?environment=prod&period=1h&view=critical&severity=critical&errorCode=TOKEN_REVOKED&category=AUTH&roomId=room-2&meetingId=meeting-7");
+    expect(
+      buildAdminDashboardActiveIncidentsHref(
+        currentUrl,
+        {
+          environment: "prod",
+          period: "1h",
+          severity: "critical",
+          errorCode: "TOKEN_REVOKED",
+          category: "AUTH",
+          roomId: "room-2",
+          meetingId: "meeting-7",
+          incidentId: "",
+        },
+        {
+          activeEnvironment: "prod",
+          activePeriod: "1h",
+        },
+      ),
+    ).toContain(
+      "/admin/incidents?environment=prod&period=1h&view=critical&severity=critical&errorCode=TOKEN_REVOKED&category=AUTH&roomId=room-2&meetingId=meeting-7",
+    );
   });
 
   it("maps dashboard card tone by severity", () => {
-    expect(resolveAdminDashboardCardTone("critical")).toContain("border-rose-300");
-    expect(resolveAdminDashboardCardTone("warning")).toContain("border-amber-300");
-    expect(resolveAdminDashboardCardTone("info")).toBe("border-border bg-surface text-text");
+    expect(resolveAdminDashboardCardTone("critical")).toContain(
+      "border-rose-300",
+    );
+    expect(resolveAdminDashboardCardTone("warning")).toContain(
+      "border-amber-300",
+    );
+    expect(resolveAdminDashboardCardTone("info")).toBe(
+      "border-border bg-surface text-text",
+    );
+  });
+
+  it("normalizes service health statuses for compact status indicators", () => {
+    expect(isHealthyAdminServiceStatus(" up ")).toBe(true);
+    expect(isHealthyAdminServiceStatus("READY")).toBe(true);
+    expect(isHealthyAdminServiceStatus("DOWN")).toBe(false);
+    expect(resolveAdminServiceStatusTone("UP")).toBe("bg-emerald-500");
+    expect(resolveAdminServiceStatusTone("DEGRADED")).toBe("bg-rose-500");
   });
 });

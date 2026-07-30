@@ -166,13 +166,12 @@ export default tseslint.config(
           patterns: [
             {
               regex: "^~\\/routes\\/.+",
-              message:
-                "Domain layer must not import route files",
+              message: "Domain layer must not import route files",
             },
             {
-              regex: "^~\\/lib\\/shared\\/.+",
+              regex: "^~\\/lib\\/shared\\/(?!security$).+",
               message:
-                "Domain layer must import shared via public API barrel: ~/lib/shared",
+                "Domain layer must import shared via a public API barrel: ~/lib/shared or ~/lib/shared/security",
             },
           ],
         },
@@ -188,13 +187,11 @@ export default tseslint.config(
           patterns: [
             {
               regex: "^~\\/lib\\/domains\\/.+",
-              message:
-                "Shared layer must not depend on domain layer",
+              message: "Shared layer must not depend on domain layer",
             },
             {
               regex: "^~\\/routes\\/.+",
-              message:
-                "Shared layer must not depend on route layer",
+              message: "Shared layer must not depend on route layer",
             },
           ],
         },

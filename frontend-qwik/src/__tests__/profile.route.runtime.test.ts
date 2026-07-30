@@ -10,9 +10,19 @@ const mockBuildMutationRequestContext = vi.fn();
 const mockResolveAuthRecoveryRedirectPath = vi.fn();
 
 class MockProfileServiceError extends Error {
-  payload: { title: string; detail: string; errorCode: string; traceId?: string };
+  payload: {
+    title: string;
+    detail: string;
+    errorCode: string;
+    traceId?: string;
+  };
 
-  constructor(payload: { title: string; detail: string; errorCode: string; traceId?: string }) {
+  constructor(payload: {
+    title: string;
+    detail: string;
+    errorCode: string;
+    traceId?: string;
+  }) {
     super(payload.detail);
     this.name = "ProfileServiceError";
     this.payload = payload;
@@ -78,7 +88,9 @@ interface ActionCtx extends LoaderCtx {
 
 function createCtx(overrides?: Partial<ActionCtx>): ActionCtx {
   return {
-    sharedMap: new Map<string, unknown>([["apiUrl", "http://localhost:8080/api/v1"]]),
+    sharedMap: new Map<string, unknown>([
+      ["apiUrl", "http://localhost:8080/api/v1"],
+    ]),
     url: new URL("http://localhost:3000/profile"),
     cookie: {
       get: (name: string) => {
@@ -138,7 +150,11 @@ describe("profile route runtime", () => {
         Cookie: "JSESSIONID=sess-1",
       },
     });
-    expect(result).toEqual({ profile: null, isFirstRun: true, loadError: null });
+    expect(result).toEqual({
+      profile: null,
+      isFirstRun: true,
+      loadError: null,
+    });
   });
 
   it("useMyProfile returns existing profile with isFirstRun=false", async () => {
@@ -178,7 +194,9 @@ describe("profile route runtime", () => {
     });
 
     expect(mockResolveAuthRecoveryRedirectPath).toHaveBeenCalledWith(
-      expect.objectContaining({ payload: expect.objectContaining({ errorCode: "AUTH_REQUIRED" }) }),
+      expect.objectContaining({
+        payload: expect.objectContaining({ errorCode: "AUTH_REQUIRED" }),
+      }),
       "/profile",
     );
   });
@@ -314,7 +332,9 @@ describe("profile route runtime", () => {
     });
 
     expect(mockResolveAuthRecoveryRedirectPath).toHaveBeenCalledWith(
-      expect.objectContaining({ payload: expect.objectContaining({ errorCode: "AUTH_REQUIRED" }) }),
+      expect.objectContaining({
+        payload: expect.objectContaining({ errorCode: "AUTH_REQUIRED" }),
+      }),
       "/profile",
     );
   });

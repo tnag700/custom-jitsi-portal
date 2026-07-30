@@ -89,7 +89,7 @@ class AuthRefreshTracingTest {
         RefreshTokenStore.TokenStatus.ACTIVE);
 
     when(refreshTokenStore.createIfAbsent(any())).thenReturn(activeState);
-    when(refreshTokenStore.consume("happy-jti-1"))
+    when(refreshTokenStore.rotate(org.mockito.ArgumentMatchers.eq("happy-jti-1"), any()))
         .thenReturn(new RefreshTokenStore.ConsumeResult(RefreshTokenStore.ConsumeStatus.CONSUMED, activeState));
     when(accessTokenIssuer.issueAccessToken("meeting-a", "u-host"))
         .thenReturn(new AuthAccessTokenIssuer.AccessTokenResult("access-token", issuedAt.plus(20, ChronoUnit.MINUTES), "host"));
@@ -99,7 +99,7 @@ class AuthRefreshTracingTest {
     RecordedObservationHandler.RecordedObservation observation = observations.only("auth.refresh");
     assertThat(observation.lowCardinality())
         .containsEntry("flow.outcome", "success")
-        .containsEntry("flow.stage", "persist_rotated_token")
+        .containsEntry("flow.stage", "commit_rotated_token")
         .containsEntry("flow.retry_path", "none")
         .containsEntry("flow.store", "custom");
     assertThat(observation.lowCardinality().toString())
@@ -107,7 +107,9 @@ class AuthRefreshTracingTest {
         .doesNotContain("happy-jti-1")
         .doesNotContain("u-host")
         .doesNotContain("access-token");
-    verify(refreshTokenStore).create(argThat(state -> state.meetingId().equals("meeting-a")));
+    verify(refreshTokenStore).rotate(
+        org.mockito.ArgumentMatchers.eq("happy-jti-1"),
+        argThat(state -> state.meetingId().equals("meeting-a")));
   }
 
   @Test
@@ -170,7 +172,7 @@ class AuthRefreshTracingTest {
         when(refreshTokenStore.createIfAbsent(any())).thenReturn(activeState);
         when(accessTokenIssuer.issueAccessToken("meeting-a", "u-host"))
                 .thenReturn(new AuthAccessTokenIssuer.AccessTokenResult("access-token", issuedAt.plus(20, ChronoUnit.MINUTES), "host"));
-        when(refreshTokenStore.consume("retry-jti-1"))
+        when(refreshTokenStore.rotate(org.mockito.ArgumentMatchers.eq("retry-jti-1"), any()))
                 .thenThrow(new RetryableRefreshTokenException(
                         org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
                         ErrorCode.CONFIG_INCOMPATIBLE.code(),
@@ -182,7 +184,7 @@ class AuthRefreshTracingTest {
         RecordedObservationHandler.RecordedObservation observation = observations.only("auth.refresh");
         assertThat(observation.lowCardinality())
                 .containsEntry("flow.outcome", "contention")
-                .containsEntry("flow.stage", "consume_previous_token")
+                .containsEntry("flow.stage", "commit_rotated_token")
                 .containsEntry("flow.retry_path", "redis_retry");
     }
 

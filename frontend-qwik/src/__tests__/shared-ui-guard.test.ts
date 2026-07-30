@@ -129,7 +129,9 @@ describe("Shared UI Guard: AppCombobox (AC: 2, 4)", () => {
 
   it("AppCombobox.tsx should use generic props for value and onChange$", () => {
     const tsx = readSrc("lib/shared/ui/AppCombobox.tsx");
-    expect(tsx).toContain("export interface AppComboboxProps<TValue extends string = string>");
+    expect(tsx).toContain(
+      "export interface AppComboboxProps<TValue extends string = string>",
+    );
     expect(tsx).toContain("onChange$?: QRL<(value: TValue) => void>");
     expect(tsx).toContain("comboboxA11yDefaults");
     expect(tsx).toContain("sharedFocusVisibleAttrs");
@@ -159,7 +161,9 @@ describe("Shared UI Guard: AppPopover (AC: 3, 4)", () => {
 
   it("AppPopover.tsx should type floating as Placement", () => {
     const tsx = readSrc("lib/shared/ui/AppPopover.tsx");
-    expect(tsx).toContain("type Placement = Exclude<PropsOf<typeof Popover.Root>[\"floating\"], boolean | undefined>");
+    expect(tsx).toContain(
+      'type Placement = Exclude<PropsOf<typeof Popover.Root>["floating"], boolean | undefined>',
+    );
     expect(tsx).toContain("floating?: Placement");
     expect(tsx).toContain("popoverA11yDefaults");
     expect(tsx).toContain("sharedFocusVisibleAttrs");

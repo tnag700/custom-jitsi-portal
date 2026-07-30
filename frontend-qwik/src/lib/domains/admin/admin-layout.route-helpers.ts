@@ -43,8 +43,12 @@ export function buildAdminPrimaryNavItems(environment: string | null): AdminLayo
   ];
 }
 
-export function buildAdminSecondaryNavItems(currentUrl: URL, fallbackEnvironment: string): AdminLayoutNavItem[] {
-  return [
+export function buildAdminSecondaryNavItems(
+  currentUrl: URL,
+  fallbackEnvironment: string,
+  includePlatformAdminTools: boolean,
+): AdminLayoutNavItem[] {
+  const items: AdminLayoutNavItem[] = [
     {
       href: buildAdminSecondaryHref(currentUrl, "/admin/role-history", fallbackEnvironment),
       match: "/admin/role-history",
@@ -56,4 +60,14 @@ export function buildAdminSecondaryNavItems(currentUrl: URL, fallbackEnvironment
       label: "Конфиг-наборы",
     },
   ];
+
+  if (includePlatformAdminTools) {
+    items.push({
+      href: buildAdminSecondaryHref(currentUrl, "/admin/jitsi", fallbackEnvironment),
+      match: "/admin/jitsi",
+      label: "Доступ Jitsi",
+    });
+  }
+
+  return items;
 }

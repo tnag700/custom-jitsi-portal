@@ -21,18 +21,18 @@ class MeetingStateGuardInviteMeetingStatePortTest {
 
   @Test
   void assertJoinAllowedDelegatesWhenMeetingIsAllowed() {
-    doNothing().when(meetingStateGuard).assertJoinAllowed("meeting-open");
+    doNothing().when(meetingStateGuard).assertGuestJoinAllowed("meeting-open");
 
     port.assertJoinAllowed("meeting-open");
 
-    verify(meetingStateGuard).assertJoinAllowed("meeting-open");
+    verify(meetingStateGuard).assertGuestJoinAllowed("meeting-open");
   }
 
   @Test
   void assertJoinAllowedMapsMeetingTokenExceptionToInviteExchangeException() {
     doThrow(new MeetingTokenException(HttpStatus.CONFLICT, ErrorCode.MEETING_ENDED.code(), "Встреча завершена."))
         .when(meetingStateGuard)
-        .assertJoinAllowed("meeting-ended");
+        .assertGuestJoinAllowed("meeting-ended");
 
     assertThatThrownBy(() -> port.assertJoinAllowed("meeting-ended"))
         .isInstanceOf(InviteExchangeException.class)

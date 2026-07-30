@@ -41,8 +41,13 @@ function resolveRequestTheme(headers: Record<string, string>): Theme {
   return cookieTheme ?? hintedTheme ?? "light";
 }
 
-function mergeClass(existingClass: string | undefined, theme: Theme): string | undefined {
-  const classNames = new Set((existingClass ?? "").split(/\s+/).filter(Boolean));
+function mergeClass(
+  existingClass: string | undefined,
+  theme: Theme,
+): string | undefined {
+  const classNames = new Set(
+    (existingClass ?? "").split(/\s+/).filter(Boolean),
+  );
   if (theme === "dark") {
     classNames.add("dark");
   } else {

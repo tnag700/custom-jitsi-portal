@@ -68,6 +68,13 @@ describe("Meetings Guard: components (AC: 1-6)", () => {
     expect(tsx).toContain("ApiErrorAlert");
   });
 
+  it("MeetingForm.tsx should validate before manually submitting its route action", () => {
+    const tsx = readSrc("lib/domains/meetings/components/MeetingForm.tsx");
+    expect(tsx).toContain("preventdefault:submit");
+    expect(tsx).toContain("submitAction(submission.payload)");
+    expect(tsx).toContain("submission.payload");
+  });
+
   it("MeetingList.tsx should contain component$", () => {
     const tsx = readSrc("lib/domains/meetings/components/MeetingList.tsx");
     expect(tsx).toContain("component$");
@@ -84,7 +91,9 @@ describe("Meetings Guard: components (AC: 1-6)", () => {
   });
 
   it("ParticipantPanel.tsx should submit bulk subject ids as an array field", () => {
-    const tsx = readSrc("lib/domains/meetings/components/ParticipantPanel.tsx");
+    const tsx = readSrc(
+      "lib/domains/meetings/components/ParticipantDirectory.tsx",
+    );
     expect(tsx).toContain('name="subjectIds[]"');
   });
 });
@@ -111,16 +120,26 @@ describe("Meetings Guard: route (AC: 1-7)", () => {
     expect(ts).toContain("routeAction$");
   });
 
-  it("routes/meetings/meetings-page.tsx should use Form for actions", () => {
-    const tsx = readSrc("routes/meetings/meetings-page.tsx");
+  it("routes/meetings confirmation dialogs should use Form for actions", () => {
+    const tsx = readSrc(
+      "routes/meetings/components/MeetingConfirmationDialogs.tsx",
+    );
     expect(tsx).toContain("<Form");
   });
 
-  it("routes/meetings/meetings-page.tsx should use ApiErrorAlert for cancel/revoke confirmation errors", () => {
-    const tsx = readSrc("routes/meetings/meetings-page.tsx");
+  it("routes/meetings confirmation dialogs should use ApiErrorAlert for cancel/revoke errors", () => {
+    const tsx = readSrc(
+      "routes/meetings/components/MeetingConfirmationDialogs.tsx",
+    );
     expect(tsx).toContain("ApiErrorAlert");
     expect(tsx).toContain("Ошибка отмены встречи");
     expect(tsx).toContain("Ошибка отзыва инвайта");
   });
-}
-);
+
+  it("routes/meetings/meetings-page.tsx should stay an orchestration boundary", () => {
+    const tsx = readSrc("routes/meetings/meetings-page.tsx");
+    expect(tsx).toContain("<MeetingsOverview");
+    expect(tsx).toContain("<MeetingInvitesWorkspace");
+    expect(tsx).toContain("<MeetingConfirmationDialogs");
+  });
+});

@@ -7,5 +7,5 @@ public interface InviteJoinPort {
   record JoinResult(String joinUrl, Instant expiresAt, String role) {
   }
 
-  JoinResult issueGuestJoin(String meetingId, String guestSubject);
+  JoinResult issueGuestJoin(String meetingId, String guestSubject, String displayName);
 }

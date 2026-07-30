@@ -21,11 +21,11 @@ export interface PagedInviteResponse {
 }
 
 export interface CreateInviteRequest {
-  role: "participant" | "moderator";
+  role: "participant";
   recipientEmail?: string;
   recipientSubjectId?: string;
   maxUses?: number;
-  expiresInHours?: number;
+  expiresInHours: number;
 }
 
 export interface InviteErrorPayload {
@@ -37,7 +37,7 @@ export interface InviteErrorPayload {
 
 export interface InviteExchangeRequest {
   inviteToken: string;
-  displayName?: string;
+  displayName: string;
 }
 
 export interface InviteExchangeResponse {

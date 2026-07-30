@@ -53,8 +53,8 @@ class DefaultConfigSetValidator implements ConfigSetValidator {
   }
 
   @Override
-  public boolean isValid(String configSetId) {
-    if (configSetId == null || configSetId.isBlank()) {
+  public boolean isValid(String configSetId, String tenantId) {
+    if (configSetId == null || configSetId.isBlank() || tenantId == null || tenantId.isBlank()) {
       return false;
     }
 

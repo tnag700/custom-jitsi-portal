@@ -78,14 +78,11 @@ coverage/
 /.certs/
 /.clinerules/
 /\.codex/
-/.github/
 /.kilocode/
 /.qwen/
 /.windsurf/
 /agent_docs/
 /deprecated.frontend.1/
-/docs/
-/pilot/
 /frontend-qwik/tmp/
 .kilocodemodes
 changed_files.txt
@@ -101,15 +98,10 @@ tmp-keycloak-*
 # Local tooling caches / generated folders
 /.gradle-copilot-dashboard/
 /backend/.gradle-user-home-copilot*/
-/deploy/
+/backend/.gradle-user-home-codex*/
 
 # Local toolchains / archives
 /gradle-9.3.1/
 /gradle-9.3.1-bin.zip
-
-# Docker
-.dockerignore
-
-
 
 .omx/

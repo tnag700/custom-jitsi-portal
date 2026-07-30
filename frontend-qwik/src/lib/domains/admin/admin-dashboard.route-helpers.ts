@@ -1,5 +1,5 @@
 import type { AdminDashboardSummary } from "./types";
-import { buildAdminSecondaryHref, buildDashboardIncidentHref } from "./admin-incidents.route-helpers";
+import { buildDashboardIncidentHref } from "./admin-incidents.route-helpers";
 import { sanitizeAdminQueryValue } from "./admin-route-query";
 
 export interface AdminDashboardFilters {
@@ -26,10 +26,6 @@ export interface AdminDashboardDerivedState {
   activeEnvironment: string;
   activePeriod: string;
   activeDrillDownSelection: AdminDashboardDrillDownSelection | null;
-  secondaryModuleLinks: Array<{
-    label: string;
-    href: string;
-  }>;
 }
 
 export function buildAdminDashboardFilters(query: URLSearchParams): AdminDashboardFilters {
@@ -96,11 +92,15 @@ function deriveDefaultSelection(
   activePeriod: string,
 ): AdminDashboardDrillDownSelection | null {
   const candidates: DashboardHandoff[] = [
-    dashboard.priorityBanner.handoff,
+    ...(dashboard.priorityBanner.active
+      ? [dashboard.priorityBanner.handoff]
+      : []),
     ...dashboard.topDegradations.map((item) => item.handoff),
     ...dashboard.latestSpikes.map((item) => item.handoff),
     ...dashboard.affectedScopeSummary.map((item) => item.handoff),
-    ...dashboard.keyServiceStatuses.map((item) => item.handoff),
+    ...dashboard.keyServiceStatuses
+      .filter((item) => !isHealthyAdminServiceStatus(item.status))
+      .map((item) => item.handoff),
   ];
 
   for (const candidate of candidates) {
@@ -114,7 +114,6 @@ function deriveDefaultSelection(
 }
 
 export function buildAdminDashboardDerivedState(
-  currentUrl: URL,
   dashboard: AdminDashboardSummary,
   filters: AdminDashboardFilters,
 ): AdminDashboardDerivedState {
@@ -127,17 +126,19 @@ export function buildAdminDashboardDerivedState(
     activeEnvironment,
     activePeriod,
     activeDrillDownSelection,
-    secondaryModuleLinks: [
-      {
-        label: "История ролей",
-        href: buildAdminSecondaryHref(currentUrl, "/admin/role-history", activeEnvironment),
-      },
-      {
-        label: "Конфиг-наборы",
-        href: buildAdminSecondaryHref(currentUrl, "/admin/config-sets", activeEnvironment),
-      },
-    ],
   };
+}
+
+export function isHealthyAdminServiceStatus(status: string): boolean {
+  return ["UP", "HEALTHY", "READY", "OK", "STABLE"].includes(
+    status.trim().toUpperCase(),
+  );
+}
+
+export function resolveAdminServiceStatusTone(status: string): string {
+  return isHealthyAdminServiceStatus(status)
+    ? "bg-emerald-500"
+    : "bg-rose-500";
 }
 
 export function buildAdminDashboardSelectionHref(

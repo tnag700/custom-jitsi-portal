@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: "__MONITORING_ENVIRONMENT__"
+    service: "__MONITORING_SERVICE_NAME__"
+
+rule_files:
+  - /tmp/alert-rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+scrape_configs:
+  - job_name: jitsi-backend
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - backend:8080

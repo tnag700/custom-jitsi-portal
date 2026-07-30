@@ -18,7 +18,7 @@ public class MeetingStateGuardInviteMeetingStatePort implements InviteMeetingSta
   @Override
   public void assertJoinAllowed(String meetingId) {
     try {
-      meetingStateGuard.assertJoinAllowed(meetingId);
+      meetingStateGuard.assertGuestJoinAllowed(meetingId);
     } catch (MeetingTokenException ex) {
       throw new InviteExchangeException(ex.status(), ex.errorCode(), ex.getMessage(), ex);
     }

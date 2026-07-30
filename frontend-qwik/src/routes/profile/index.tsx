@@ -16,7 +16,10 @@ import {
 } from "~/lib/domains/profile";
 import { resolveAuthRecoveryRedirectPath } from "~/lib/domains/auth";
 import { AppToast, useAppToast } from "~/lib/shared/components";
-import { buildMutationRequestContext, buildServerRequestContext } from "~/lib/shared/routes/server-handlers";
+import {
+  buildMutationRequestContext,
+  buildServerRequestContext,
+} from "~/lib/shared/routes/server-handlers";
 
 interface ProfileLoaderData {
   profile: UserProfileResponse | null;
@@ -24,41 +27,54 @@ interface ProfileLoaderData {
   loadError: ProfileErrorPayload | null;
 }
 
-export const useMyProfile = routeLoader$(async ({ sharedMap, cookie, redirect, url }) => {
-  const requestContext = buildServerRequestContext({ sharedMap, cookie });
-  const returnTo = `${url.pathname}${url.search}`;
-  try {
-    const profile = await fetchMyProfile(requestContext);
-    if (profile === null) {
-      return { profile: null, isFirstRun: true, loadError: null } satisfies ProfileLoaderData;
-    }
-    return { profile, isFirstRun: false, loadError: null } satisfies ProfileLoaderData;
-  } catch (error) {
-    if (error instanceof ProfileServiceError) {
-      if (error.payload.errorCode === "AUTH_REQUIRED") {
-        throw redirect(302, resolveAuthRecoveryRedirectPath(error, returnTo));
+export const useMyProfile = routeLoader$(
+  async ({ sharedMap, cookie, redirect, url }) => {
+    const requestContext = buildServerRequestContext({ sharedMap, cookie });
+    const returnTo = `${url.pathname}${url.search}`;
+    try {
+      const profile = await fetchMyProfile(requestContext);
+      if (profile === null) {
+        return {
+          profile: null,
+          isFirstRun: true,
+          loadError: null,
+        } satisfies ProfileLoaderData;
+      }
+      return {
+        profile,
+        isFirstRun: false,
+        loadError: null,
+      } satisfies ProfileLoaderData;
+    } catch (error) {
+      if (error instanceof ProfileServiceError) {
+        if (error.payload.errorCode === "AUTH_REQUIRED") {
+          throw redirect(302, resolveAuthRecoveryRedirectPath(error, returnTo));
+        }
+        return {
+          profile: null,
+          isFirstRun: false,
+          loadError: error.payload,
+        } satisfies ProfileLoaderData;
       }
       return {
         profile: null,
         isFirstRun: false,
-        loadError: error.payload,
+        loadError: {
+          title: "Ошибка загрузки",
+          detail: "Не удалось загрузить профиль.",
+          errorCode: "PROFILE_SERVICE_UNAVAILABLE",
+        },
       } satisfies ProfileLoaderData;
     }
-    return {
-      profile: null,
-      isFirstRun: false,
-      loadError: {
-        title: "Ошибка загрузки",
-        detail: "Не удалось загрузить профиль.",
-        errorCode: "PROFILE_SERVICE_UNAVAILABLE",
-      },
-    } satisfies ProfileLoaderData;
-  }
-});
+  },
+);
 
 export const useUpsertProfile = routeAction$(
   async (data, { sharedMap, cookie, redirect, fail, url }) => {
-    const requestContext = await buildMutationRequestContext({ sharedMap, cookie });
+    const requestContext = await buildMutationRequestContext({
+      sharedMap,
+      cookie,
+    });
     const returnTo = `${url.pathname}${url.search}`;
     try {
       const profile = await upsertMyProfile(requestContext, data);
@@ -79,9 +95,7 @@ export const useUpsertProfile = routeAction$(
       });
     }
   },
-  zod$(
-    profileFormSchema,
-  ),
+  zod$(profileFormSchema),
 );
 
 export default component$(() => {
@@ -99,7 +113,9 @@ export default component$(() => {
 
   const loaderData = profileData.value;
   const currentProfile =
-    upsertAction.value && "success" in upsertAction.value && upsertAction.value.success
+    upsertAction.value &&
+    "success" in upsertAction.value &&
+    upsertAction.value.success
       ? (upsertAction.value.profile as UserProfileResponse)
       : loaderData.profile;
 

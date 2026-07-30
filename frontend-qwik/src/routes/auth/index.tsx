@@ -17,7 +17,8 @@ export const useAuthPage = routeLoader$(({ sharedMap, url, env, redirect }) => {
     throw redirect(302, resolvePostAuthRedirectPath(returnTo));
   }
 
-  const apiUrl = env.get("PUBLIC_API_URL") || env.get("API_URL") || DEFAULT_PUBLIC_API_URL;
+  const apiUrl =
+    env.get("PUBLIC_API_URL") || env.get("API_URL") || DEFAULT_PUBLIC_API_URL;
   const errorCode = url.searchParams.get("error");
   const mode = url.searchParams.get("mode");
   const loginHref = buildAuthLoginHref(apiUrl, returnTo);
@@ -38,7 +39,12 @@ export default component$(() => {
 
   return (
     <section class="mx-auto flex w-full max-w-xl flex-col gap-6 py-10">
-      {data.value.error && <AuthErrorPanel error={data.value.error} retryHref={data.value.retryHref} />}
+      {data.value.error && (
+        <AuthErrorPanel
+          error={data.value.error}
+          retryHref={data.value.retryHref}
+        />
+      )}
 
       <div class="rounded border border-border bg-surface p-6 text-center">
         <h1 class="text-xl font-semibold text-text">Вход в портал</h1>

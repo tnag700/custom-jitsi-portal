@@ -37,6 +37,6 @@ public class RoomServiceMeetingRoomsAdapter implements MeetingRoomsPort {
         room.tenantId(),
         room.configSetId(),
         room.status() == RoomStatus.ACTIVE,
-        configSetValidator.isValid(room.configSetId()));
+        configSetValidator.isValid(room.configSetId(), room.tenantId()));
   }
 }

@@ -28,7 +28,10 @@ import {
   type JoinErrorPayload,
 } from "~/lib/domains/join";
 import { resolveAuthRecoveryRedirectPath } from "~/lib/domains/auth";
-import { buildMutationRequestContext, buildServerRequestContext } from "~/lib/shared/routes/server-handlers";
+import {
+  buildMutationRequestContext,
+  buildServerRequestContext,
+} from "~/lib/shared/routes/server-handlers";
 import { RequestStatePanel } from "~/lib/shared";
 
 interface UpcomingMeetingsLoaderData {
@@ -50,7 +53,9 @@ function createInvalidJoinUrlError(detail: string): JoinErrorPayload {
   };
 }
 
-function resolveExpectedJoinOrigin(publicJoinUrl: string | null | undefined): string | null {
+function resolveExpectedJoinOrigin(
+  publicJoinUrl: string | null | undefined,
+): string | null {
   if (!publicJoinUrl) {
     return null;
   }
@@ -66,46 +71,64 @@ function redirectToJoinUrl(
   payload: unknown,
   expectedOrigin: string | null,
 ): JoinErrorPayload | null {
-  if (!payload || typeof payload !== "object" || !("joinUrl" in payload) || typeof payload.joinUrl !== "string") {
-    return createInvalidJoinUrlError("Backend вернул ответ без корректного joinUrl.");
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    !("joinUrl" in payload) ||
+    typeof payload.joinUrl !== "string"
+  ) {
+    return createInvalidJoinUrlError(
+      "Backend вернул ответ без корректного joinUrl.",
+    );
   }
 
   try {
     const url = new URL(payload.joinUrl);
     if (url.protocol !== "https:") {
-      return createInvalidJoinUrlError("Backend вернул joinUrl с небезопасной схемой.");
+      return createInvalidJoinUrlError(
+        "Backend вернул joinUrl с небезопасной схемой.",
+      );
     }
     if (url.username || url.password) {
-      return createInvalidJoinUrlError("Backend вернул joinUrl с недопустимыми credentials.");
+      return createInvalidJoinUrlError(
+        "Backend вернул joinUrl с недопустимыми credentials.",
+      );
     }
     if (expectedOrigin && url.origin !== expectedOrigin) {
-      return createInvalidJoinUrlError("Backend вернул joinUrl вне разрешенного origin.");
+      return createInvalidJoinUrlError(
+        "Backend вернул joinUrl вне разрешенного origin.",
+      );
     }
     window.location.assign(url.toString());
     return null;
   } catch {
-    return createInvalidJoinUrlError("Backend вернул синтаксически некорректный joinUrl.");
+    return createInvalidJoinUrlError(
+      "Backend вернул синтаксически некорректный joinUrl.",
+    );
   }
 }
 
-export const useUpcomingMeetings = routeLoader$(async ({ sharedMap, cookie }) => {
-  const requestContext = buildServerRequestContext({ sharedMap, cookie });
-  try {
-    return {
-      meetings: await fetchUpcomingMeetings(requestContext),
-      loadError: null,
-    } satisfies UpcomingMeetingsLoaderData;
-  } catch (error) {
-    return {
-      meetings: [],
-      loadError: mapUpcomingMeetingsLoaderError(error),
-    } satisfies UpcomingMeetingsLoaderData;
-  }
-});
+export const useUpcomingMeetings = routeLoader$(
+  async ({ sharedMap, cookie }) => {
+    const requestContext = buildServerRequestContext({ sharedMap, cookie });
+    try {
+      return {
+        meetings: await fetchUpcomingMeetings(requestContext),
+        loadError: null,
+      } satisfies UpcomingMeetingsLoaderData;
+    } catch (error) {
+      return {
+        meetings: [],
+        loadError: mapUpcomingMeetingsLoaderError(error),
+      } satisfies UpcomingMeetingsLoaderData;
+    }
+  },
+);
 
 export const useJoinRuntimeConfig = routeLoader$(({ sharedMap }) => {
   return {
-    publicApiUrl: (sharedMap.get("publicApiUrl") as string) || DEFAULT_PUBLIC_API_URL,
+    publicApiUrl:
+      (sharedMap.get("publicApiUrl") as string) || DEFAULT_PUBLIC_API_URL,
   } satisfies JoinPageRuntimeConfig;
 });
 
@@ -125,7 +148,9 @@ export const useJoinReadiness = routeLoader$(async ({ sharedMap, cookie }) => {
           key: "backend",
           status: "error",
           headline: "Не удалось получить readiness snapshot",
-          reason: payload?.detail ?? "Backend не вернул данные диагностики перед входом.",
+          reason:
+            payload?.detail ??
+            "Backend не вернул данные диагностики перед входом.",
           actions: ["Повторить диагностику", "Проверить доступность backend"],
           errorCode: payload?.errorCode ?? "JOIN_READINESS_UNAVAILABLE",
           blocking: true,
@@ -138,7 +163,10 @@ export const useJoinReadiness = routeLoader$(async ({ sharedMap, cookie }) => {
 export const useJoinMeeting = routeAction$(
   async (data, { sharedMap, cookie, redirect, fail, url }) => {
     // buildMutationRequestContext forwards the XSRF-TOKEN cookie/header pair.
-    const requestContext = await buildMutationRequestContext({ sharedMap, cookie });
+    const requestContext = await buildMutationRequestContext({
+      sharedMap,
+      cookie,
+    });
     const returnTo = `${url.pathname}${url.search}`;
     try {
       return await issueAccessToken(requestContext, data.meetingId);
@@ -165,23 +193,31 @@ export default component$(() => {
   const retryCount = useSignal(0);
   const joinError = useSignal<JoinErrorPayload | null>(null);
   const clipboardCopied = useSignal(false);
-  const readinessSnapshot = useSignal<JoinReadinessPayload>(readinessState.value);
-  const preflightReport = useSignal<JoinPreflightReport>(createInitialPreflightReport(readinessState.value));
+  const readinessSnapshot = useSignal<JoinReadinessPayload>(
+    readinessState.value,
+  );
+  const preflightReport = useSignal<JoinPreflightReport>(
+    createInitialPreflightReport(readinessState.value),
+  );
   const preflightRunning = useSignal(false);
   const MAX_RETRIES = 2;
 
   const refreshPreflight$ = $(async (scope: PreflightScope) => {
     preflightRunning.value = true;
     try {
-      const snapshot = scope === "media"
-        ? null
-        : await fetchJoinReadiness(runtimeConfig.value.publicApiUrl);
+      const snapshot =
+        scope === "media"
+          ? null
+          : await fetchJoinReadiness(runtimeConfig.value.publicApiUrl);
       if (snapshot) {
         readinessSnapshot.value = snapshot;
       }
 
       const browserChecks = await runBrowserPreflight({
-        publicJoinUrl: snapshot?.publicJoinUrl ?? readinessSnapshot.value.publicJoinUrl ?? null,
+        publicJoinUrl:
+          snapshot?.publicJoinUrl ??
+          readinessSnapshot.value.publicJoinUrl ??
+          null,
         scope,
       });
 
@@ -226,7 +262,10 @@ export default component$(() => {
     const result = await joinAction.submit({ meetingId });
     const payload = result?.value;
     if (typeof window !== "undefined" && payload) {
-      const redirectError = redirectToJoinUrl(payload, resolveExpectedJoinOrigin(readinessSnapshot.value.publicJoinUrl));
+      const redirectError = redirectToJoinUrl(
+        payload,
+        resolveExpectedJoinOrigin(readinessSnapshot.value.publicJoinUrl),
+      );
       if (redirectError) {
         joinError.value = redirectError;
         clipboardCopied.value = false;
@@ -248,10 +287,15 @@ export default component$(() => {
       retryCount.value++;
       joinError.value = null;
       clipboardCopied.value = false;
-      const result = await joinAction.submit({ meetingId: joiningMeetingId.value });
+      const result = await joinAction.submit({
+        meetingId: joiningMeetingId.value,
+      });
       const payload = result?.value;
       if (typeof window !== "undefined" && payload) {
-        const redirectError = redirectToJoinUrl(payload, resolveExpectedJoinOrigin(readinessSnapshot.value.publicJoinUrl));
+        const redirectError = redirectToJoinUrl(
+          payload,
+          resolveExpectedJoinOrigin(readinessSnapshot.value.publicJoinUrl),
+        );
         if (redirectError) {
           joinError.value = redirectError;
           clipboardCopied.value = false;
@@ -276,7 +320,9 @@ export default component$(() => {
     try {
       await navigator.clipboard.writeText(JSON.stringify(report, null, 2));
       clipboardCopied.value = true;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   });
 
   const readinessStatusLabel =
@@ -299,8 +345,9 @@ export default component$(() => {
     <>
       <h1 class="mb-2 text-2xl font-bold text-text">Ближайшие встречи</h1>
       <p class="mb-6 max-w-3xl text-sm text-muted">
-        Здесь главное действие - быстро войти во встречу. Проверку оборудования и подключения можно открыть ниже,
-        если вход не срабатывает или есть проблемы со звуком и камерой.
+        Здесь главное действие - быстро войти во встречу. Проверку оборудования
+        и подключения можно открыть ниже, если вход не срабатывает или есть
+        проблемы со звуком и камерой.
       </p>
 
       {meetingsState.value.loadError && (
@@ -336,12 +383,20 @@ export default component$(() => {
       <details class="mt-8 overflow-hidden rounded-2xl border border-border bg-surface shadow-1">
         <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4">
           <div>
-            <h2 class="text-base font-semibold text-text">Проверка оборудования и подключения</h2>
+            <h2 class="text-base font-semibold text-text">
+              Проверка оборудования и подключения
+            </h2>
             <p class="text-sm text-muted">
-              Откройте этот блок, если нужно проверить доступ к backend, браузерные разрешения и media-окружение.
+              Откройте этот блок, если нужно проверить доступ к backend,
+              браузерные разрешения и media-окружение.
             </p>
           </div>
-          <span class={["shrink-0 rounded-full px-3 py-1 text-xs font-semibold", readinessStatusClass]}>
+          <span
+            class={[
+              "shrink-0 rounded-full px-3 py-1 text-xs font-semibold",
+              readinessStatusClass,
+            ]}
+          >
             {readinessStatusLabel}
           </span>
         </summary>

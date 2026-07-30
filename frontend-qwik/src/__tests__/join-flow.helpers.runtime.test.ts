@@ -18,7 +18,9 @@ describe("join-flow.helpers runtime", () => {
       errorCode: "AUTH_REQUIRED",
       traceId: "trace-123",
     };
-    const mapped = mapUpcomingMeetingsLoaderError(new JoinServiceError(payload));
+    const mapped = mapUpcomingMeetingsLoaderError(
+      new JoinServiceError(payload),
+    );
     expect(mapped).toEqual(payload);
   });
 

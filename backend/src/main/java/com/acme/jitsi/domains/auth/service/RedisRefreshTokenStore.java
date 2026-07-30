@@ -40,7 +40,27 @@ class RedisRefreshTokenStore implements RefreshTokenStore {
           + "return 'CONSUMED'",
       String.class);
 
-        private static final DefaultRedisScript<String> CREATE_IF_ABSENT_SCRIPT = new DefaultRedisScript<>(
+  private static final DefaultRedisScript<String> ROTATE_SCRIPT = new DefaultRedisScript<>(
+      "local currentKey = KEYS[1] "
+          + "local nextKey = KEYS[2] "
+          + "if redis.call('EXISTS', currentKey) == 0 then return 'MISSING' end "
+          + "local status = redis.call('HGET', currentKey, 'status') "
+          + "if status == 'REVOKED' then return 'REVOKED' end "
+          + "if status == 'USED' then return 'USED' end "
+          + "if redis.call('EXISTS', nextKey) == 1 then return 'NEXT_EXISTS' end "
+          + "redis.call('HSET', currentKey, 'status', 'USED') "
+          + "redis.call('HSET', nextKey, "
+          + "'tokenId', ARGV[1], "
+          + "'subject', ARGV[2], "
+          + "'meetingId', ARGV[3], "
+          + "'absoluteExpiresAt', ARGV[4], "
+          + "'idleExpiresAt', ARGV[5], "
+          + "'status', ARGV[6]) "
+          + "redis.call('PEXPIREAT', nextKey, ARGV[7]) "
+          + "return 'CONSUMED'",
+      String.class);
+
+  private static final DefaultRedisScript<String> CREATE_IF_ABSENT_SCRIPT = new DefaultRedisScript<>(
           "local key = KEYS[1] "
             + "if redis.call('EXISTS', key) == 1 then return 'EXISTS' end "
             + "redis.call('HSET', key, "
@@ -123,6 +143,36 @@ class RedisRefreshTokenStore implements RefreshTokenStore {
   }
 
   @Override
+  public ConsumeResult rotate(String tokenId, RefreshTokenState nextState) {
+    StringRedisTemplate redisTemplate = requireRedisTemplate();
+
+    try {
+      String currentKey = key(tokenId);
+      String nextKey = key(nextState.tokenId());
+      String result = redisTemplate.execute(
+          ROTATE_SCRIPT,
+          List.of(currentKey, nextKey),
+          nextState.tokenId(),
+          nextState.subject(),
+          nextState.meetingId(),
+          Long.toString(nextState.absoluteExpiresAt().toEpochMilli()),
+          Long.toString(nextState.idleExpiresAt().toEpochMilli()),
+          nextState.status().name(),
+          Long.toString(nextState.absoluteExpiresAt().toEpochMilli()));
+
+      ConsumeStatus status = switch (result) {
+        case "CONSUMED" -> ConsumeStatus.CONSUMED;
+        case "USED", "NEXT_EXISTS" -> ConsumeStatus.USED;
+        case "REVOKED" -> ConsumeStatus.REVOKED;
+        default -> ConsumeStatus.MISSING;
+      };
+      return new ConsumeResult(status, loadState(currentKey));
+    } catch (DataAccessException ex) {
+      throw redisUnavailable(ex);
+    }
+  }
+
+  @Override
   public void create(RefreshTokenState state) {
     try {
       saveState(key(state.tokenId()), state);
@@ -167,10 +217,7 @@ class RedisRefreshTokenStore implements RefreshTokenStore {
   }
 
   private void saveState(String key, RefreshTokenState state) {
-    StringRedisTemplate redisTemplate = redisTemplateProvider.getIfAvailable();
-    if (redisTemplate == null) {
-      return;
-    }
+    StringRedisTemplate redisTemplate = requireRedisTemplate();
 
     redisTemplate.opsForHash().putAll(key, Map.of(
         FIELD_TOKEN_ID, state.tokenId(),
@@ -204,6 +251,25 @@ class RedisRefreshTokenStore implements RefreshTokenStore {
     } catch (RuntimeException ex) {
       return null;
     }
+  }
+
+  private StringRedisTemplate requireRedisTemplate() {
+    StringRedisTemplate redisTemplate = redisTemplateProvider.getIfAvailable();
+    if (redisTemplate == null) {
+      throw new RetryableRefreshTokenException(
+          org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
+          ErrorCode.CONFIG_INCOMPATIBLE.code(),
+          "Redis недоступен для атомарного учета токенов.");
+    }
+    return redisTemplate;
+  }
+
+  private RetryableRefreshTokenException redisUnavailable(DataAccessException ex) {
+    return new RetryableRefreshTokenException(
+        org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
+        ErrorCode.CONFIG_INCOMPATIBLE.code(),
+        "Redis недоступен для атомарного учета токенов.",
+        ex);
   }
 
   private String stringValue(Object value) {

@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.acme.jitsi.domains.rooms.event.RoomCreatedEvent;
 import com.acme.jitsi.shared.JwtTestProperties;
+import com.acme.jitsi.shared.TestFixtures;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -105,14 +106,37 @@ class RoomsControllerTest {
         .andExpect(jsonPath("$.properties.requestId").value("trace-room-forbidden-1"));
   }
 
+  @Test
+  void createRoomWithMismatchedTenantClaimReturnsForbidden() throws Exception {
+    mockMvc.perform(post("/api/v1/rooms")
+            .with(csrf())
+            .with(oauth2Login()
+                .attributes(attrs -> {
+                  attrs.put("sub", "admin-user");
+                  attrs.put("tenantId", "tenant-2");
+                })
+                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .header("X-Trace-Id", "trace-room-create-tenant-mismatch")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "name": "Foreign Tenant Room",
+                  "tenantId": "tenant-1",
+                  "configSetId": "config-1"
+                }
+                """))
+        .andExpect(status().isForbidden())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TENANT_ACCESS_DENIED.code()))
+        .andExpect(jsonPath("$.properties.requestId").value("trace-room-create-tenant-mismatch"));
+  }
+
   // AC1: Create room with required fields succeeds (with admin role)
   @Test
   void createRoomWithRequiredFieldsSucceeds() throws Exception {
     String createResponse = mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> attrs.put("sub", "admin-user"))
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-room-create-1")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -152,9 +176,7 @@ class RoomsControllerTest {
   void createRoomWithoutRequiredFieldsReturns400() throws Exception {
     mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> attrs.put("sub", "admin-user"))
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-room-validation-1")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -174,9 +196,7 @@ class RoomsControllerTest {
     // First create
     mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> attrs.put("sub", "admin-user"))
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-room-dup-1")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -191,9 +211,7 @@ class RoomsControllerTest {
     // Second create with same name in same tenant
     mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> attrs.put("sub", "admin-user"))
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-room-dup-2")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -213,9 +231,7 @@ class RoomsControllerTest {
   void createRoomWithDuplicateCyrillicNameInSameTenantReturnsConflict() throws Exception {
     mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> attrs.put("sub", "admin-user"))
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-room-dup-cyrillic-1")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -229,9 +245,7 @@ class RoomsControllerTest {
 
     mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> attrs.put("sub", "admin-user"))
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-room-dup-cyrillic-2")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -253,9 +267,7 @@ class RoomsControllerTest {
     // Create in tenant-1
     mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> attrs.put("sub", "admin-user"))
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-room-tenant-1")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -270,9 +282,7 @@ class RoomsControllerTest {
     // Create with same name in tenant-2
     mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> attrs.put("sub", "admin-user"))
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(TestFixtures.adminLogin("tenant-2"))
             .header("X-Trace-Id", "trace-room-tenant-2")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -291,9 +301,7 @@ class RoomsControllerTest {
   void createRoomWithInvalidConfigSetReturnsError() throws Exception {
     mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> attrs.put("sub", "admin-user"))
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-room-config-1")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -366,9 +374,7 @@ class RoomsControllerTest {
     // First create a room
     String response = mockMvc.perform(post("/api/v1/rooms")
             .with(csrf())
-            .with(oauth2Login()
-                .attributes(attrs -> attrs.put("sub", "admin-user"))
-                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .with(TestFixtures.adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-room-get-create")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
@@ -431,5 +437,3 @@ class RoomsControllerTest {
         .andExpect(jsonPath("$.pageSize").value(20));
   }
 }
-
-

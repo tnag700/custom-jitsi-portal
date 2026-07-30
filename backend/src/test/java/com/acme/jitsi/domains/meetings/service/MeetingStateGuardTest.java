@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import com.acme.jitsi.shared.ErrorCode;
+import com.acme.jitsi.shared.TestFixtures;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -41,5 +42,40 @@ class MeetingStateGuardTest {
           org.assertj.core.api.Assertions.assertThat(ex.status()).isEqualTo(HttpStatus.NOT_FOUND);
           org.assertj.core.api.Assertions.assertThat(ex.errorCode()).isEqualTo(ErrorCode.MEETING_NOT_FOUND.code());
         });
+  }
+
+  @Test
+  void assertGuestJoinAllowed_rejectsMeetingWithGuestAccessDisabled() {
+    Meeting meeting = Meeting.builder()
+        .meetingId("meeting-private")
+        .roomId("room-1")
+        .title("Private meeting")
+        .description("Guests disabled")
+        .meetingType("scheduled")
+        .configSetId("config-1")
+        .status(MeetingStatus.SCHEDULED)
+        .startsAt(Instant.parse("2025-12-31T23:00:00Z"))
+        .endsAt(Instant.parse("2026-01-01T01:00:00Z"))
+        .allowGuests(false)
+        .recordingEnabled(false)
+        .createdAt(Instant.parse("2025-12-01T00:00:00Z"))
+        .updatedAt(Instant.parse("2025-12-01T00:00:00Z"))
+        .build();
+
+    assertThatThrownBy(() -> meetingStateGuard.assertGuestJoinAllowed(meeting))
+        .isInstanceOfSatisfying(MeetingTokenException.class, ex -> {
+          org.assertj.core.api.Assertions.assertThat(ex.status()).isEqualTo(HttpStatus.FORBIDDEN);
+          org.assertj.core.api.Assertions.assertThat(ex.errorCode())
+              .isEqualTo(ErrorCode.GUEST_ACCESS_DISABLED.code());
+        });
+  }
+
+  @Test
+  void assertGuestJoinAllowed_acceptsActiveMeetingWithGuestAccessEnabled() {
+    Meeting meeting = TestFixtures.mockMeeting("meeting-public", "room-1");
+
+    org.assertj.core.api.Assertions.assertThatCode(
+            () -> meetingStateGuard.assertGuestJoinAllowed(meeting))
+        .doesNotThrowAnyException();
   }
 }

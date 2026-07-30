@@ -1,5 +1,5 @@
 package com.acme.jitsi.domains.rooms.service;
 
 public interface ConfigSetValidator {
-  boolean isValid(String configSetId);
+  boolean isValid(String configSetId, String tenantId);
 }

@@ -7,7 +7,7 @@ from _python_guardrails import fail, repo_root
 
 def main() -> None:
     root = repo_root()
-    realm_path = root / "pilot/keycloak/realm/jitsi-dev-realm.json"
+    realm_path = root / "pilot/keycloak/realm/dev/jitsi-dev-realm.json"
     compose_path = root / "docker-compose.yml"
 
     if not realm_path.exists():
@@ -46,6 +46,7 @@ def main() -> None:
     required_fragments = {
         "vault service": "\n  vault:\n",
         "vault dev bootstrap service": "\n  vault-dev-bootstrap:\n",
+        "dev-only Vault config": "./deploy/vault/config/vault-dev.hcl:/vault/config/vault.hcl:ro",
         "backend vault bootstrap service": "\n  backend-vault-bootstrap:\n",
         "backend runtime bridge": "BACKEND_SECRETS_FILE=/vault/runtime/backend/runtime.env",
         "backend wrapper mount": "./deploy/vault/auth/backend/run-with-rendered-secrets.sh.example:/vault/auth/backend/run-with-rendered-secrets.sh.example:ro",
@@ -53,6 +54,10 @@ def main() -> None:
         "postgres vault env file": "${POSTGRES_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/postgres.env}",
         "redis vault env file": "${REDIS_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/redis.env}",
         "keycloak vault env file": "${KEYCLOAK_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/keycloak.env}",
+        "dev-only Keycloak realm import": "./pilot/keycloak/realm/dev:/opt/keycloak/data/import:ro",
+        "dev Keycloak logout allowlist": "AUTH_LOGOUT_ALLOWED_ORIGINS=${DEV_KEYCLOAK_ORIGIN:-http://localhost:8081}",
+        "private-origin logout opt-in": "AUTH_LOGOUT_ALLOW_INSECURE_PRIVATE_ORIGIN=true",
+        "database-backed room config validation": "APP_FEATURES_CONFIG_SETS_FROM_DB=true",
     }
 
     for label, fragment in required_fragments.items():

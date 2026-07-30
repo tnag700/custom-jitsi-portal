@@ -21,4 +21,33 @@ class InMemoryRefreshTokenStoreTest {
     assertThat(consumeResult.state().status()).isEqualTo(RefreshTokenStore.TokenStatus.REVOKED);
     assertThat(consumeResult.state().absoluteExpiresAt()).isAfter(Instant.now());
   }
+
+  @Test
+  void rotateConsumesCurrentTokenAndCreatesSuccessorAsOneCriticalSection() {
+    InMemoryRefreshTokenStore store = new InMemoryRefreshTokenStore();
+    Instant absoluteExpiry = Instant.now().plusSeconds(7200);
+    RefreshTokenStore.RefreshTokenState current = new RefreshTokenStore.RefreshTokenState(
+        "current-token",
+        "user-1",
+        "meeting-1",
+        absoluteExpiry,
+        Instant.now().plusSeconds(3600),
+        RefreshTokenStore.TokenStatus.ACTIVE);
+    RefreshTokenStore.RefreshTokenState successor = new RefreshTokenStore.RefreshTokenState(
+        "successor-token",
+        "user-1",
+        "meeting-1",
+        absoluteExpiry,
+        Instant.now().plusSeconds(3600),
+        RefreshTokenStore.TokenStatus.ACTIVE);
+    store.create(current);
+
+    RefreshTokenStore.ConsumeResult result = store.rotate("current-token", successor);
+
+    assertThat(result.status()).isEqualTo(RefreshTokenStore.ConsumeStatus.CONSUMED);
+    assertThat(store.rotate("current-token", successor).status())
+        .isEqualTo(RefreshTokenStore.ConsumeStatus.USED);
+    assertThat(store.consume("successor-token").status())
+        .isEqualTo(RefreshTokenStore.ConsumeStatus.CONSUMED);
+  }
 }

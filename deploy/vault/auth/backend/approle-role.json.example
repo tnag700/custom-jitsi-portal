@@ -1,0 +1,11 @@
+{
+  "token_policies": [
+    "backend-service"
+  ],
+  "token_type": "batch",
+  "token_ttl": "15m",
+  "token_max_ttl": "30m",
+  "secret_id_ttl": "10m",
+  "secret_id_num_uses": 1,
+  "bind_secret_id": true
+}

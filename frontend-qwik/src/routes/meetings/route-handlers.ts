@@ -50,74 +50,73 @@ const emptyInvitesPage = {
   totalPages: 0,
 };
 
+const UUID_LIKE_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuidLike(value: string | null): value is string {
+  return value !== null && UUID_LIKE_PATTERN.test(value);
+}
+
 export const useActiveRooms = routeLoader$(async ({ sharedMap, cookie }) => {
   const user = sharedMap.get("user") as SafeUserProfile;
   const requestContext = buildServerRequestContext({ sharedMap, cookie });
 
-  try {
-    const rooms = await fetchRooms(requestContext, user.tenant);
-    return {
-      ...rooms,
-      content: rooms.content.filter((room) => room.status === "active"),
-    };
-  } catch {
-    return emptyMeetingsPage;
-  }
+  const rooms = await fetchRooms(requestContext, user.tenant);
+  return {
+    ...rooms,
+    content: rooms.content.filter((room) => room.status === "active"),
+  };
 });
 
-export const useMeetings = routeLoader$(async ({ sharedMap, cookie, query }) => {
-  const requestContext = buildServerRequestContext({ sharedMap, cookie });
-  const roomId = query.get("roomId");
+export const useMeetings = routeLoader$(
+  async ({ sharedMap, cookie, query }) => {
+    const requestContext = buildServerRequestContext({ sharedMap, cookie });
+    const roomId = query.get("roomId");
 
-  if (!roomId) {
-    return emptyMeetingsPage;
-  }
+    if (!roomId) {
+      return emptyMeetingsPage;
+    }
 
-  try {
-    return await fetchMeetings(requestContext, roomId);
-  } catch {
-    return emptyMeetingsPage;
-  }
-});
+    return fetchMeetings(requestContext, roomId);
+  },
+);
 
-export const useParticipants = routeLoader$(async ({ sharedMap, cookie, query }) => {
-  const requestContext = buildServerRequestContext({ sharedMap, cookie });
-  const roomId = query.get("roomId");
-  const meetingId = query.get("meetingId");
-  const uuidLike =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const useParticipants = routeLoader$(
+  async ({ sharedMap, cookie, query }) => {
+    const requestContext = buildServerRequestContext({ sharedMap, cookie });
+    const roomId = query.get("roomId");
+    const meetingId = query.get("meetingId");
 
-  if (!roomId || !meetingId || !uuidLike.test(meetingId)) {
-    return [];
-  }
+    if (!roomId || !isUuidLike(meetingId)) {
+      return [];
+    }
 
-  try {
-    return await fetchParticipants(requestContext, meetingId);
-  } catch {
-    return [];
-  }
-});
+    return fetchParticipants(requestContext, meetingId);
+  },
+);
 
-export const useAssignableUsers = routeLoader$(async ({ sharedMap, cookie, query }) => {
-  const user = sharedMap.get("user") as SafeUserProfile;
-  const requestContext = buildServerRequestContext({ sharedMap, cookie });
-  const meetingId = query.get("meetingId");
-  const uuidLike =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const useAssignableUsers = routeLoader$(
+  async ({ sharedMap, cookie, query }) => {
+    const user = sharedMap.get("user") as SafeUserProfile;
+    const requestContext = buildServerRequestContext({ sharedMap, cookie });
+    const meetingId = query.get("meetingId");
 
-  if (!meetingId || !uuidLike.test(meetingId)) {
-    return [];
-  }
+    if (!isUuidLike(meetingId)) {
+      return [];
+    }
 
-  const participantQuery = query.get("participantQuery") ?? undefined;
-  const participantOrganization = query.get("participantOrganization") ?? undefined;
+    const participantQuery = query.get("participantQuery") ?? undefined;
+    const participantOrganization =
+      query.get("participantOrganization") ?? undefined;
 
-  try {
-    return await searchUsers(requestContext, user.tenant, participantQuery, participantOrganization);
-  } catch {
-    return [];
-  }
-});
+    return searchUsers(
+      requestContext,
+      user.tenant,
+      participantQuery,
+      participantOrganization,
+    );
+  },
+);
 
 export const useInvites = routeLoader$(async ({ sharedMap, cookie, query }) => {
   const requestContext = buildServerRequestContext({ sharedMap, cookie });
@@ -127,11 +126,7 @@ export const useInvites = routeLoader$(async ({ sharedMap, cookie, query }) => {
     return emptyInvitesPage;
   }
 
-  try {
-    return await fetchInvites(requestContext, meetingId);
-  } catch {
-    return emptyInvitesPage;
-  }
+  return fetchInvites(requestContext, meetingId);
 });
 
 export const useCreateInvite = routeAction$(
@@ -149,21 +144,38 @@ export const useCreateInvite = routeAction$(
       });
       return { success: true as const, invite };
     } catch (error) {
-      return mapRouteActionError(error, InviteServiceError, fail, "INVITE_UNKNOWN");
+      return mapRouteActionError(
+        error,
+        InviteServiceError,
+        fail,
+        "INVITE_UNKNOWN",
+      );
     }
   },
-  zod$(createInviteSchema.extend({ meetingId: z.string().min(1, "meetingId обязателен") })),
+  zod$(
+    createInviteSchema.extend({
+      meetingId: z.string().min(1, "meetingId обязателен"),
+    }),
+  ),
 );
 
 export const useRevokeInvite = routeAction$(
   async (data, { sharedMap, cookie, fail }) => {
-    const requestContext = await buildMutationRequestContext({ sharedMap, cookie });
+    const requestContext = await buildMutationRequestContext({
+      sharedMap,
+      cookie,
+    });
 
     try {
       await revokeInvite(requestContext, data.meetingId, data.inviteId);
       return { success: true as const };
     } catch (error) {
-      return mapRouteActionError(error, InviteServiceError, fail, "INVITE_UNKNOWN");
+      return mapRouteActionError(
+        error,
+        InviteServiceError,
+        fail,
+        "INVITE_UNKNOWN",
+      );
     }
   },
   zod$(z.object({ meetingId: z.string().min(1), inviteId: z.string().min(1) })),
@@ -188,15 +200,27 @@ export const useCreateMeeting = routeAction$(
       });
       return { success: true as const, meeting };
     } catch (error) {
-      return mapRouteActionError(error, MeetingServiceError, fail, "MEETING_UNKNOWN");
+      return mapRouteActionError(
+        error,
+        MeetingServiceError,
+        fail,
+        "MEETING_UNKNOWN",
+      );
     }
   },
-  zod$(createMeetingSchema.and(z.object({ roomId: z.string().min(1, "roomId обязателен") }))),
+  zod$(
+    createMeetingSchema.and(
+      z.object({ roomId: z.string().min(1, "roomId обязателен") }),
+    ),
+  ),
 );
 
 export const useUpdateMeeting = routeAction$(
   async (data, { sharedMap, cookie, fail }) => {
-    const requestContext = await buildMutationRequestContext({ sharedMap, cookie });
+    const requestContext = await buildMutationRequestContext({
+      sharedMap,
+      cookie,
+    });
 
     try {
       const meeting = await updateMeeting(requestContext, data.meetingId, {
@@ -210,21 +234,38 @@ export const useUpdateMeeting = routeAction$(
       });
       return { success: true as const, meeting };
     } catch (error) {
-      return mapRouteActionError(error, MeetingServiceError, fail, "MEETING_UNKNOWN");
+      return mapRouteActionError(
+        error,
+        MeetingServiceError,
+        fail,
+        "MEETING_UNKNOWN",
+      );
     }
   },
-  zod$(updateMeetingSchema.and(z.object({ meetingId: z.string().min(1, "meetingId обязателен") }))),
+  zod$(
+    updateMeetingSchema.and(
+      z.object({ meetingId: z.string().min(1, "meetingId обязателен") }),
+    ),
+  ),
 );
 
 export const useCancelMeeting = routeAction$(
   async (data, { sharedMap, cookie, fail }) => {
-    const requestContext = await buildMutationRequestContext({ sharedMap, cookie });
+    const requestContext = await buildMutationRequestContext({
+      sharedMap,
+      cookie,
+    });
 
     try {
       const meeting = await cancelMeeting(requestContext, data.meetingId);
       return { success: true as const, meeting };
     } catch (error) {
-      return mapRouteActionError(error, MeetingServiceError, fail, "MEETING_UNKNOWN");
+      return mapRouteActionError(
+        error,
+        MeetingServiceError,
+        fail,
+        "MEETING_UNKNOWN",
+      );
     }
   },
   zod$(z.object({ meetingId: z.string().min(1, "meetingId обязателен") })),
@@ -245,40 +286,78 @@ export const useAssignParticipant = routeAction$(
       );
       return { success: true as const, assignment };
     } catch (error) {
-      return mapRouteActionError(error, MeetingServiceError, fail, "MEETING_UNKNOWN");
+      return mapRouteActionError(
+        error,
+        MeetingServiceError,
+        fail,
+        "MEETING_UNKNOWN",
+      );
     }
   },
-  zod$(assignParticipantSchema.extend({ meetingId: z.string().min(1, "meetingId обязателен") })),
+  zod$(
+    assignParticipantSchema.extend({
+      meetingId: z.string().min(1, "meetingId обязателен"),
+    }),
+  ),
 );
 
 export const useBulkAssignParticipants = routeAction$(
   async (data, { sharedMap, cookie, fail }) => {
-    const requestContext = await buildMutationRequestContext({ sharedMap, cookie });
+    const requestContext = await buildMutationRequestContext({
+      sharedMap,
+      cookie,
+    });
 
     try {
-      const assignments = await bulkAssignParticipants(requestContext, data.meetingId, {
-        defaultRole: data.defaultRole,
-        participants: data.subjectIds.map((subjectId) => ({ subjectId })),
-      });
+      const assignments = await bulkAssignParticipants(
+        requestContext,
+        data.meetingId,
+        {
+          defaultRole: data.defaultRole,
+          participants: data.subjectIds.map((subjectId) => ({ subjectId })),
+        },
+      );
       return { success: true as const, assignments };
     } catch (error) {
-      return mapRouteActionError(error, MeetingServiceError, fail, "MEETING_UNKNOWN");
+      return mapRouteActionError(
+        error,
+        MeetingServiceError,
+        fail,
+        "MEETING_UNKNOWN",
+      );
     }
   },
-  zod$(bulkAssignParticipantsSchema.extend({ meetingId: z.string().min(1, "meetingId обязателен") })),
+  zod$(
+    bulkAssignParticipantsSchema.extend({
+      meetingId: z.string().min(1, "meetingId обязателен"),
+    }),
+  ),
 );
 
 export const useUpdateParticipantRole = routeAction$(
   async (data, { sharedMap, cookie, fail }) => {
-    const requestContext = await buildMutationRequestContext({ sharedMap, cookie });
+    const requestContext = await buildMutationRequestContext({
+      sharedMap,
+      cookie,
+    });
 
     try {
-      const assignment = await updateParticipantRole(requestContext, data.meetingId, data.subjectId, {
-        role: data.role,
-      });
+      const assignment = await updateParticipantRole(
+        requestContext,
+        data.meetingId,
+        data.subjectId,
+        {
+          role: data.role,
+        },
+      );
       return { success: true as const, assignment };
     } catch (error) {
-      return mapRouteActionError(error, MeetingServiceError, fail, "MEETING_UNKNOWN");
+      return mapRouteActionError(
+        error,
+        MeetingServiceError,
+        fail,
+        "MEETING_UNKNOWN",
+      );
     }
   },
   zod$(
@@ -291,13 +370,21 @@ export const useUpdateParticipantRole = routeAction$(
 
 export const useUnassignParticipant = routeAction$(
   async (data, { sharedMap, cookie, fail }) => {
-    const requestContext = await buildMutationRequestContext({ sharedMap, cookie });
+    const requestContext = await buildMutationRequestContext({
+      sharedMap,
+      cookie,
+    });
 
     try {
       await unassignParticipant(requestContext, data.meetingId, data.subjectId);
       return { success: true as const };
     } catch (error) {
-      return mapRouteActionError(error, MeetingServiceError, fail, "MEETING_UNKNOWN");
+      return mapRouteActionError(
+        error,
+        MeetingServiceError,
+        fail,
+        "MEETING_UNKNOWN",
+      );
     }
   },
   zod$(
