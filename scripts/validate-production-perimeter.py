@@ -395,6 +395,17 @@ def main() -> None:
     )
     if len(invite_api_locations) != 2:
         fail("Production nginx must define protected exact locations for invite validation and exchange.")
+    assert_regex(
+        nginx_config_text,
+        r"map\s+\$uri\s+\$invite_api_referer\s*\{"
+        r"\s*default\s+\$http_referer;"
+        r"\s*/api/v1/invites/validate\s+\"\";"
+        r"\s*/api/v1/invites/exchange\s+\"\";"
+        r"\s*\}",
+        "Production nginx must strip Referer only for the two body-only invite API endpoints.",
+    )
+    if nginx_config_text.count("proxy_set_header Referer $invite_api_referer;") != 1:
+        fail("The portal TLS vhost must apply the invite-aware Referer policy exactly once.")
     for invite_api_location in invite_api_locations:
         assert_contains(
             invite_api_location,
@@ -411,10 +422,11 @@ def main() -> None:
             'add_header Cache-Control "no-store" always;',
             "Invite API responses must be no-store.",
         )
-        assert_contains(
+        assert_not_contains(
             invite_api_location,
-            'proxy_set_header Referer "";',
-            "Invite API endpoints must not forward bearer-bearing referrers downstream.",
+            "proxy_set_header ",
+            "Invite API locations must inherit the complete trusted proxy-header set; "
+            "a location-level override resets nginx inheritance and can expose an invalid upstream Host.",
         )
         assert_contains(
             invite_api_location,
