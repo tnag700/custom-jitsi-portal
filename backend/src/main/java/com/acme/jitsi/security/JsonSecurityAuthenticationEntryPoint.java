@@ -35,7 +35,7 @@ final class JsonSecurityAuthenticationEntryPoint implements AuthenticationEntryP
       log.warn(
           "authentication_required code={} path={} traceId={} exceptionType={}",
           ErrorCode.AUTH_REQUIRED.code(),
-          request.getRequestURI(),
+          securityProblemResponseWriter.resolveSafeRequestPath(request),
           traceId,
           authException == null ? "unknown" : authException.getClass().getSimpleName());
     }

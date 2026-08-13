@@ -2,7 +2,7 @@ package com.acme.jitsi.domains.auth.service;
 
 import java.time.Instant;
 
-interface RefreshTokenStore {
+public interface RefreshTokenStore {
 
   enum ConsumeStatus {
     CONSUMED,
@@ -34,8 +34,6 @@ interface RefreshTokenStore {
   ConsumeResult consume(String tokenId);
 
   ConsumeResult rotate(String tokenId, RefreshTokenState nextState);
-
-  void create(RefreshTokenState state);
 
   void revoke(String tokenId);
 }

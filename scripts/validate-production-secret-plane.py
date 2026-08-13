@@ -143,6 +143,9 @@ def main() -> None:
     assert_contains(vault_config_text, 'storage "raft"', "Vault baseline config must use integrated Raft storage for the single-node stage.")
     assert_contains(vault_config_text, 'listener "tcp"', "Vault baseline config must declare a TCP listener.")
     assert_contains(vault_config_text, "telemetry {", "Vault baseline config must expose a telemetry block for ops path integration.")
+    approved_alpine_base = "FROM alpine:3.22.5@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce"
+    if vault_dockerfile.count(approved_alpine_base) != 2:
+        fail("Vault Dockerfile must pin both build stages to the approved Alpine 3.22.5 manifest digest.")
     assert_contains(vault_dockerfile, "VAULT_ZIP_URL=https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_linux_amd64.zip", "Vault Dockerfile must default to the approved mirror artifact path.")
     assert_contains(vault_dockerfile, "VAULT_SHA256SUMS_URL=https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_SHA256SUMS", "Vault Dockerfile must default to the approved checksum source.")
     assert_contains(vault_dockerfile, 'grep " vault_${VAULT_VERSION}_linux_amd64.zip$" /tmp/vault_SHA256SUMS | sha256sum -c -', "Vault Dockerfile must verify the downloaded archive against the checksum list.")

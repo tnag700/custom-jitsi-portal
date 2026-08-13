@@ -151,6 +151,20 @@ describe("Auth guard routing behavior", () => {
     expect(isPublicAuthPath("/rooms")).toBe(false);
   });
 
+  it.each([
+    "/INVITE/secret-token",
+    "/%69nvite/secret-token",
+    "/%2569nvite/secret-token",
+    "//invite/secret-token",
+    "///%69nvite/secret-token",
+    "/%2Finvite/secret-token",
+  ])(
+    "recognizes router-normalized bearer invite path as public: %s",
+    (path) => {
+      expect(isPublicAuthPath(path)).toBe(true);
+    },
+  );
+
   it("maps AuthServiceError to /auth with encoded error code", () => {
     const error = new AuthServiceError({
       title: "Denied",
@@ -194,6 +208,41 @@ describe("Auth guard routing behavior", () => {
     expect(
       resolveAuthRedirectPath(new Error("boom"), "https://evil.example/phish"),
     ).toBe("/auth");
+  });
+
+  it.each([
+    ["network-path authority", "//evil.example/phish"],
+    ["triple-slash authority", "///evil.example/phish"],
+    ["backslash authority", "/\\evil.example/phish"],
+    ["repeated-backslash authority", "/\\\\evil.example/phish"],
+    ["encoded backslash", "/%5Cevil.example/phish"],
+    ["lowercase encoded backslash", "/%5cevil.example/phish"],
+    ["double-encoded backslash", "/%255Cevil.example/phish"],
+    ["composed encoded backslash", "/%25%35%43evil.example/phish"],
+    ["encoded network-path authority", "/%2F%2Fevil.example/phish"],
+    ["encoded CRLF", "/profile%0D%0ALocation:%20https://evil.example"],
+    ["double-encoded line feed", "/profile%250Aignored"],
+    ["literal CRLF", "/profile\r\nLocation: https://evil.example"],
+    ["literal null", `/profile${String.fromCharCode(0)}`],
+    ["literal delete", `/profile${String.fromCharCode(127)}`],
+    ["malformed percent escape", "/profile%ZZ"],
+  ])("rejects %s returnTo consistently", (_caseName, returnTo) => {
+    expect(resolvePostAuthRedirectPath(returnTo)).toBe("/");
+    expect(resolveAuthRedirectPath(new Error("boom"), returnTo)).toBe("/auth");
+    expect(buildAuthLoginHref("https://auth.example/api/v1", returnTo)).toBe(
+      "https://auth.example/api/v1/auth/login",
+    );
+  });
+
+  it.each([
+    "/",
+    "/profile",
+    "/admin/config-sets?environment=dev#status",
+    "/meetings/?roomId=804f097a-60c7-487a-9078-40da53df2d87",
+    "/receipt?discount=100%25",
+    "/search?q=%D0%98%D0%B2%D0%B0%D0%BD%20%D0%98%D0%B2%D0%B0%D0%BD%D0%BE%D0%B2",
+  ])("preserves valid local returnTo %s", (returnTo) => {
+    expect(resolvePostAuthRedirectPath(returnTo)).toBe(returnTo);
   });
 
   it("drops unsafe returnTo values from recovery redirects", () => {

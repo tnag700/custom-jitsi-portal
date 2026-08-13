@@ -86,6 +86,11 @@ describe("Invites Guard: routes (AC: 1-6)", () => {
     expect(tsx).toContain("routeLoader$");
   });
 
+  it("marks bearer invite pages as non-indexable", () => {
+    const tsx = readSrc("routes/invite/[inviteToken]/index.tsx");
+    expect(tsx).toContain("noindex,nofollow,noarchive");
+  });
+
   it("routes/invite/[inviteToken]/index.tsx should use ApiErrorAlert for invite errors", () => {
     const tsx = readSrc("routes/invite/[inviteToken]/index.tsx");
     expect(tsx).toContain("ApiErrorAlert");

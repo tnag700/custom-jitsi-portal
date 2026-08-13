@@ -33,6 +33,8 @@ import java.util.Set;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -45,6 +47,105 @@ class AuthRefreshServiceTest {
 
     private static final String SECRET = "01234567890123456789012345678901";
     private static final DefaultJwtAlgorithmPolicy DEFAULT_JWT_ALGORITHM_POLICY = new DefaultJwtAlgorithmPolicy();
+
+  @ParameterizedTest
+  @ValueSource(longs = {-1, 0})
+  void rejectsTokenIssuedAtOrBeforeDurableStoreCutoverWithoutRegisteringIt(long issuedAtOffsetSeconds)
+      throws Exception {
+    AuthAccessTokenIssuer accessTokenService = mock(AuthAccessTokenIssuer.class);
+    RefreshTokenStore refreshTokenStore = mock(RefreshTokenStore.class);
+    ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+    AuthRefreshProperties properties = new AuthRefreshProperties();
+    Instant cutover = Instant.parse("2026-08-13T12:00:00Z");
+    properties.setAcceptIssuedAfter(cutover);
+    RefreshSecurityEventPublisher securityEventPublisher =
+        new RefreshSecurityEventPublisher(eventPublisher, java.time.Clock.systemUTC());
+    AuthRefreshService service = new AuthRefreshService(
+        accessTokenService,
+        refreshTokenStore,
+        properties,
+        new RefreshTokenParser(
+            meetingJwtDecoder(),
+            "https://portal.example.test",
+            "jitsi-meet"),
+        new RefreshSessionValidatorChain(securityEventPublisher),
+        new RefreshRotationService(
+            properties,
+            meetingJwtEncoder(),
+            DEFAULT_JWT_ALGORITHM_POLICY,
+            mock(TokenIssuanceCompatibilityPolicy.class),
+            "https://portal.example.test",
+            "jitsi-meet",
+            "HS256"),
+        securityEventPublisher);
+    String token = buildRefreshToken(
+        "pre-cutover-token",
+        "u-host",
+        "meeting-a",
+        cutover.plusSeconds(issuedAtOffsetSeconds),
+        cutover.plus(2, ChronoUnit.HOURS));
+
+    assertThatThrownBy(() -> service.refresh(token))
+        .isInstanceOf(AuthTokenException.class)
+        .satisfies(error -> assertThat(((AuthTokenException) error).errorCode())
+            .isEqualTo(ErrorCode.TOKEN_REVOKED.code()));
+    verify(refreshTokenStore, never()).createIfAbsent(any());
+    verify(refreshTokenStore, never()).rotate(any(), any());
+  }
+
+  @Test
+  void acceptsOnlyTokenIssuedAfterDurableStoreCutover() throws Exception {
+    AuthAccessTokenIssuer accessTokenService = mock(AuthAccessTokenIssuer.class);
+    RefreshTokenStore refreshTokenStore = mock(RefreshTokenStore.class);
+    ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+    AuthRefreshProperties properties = new AuthRefreshProperties();
+    Instant cutover = Instant.parse("2026-08-13T12:00:00Z");
+    properties.setAcceptIssuedAfter(cutover);
+    RefreshSecurityEventPublisher securityEventPublisher =
+        new RefreshSecurityEventPublisher(eventPublisher, java.time.Clock.systemUTC());
+    AuthRefreshService service = new AuthRefreshService(
+        accessTokenService,
+        refreshTokenStore,
+        properties,
+        new RefreshTokenParser(
+            meetingJwtDecoder(),
+            "https://portal.example.test",
+            "jitsi-meet"),
+        new RefreshSessionValidatorChain(securityEventPublisher),
+        new RefreshRotationService(
+            properties,
+            meetingJwtEncoder(),
+            DEFAULT_JWT_ALGORITHM_POLICY,
+            mock(TokenIssuanceCompatibilityPolicy.class),
+            "https://portal.example.test",
+            "jitsi-meet",
+            "HS256"),
+        securityEventPublisher);
+    String token = buildRefreshToken(
+        "after-cutover-token",
+        "u-host",
+        "meeting-a",
+        cutover.plusSeconds(1),
+        cutover.plus(2, ChronoUnit.HOURS));
+    RefreshTokenStore.RefreshTokenState state = new RefreshTokenStore.RefreshTokenState(
+        "after-cutover-token",
+        "u-host",
+        "meeting-a",
+        cutover.plus(2, ChronoUnit.HOURS),
+        cutover.plus(1, ChronoUnit.HOURS),
+        RefreshTokenStore.TokenStatus.ACTIVE);
+    when(refreshTokenStore.createIfAbsent(any())).thenReturn(state);
+    when(refreshTokenStore.rotate(org.mockito.ArgumentMatchers.eq("after-cutover-token"), any()))
+        .thenReturn(new RefreshTokenStore.ConsumeResult(RefreshTokenStore.ConsumeStatus.CONSUMED, state));
+    when(accessTokenService.issueAccessToken("meeting-a", "u-host"))
+        .thenReturn(new AuthAccessTokenIssuer.AccessTokenResult(
+            "access-token",
+            cutover.plus(20, ChronoUnit.MINUTES),
+            "host"));
+
+    assertThat(service.refresh(token).accessToken()).isEqualTo("access-token");
+    verify(refreshTokenStore).createIfAbsent(any());
+  }
 
     private JwtEncoder meetingJwtEncoder() {
         SecretKey secretKey = new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
@@ -421,7 +522,6 @@ class AuthRefreshServiceTest {
         });
 
         verify(refreshTokenStore, never()).consume(any());
-        verify(refreshTokenStore, never()).create(any());
         verify(refreshTokenStore, never()).rotate(any(), any());
   }
 
@@ -449,4 +549,3 @@ class AuthRefreshServiceTest {
     return jwt.serialize();
   }
 }
-

@@ -3,9 +3,10 @@ import {
   Form,
   routeAction$,
   routeLoader$,
+  type DocumentHead,
+  type RequestHandler,
   zod$,
   z,
-  useLocation,
 } from "@qwik.dev/router";
 import { ApiErrorAlert } from "~/lib/shared";
 import {
@@ -15,8 +16,19 @@ import {
   validateInviteToken,
   type InviteErrorPayload,
 } from "~/lib/domains/invites";
+import {
+  fetchJoinReadiness,
+  resolveExpectedJoinOrigin,
+  validateJoinRedirect,
+} from "~/lib/domains/join";
 
 const DEFAULT_SERVER_API_URL = "http://localhost:8080/api/v1";
+
+export const onRequest: RequestHandler = ({ headers }) => {
+  headers.set("Cache-Control", "private, no-store, max-age=0");
+  headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+  headers.set("Referrer-Policy", "no-referrer");
+};
 
 export const useInviteTokenLoader = routeLoader$(
   async ({ params, sharedMap }) => {
@@ -49,22 +61,55 @@ export const useExchangeInviteAction = routeAction$(
     const apiUrl =
       (sharedMap.get("apiUrl") as string) || DEFAULT_SERVER_API_URL;
 
+    const readiness = await fetchJoinReadiness(apiUrl).catch(() => null);
+    if (!readiness) {
+      return fail(502, {
+        error: {
+          title: "Не удалось проверить адрес конференции",
+          detail: "Сервис готовности Jitsi временно недоступен.",
+          errorCode: "JOIN_READINESS_UNAVAILABLE",
+        },
+      });
+    }
+
     try {
+      const expectedOrigin = resolveExpectedJoinOrigin(readiness.publicJoinUrl);
+      if (!expectedOrigin) {
+        const rejected = validateJoinRedirect({}, null);
+        return fail(502, { error: rejected.error });
+      }
+
       const response = await exchangeInvite(
         apiUrl,
         data.inviteToken,
         data.displayName,
       );
-      throw redirect(302, response.joinUrl);
+      const validated = validateJoinRedirect(response, expectedOrigin);
+      if (validated.error || !validated.joinUrl) {
+        return fail(502, { error: validated.error });
+      }
+      throw redirect(302, validated.joinUrl);
     } catch (error) {
       if (error instanceof InviteExchangeError) {
-        return fail(400, { error: error.payload });
+        const status =
+          error.payload.errorCode === "INVITE_RESPONSE_INVALID" ? 502 : 400;
+        return fail(status, { error: error.payload });
       }
       throw error;
     }
   },
   zod$(exchangeInviteSchema.extend({ inviteToken: z.string().min(1) })),
 );
+
+export const head: DocumentHead = {
+  title: "Вход по приглашению — Jitsi",
+  meta: [
+    {
+      name: "robots",
+      content: "noindex,nofollow,noarchive",
+    },
+  ],
+};
 
 const ERROR_MESSAGES: Record<string, string> = {
   INVITE_EXPIRED: "Срок действия истек",
@@ -77,7 +122,6 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default component$(() => {
   const tokenData = useInviteTokenLoader();
   const exchangeAction = useExchangeInviteAction();
-  const loc = useLocation();
 
   const actionError: InviteErrorPayload | undefined =
     exchangeAction.value && "error" in exchangeAction.value
@@ -145,12 +189,6 @@ export default component$(() => {
       ) : (
         <p class="text-sm text-muted">
           Этот инвайт недействителен. Запросите новый у администратора встречи.
-        </p>
-      )}
-
-      {loc.url.searchParams.get("error") && (
-        <p class="mt-4 text-xs text-muted">
-          Параметр ошибки: {loc.url.searchParams.get("error")}
         </p>
       )}
     </div>

@@ -40,7 +40,7 @@ class InMemoryRefreshTokenStoreTest {
         absoluteExpiry,
         Instant.now().plusSeconds(3600),
         RefreshTokenStore.TokenStatus.ACTIVE);
-    store.create(current);
+    store.createIfAbsent(current);
 
     RefreshTokenStore.ConsumeResult result = store.rotate("current-token", successor);
 

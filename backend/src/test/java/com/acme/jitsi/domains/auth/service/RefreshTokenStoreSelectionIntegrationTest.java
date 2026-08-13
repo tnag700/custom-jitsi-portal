@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.acme.jitsi.domains.store.StoreSelectionStrategyFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -17,7 +16,7 @@ class RefreshTokenStoreSelectionIntegrationTest {
     properties.setAtomicStore("in-memory");
 
     ObjectProvider<StringRedisTemplate> provider = redisProvider(null);
-    RefreshTokenStoreResolver resolver = new RefreshTokenStoreResolver(new StoreSelectionStrategyFactory(), new RedisRefreshTokenStore(provider));
+    RefreshTokenStoreResolver resolver = resolver(provider);
 
     RefreshTokenStore store = RefreshTokenStoreConfiguration.refreshTokenStore(
         properties,
@@ -28,19 +27,18 @@ class RefreshTokenStoreSelectionIntegrationTest {
   }
 
   @Test
-  void fallsBackToInMemoryWhenRedisModeAndRedisIsUnavailable() {
+  void failsClosedWhenRedisModeAndRedisIsUnavailable() {
     AuthRefreshProperties properties = new AuthRefreshProperties();
     properties.setAtomicStore("redis");
 
     ObjectProvider<StringRedisTemplate> provider = redisProvider(null);
-    RefreshTokenStoreResolver resolver = new RefreshTokenStoreResolver(new StoreSelectionStrategyFactory(), new RedisRefreshTokenStore(provider));
+    RefreshTokenStoreResolver resolver = resolver(provider);
 
-    RefreshTokenStore store = RefreshTokenStoreConfiguration.refreshTokenStore(
-        properties,
-        resolver,
-        provider);
-
-    assertThat(store).isInstanceOf(InMemoryRefreshTokenStore.class);
+    org.assertj.core.api.Assertions.assertThatThrownBy(() -> RefreshTokenStoreConfiguration.refreshTokenStore(
+            properties,
+            resolver,
+            provider))
+        .isInstanceOf(IllegalStateException.class);
   }
 
   @Test
@@ -49,7 +47,7 @@ class RefreshTokenStoreSelectionIntegrationTest {
     properties.setAtomicStore("redis");
 
     ObjectProvider<StringRedisTemplate> provider = redisProvider(mock(StringRedisTemplate.class));
-    RefreshTokenStoreResolver resolver = new RefreshTokenStoreResolver(new StoreSelectionStrategyFactory(), new RedisRefreshTokenStore(provider));
+    RefreshTokenStoreResolver resolver = resolver(provider);
 
     RefreshTokenStore store = RefreshTokenStoreConfiguration.refreshTokenStore(
         properties,
@@ -57,6 +55,24 @@ class RefreshTokenStoreSelectionIntegrationTest {
         provider);
 
     assertThat(store).isInstanceOf(RedisRefreshTokenStore.class);
+  }
+
+  @Test
+  void selectsDatabaseStoreWhenDatabaseModeIsConfigured() {
+    AuthRefreshProperties properties = new AuthRefreshProperties();
+    properties.setAtomicStore("database");
+    ObjectProvider<StringRedisTemplate> provider = redisProvider(null);
+    RefreshTokenStore databaseStore = mock(RefreshTokenStore.class);
+    RefreshTokenStoreResolver resolver = new RefreshTokenStoreResolver(databaseStore, new RedisRefreshTokenStore(provider));
+
+    assertThat(RefreshTokenStoreConfiguration.refreshTokenStore(properties, resolver, provider))
+        .isSameAs(databaseStore);
+  }
+
+  private RefreshTokenStoreResolver resolver(ObjectProvider<StringRedisTemplate> provider) {
+    return new RefreshTokenStoreResolver(
+        mock(RefreshTokenStore.class),
+        new RedisRefreshTokenStore(provider));
   }
 
   @SuppressWarnings("unchecked")

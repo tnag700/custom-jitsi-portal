@@ -65,9 +65,23 @@ describe("frontend toolchain version contract", () => {
   });
 
   it("keeps audited transitive build tools on the reviewed patched versions", () => {
+    expect(
+      lock.packages["node_modules/@redocly/openapi-core"]?.version,
+    ).toBe("1.34.19");
+    expect(lock.packages["node_modules/js-yaml"]?.version).toBe("4.3.1");
+    expect(lock.packages["node_modules/nanoid"]?.version).toBe("3.3.18");
+    expect(lock.packages["node_modules/postcss"]?.version).toBe("8.5.24");
     expect(lock.packages["node_modules/minimatch"]?.version).toBe("10.2.6");
     expect(lock.packages["node_modules/uuid"]?.version).toBe("11.1.1");
     expect(lock.packages["node_modules/sharp"]?.version).toBe("0.35.0");
+  });
+
+  it("keeps the lint and Node type toolchain on the audited compatible set", () => {
+    expect(manifest.devDependencies["@eslint/js"]).toBe("10.0.1");
+    expect(manifest.devDependencies.eslint).toBe("10.8.1");
+    expect(manifest.devDependencies["typescript-eslint"]).toBe("8.67.0");
+    expect(manifest.devDependencies.globals).toBe("17.11.0");
+    expect(manifest.devDependencies["@types/node"]).toBe("24.13.3");
   });
 
   it("does not restore unused coverage and CSS-module tooling", () => {

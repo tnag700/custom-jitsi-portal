@@ -46,6 +46,10 @@ export const AdminFrameworkVersionsOverview = component$(
                 последний результат, чтобы сбой внешнего источника не ломал
                 административную консоль.
               </p>
+              <p class="mt-2 max-w-3xl text-sm font-medium text-warning">
+                Отсутствие CVE не означает, что версия последняя. Свежесть
+                релизов отдельно проверяет еженедельный stack-version audit.
+              </p>
             </div>
             {canRefresh ? (
               <button

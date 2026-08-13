@@ -75,11 +75,6 @@ class InMemoryRefreshTokenStore implements RefreshTokenStore {
   }
 
   @Override
-  public void create(RefreshTokenState state) {
-    tokens.put(state.tokenId(), state);
-  }
-
-  @Override
   public void revoke(String tokenId) {
     tokens.compute(tokenId, (ignored, existing) -> {
       if (existing == null) {

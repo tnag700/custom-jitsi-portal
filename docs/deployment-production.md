@@ -325,6 +325,45 @@ Flyway migrations run as part of backend startup. Do not run multiple backend
 instances against an unverified migration state. Wait for health checks rather
 than treating container `running` state as readiness.
 
+Production must keep `APP_AUTH_REFRESH_ATOMIC_STORE=database`. Flyway V21
+stores refresh-token replay and revocation markers in the application
+PostgreSQL database, so used or revoked tokens stay rejected after a backend or
+host restart. The `prod` profile refuses to start with `in-memory`, Redis or an
+unknown fallback mode. Include `refresh_token_states` in the application
+database backup and restore drill; changing this setting is a security change,
+not an availability workaround. Expired rows are indexed by
+`absolute_expires_at`; bounded scheduled deletion is a follow-up operational
+task and must not remove non-expired replay markers.
+
+Before the first backend start on V21, stop every old refresh-token issuer.
+Choose the next whole UTC second as `APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER`
+(RFC 3339, for example `2026-08-13T12:00:01Z`), wait until the host clock is
+strictly later than that boundary, and only then start the new issuer. JWT
+`iat` uses whole-second precision, so the backend deliberately rejects tokens
+issued at or before the boundary. This forces a fresh SSO login and prevents an
+already-used volatile-store token from being re-registered in the initially
+empty table. Keep the same cutoff during ordinary restarts; moving it backward
+reopens pre-cutover sessions. Record the stopped-at time and chosen boundary in
+the change manifest, then verify one at-boundary rejection plus one
+post-boundary refresh before opening public traffic.
+
+The first production start stores this boundary in
+`refresh_token_store_metadata`. Later starts fail closed if configuration tries
+to move it backward; a deliberately later boundary is persisted atomically and
+invalidates all earlier refresh sessions. Include this singleton metadata row
+in the same database backup and restore drill as `refresh_token_states`.
+
+After this cutover, do not roll the backend back to a release that lacks both
+the PostgreSQL refresh store and the cutover-epoch guard. Such a binary ignores
+the cutoff and can accept a previously used signed token again. If an emergency
+rollback below V21 is unavoidable, rotate the refresh/JWT signing contour,
+invalidate all existing sessions, update every dependent Jitsi/config-set
+secret coherently, and require a new SSO login before reopening traffic. A
+database restore alone is not a safe rollback for refresh replay protection.
+If that legacy issuer is ever run, a later forward cutover must repeat the
+stop/wait sequence with a new cutoff strictly later than every token it issued;
+never reuse the first cutover boundary.
+
 To enable the private monitoring overlay:
 
 ```bash
@@ -352,6 +391,9 @@ tunnel or a separately reviewed private reverse-proxy path.
    prints `2` from an external client.
 
 For rollback, preserve PostgreSQL, Keycloak, Vault and Jitsi configuration
-volumes, stop the new application containers, restore the previously tested
-image/tag set and matching configuration backup, and rerun the smoke
-checklist. Never remove persistent volumes as an application rollback step.
+volumes, stop the new application containers, restore only a previously tested
+image/tag set that still enforces the database refresh store and strict cutover
+guard, restore its matching configuration backup, and rerun the smoke
+checklist. A legacy backend rollback follows the signing-key rotation procedure
+above and requires a later fresh cutover boundary. Never remove persistent
+volumes as an application rollback step.

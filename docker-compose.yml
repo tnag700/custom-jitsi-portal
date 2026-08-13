@@ -75,7 +75,7 @@ services:
       retries: 5
 
   swagger-ui:
-    image: swaggerapi/swagger-ui:v5.17.14
+    image: swaggerapi/swagger-ui:v5.32.13@sha256:8f9f47436478cd8520191148a8afb7f934826d95bead1ae00898a0aa44dcdf41
     environment:
       - SWAGGER_JSON=/tmp/openapi.json
     volumes:
@@ -116,6 +116,7 @@ services:
       - DEV_VAULT_KEYCLOAK_ADMIN_PASSWORD=${DEV_VAULT_KEYCLOAK_ADMIN_PASSWORD:-dev-keycloak-admin-password}
       - DEV_VAULT_SSO_CLIENT_SECRET=${DEV_VAULT_SSO_CLIENT_SECRET:-jitsi-dev-client-secret}
       - DEV_VAULT_APP_MEETINGS_TOKEN_SIGNING_SECRET=${DEV_VAULT_APP_MEETINGS_TOKEN_SIGNING_SECRET:-01234567890123456789012345678901}
+      - DEV_VAULT_APP_CONFIG_SETS_ENCRYPTION_KEY=${DEV_VAULT_APP_CONFIG_SETS_ENCRYPTION_KEY:-0123456789ABCDEF0123456789ABCDEF}
       - DEV_VAULT_JICOFO_AUTH_PASSWORD=${DEV_VAULT_JICOFO_AUTH_PASSWORD:-focus}
       - DEV_VAULT_JVB_AUTH_PASSWORD=${DEV_VAULT_JVB_AUTH_PASSWORD:-jvb}
       - DEV_VAULT_JICOFO_COMPONENT_SECRET=${DEV_VAULT_JICOFO_COMPONENT_SECRET:-focussecret}
@@ -168,7 +169,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:8.4
+    image: redis:8.4.5@sha256:efe6e2625e4601cd7119c4fb48b1c04cf3071f8b1729ede1216ceee8bc99742d
     env_file:
       - ${REDIS_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/redis.env}
     command: ["sh", "-ec", "exec redis-server --save '' --appendonly no --requirepass \"$$REDIS_PASSWORD\""]
@@ -200,10 +201,18 @@ services:
       retries: 10
 
   jitsi-web:
-    image: jitsi/web:stable-10978
+    image: ghcr.io/jitsi/web:stable-11146-1@sha256:ff81559621732d3dfc4815f261d41fd826566833016ea772f4d43a77aa88fe9a
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /run:size=16M,uid=1000,gid=1000,mode=1750,exec
+      - /tmp:size=16M,mode=1777,noexec
     ports:
-      - "${DEV_JITSI_HTTP_PORT:-8000}:80"
-      - "${DEV_JITSI_HTTPS_PORT:-8443}:443"
+      - "${DEV_JITSI_HTTP_PORT:-8000}:8000"
+      - "${DEV_JITSI_HTTPS_PORT:-8443}:8443"
     env_file:
       - ${JITSI_WEB_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/jitsi-web.env}
     environment:
@@ -228,6 +237,8 @@ services:
       - JVB_AUTH_USER=jvb
       - TZ=UTC
     volumes:
+      - jitsi-web-config:/config
+      - jitsi-web-storage:/storage
       - ./pilot/jitsi/web/custom-config.js:/config/custom-config.js:ro
       - ./pilot/jitsi/web/close.js:/usr/share/jitsi-meet/static/close.js:ro
     configs:
@@ -238,13 +249,21 @@ services:
       - jitsi-jicofo
       - jitsi-jvb
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/config.js"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/config.js"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   jitsi-prosody:
-    image: jitsi/prosody:stable-10978
+    image: ghcr.io/jitsi/prosody:stable-11146-1@sha256:0e3d9ada40c03e6eef151348e0872dce7b4b1c16c173ff4a67afeae60aba2404
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /run:size=16M,uid=1000,gid=1000,mode=1750,exec
+      - /tmp:size=16M,mode=1777,noexec
     env_file:
       - ${JITSI_PROSODY_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/jitsi-prosody.env}
     environment:
@@ -264,8 +283,12 @@ services:
       - JICOFO_AUTH_USER=focus
       - JVB_AUTH_USER=jvb
       - TZ=UTC
+    volumes:
+      - jitsi-prosody-config:/config
+      - jitsi-prosody-plugins:/prosody-plugins-custom
+      - jitsi-prosody-storage:/var/lib/prosody
     healthcheck:
-      test: ["CMD", "prosodyctl", "--config", "/config/prosody.cfg.lua", "status"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5280/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -280,7 +303,15 @@ services:
           - guest.meet.jitsi
 
   jitsi-jicofo:
-    image: jitsi/jicofo:stable-10978
+    image: ghcr.io/jitsi/jicofo:stable-11146-1@sha256:a5da296923010dcc2daf6a02e6a183181906cb969a088ae90b97516bdeb9737f
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /run:size=16M,uid=1000,gid=1000,mode=1750,exec
+      - /tmp:size=16M,mode=1777,noexec
     env_file:
       - ${JITSI_JICOFO_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/jitsi-jicofo.env}
     environment:
@@ -292,6 +323,8 @@ services:
       - XMPP_AUTH_DOMAIN=auth.meet.jitsi
       - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
       - TZ=UTC
+    volumes:
+      - jitsi-jicofo-config:/config
     depends_on:
       - jitsi-prosody
     healthcheck:
@@ -301,7 +334,15 @@ services:
       retries: 5
 
   jitsi-jvb:
-    image: jitsi/jvb:stable-10978
+    image: ghcr.io/jitsi/jvb:stable-11146-1@sha256:6a7cec66c6a2fdd8ffd3a90101a0f8e3297aff29494f258caf1bcfbd418a17f3
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /run:size=16M,uid=1000,gid=1000,mode=1750,exec
+      - /tmp:size=16M,mode=1777,noexec
     env_file:
       - ${JITSI_JVB_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/jitsi-jvb.env}
     environment:
@@ -316,6 +357,8 @@ services:
       - JVB_PORT=10000
       - JVB_ADVERTISE_IPS=${JVB_ADVERTISE_IPS:-}
       - TZ=UTC
+    volumes:
+      - jitsi-jvb-config:/config
     depends_on:
       - jitsi-prosody
     ports:
@@ -328,23 +371,17 @@ services:
 
 configs:
   jitsi-web-portal-access:
-    content: |
-      set $$portal_return_url "${DEV_PORTAL_ORIGIN:-http://localhost:3000}";
-
-      location = / {
-          return 302 $$portal_return_url;
-      }
-
-      location = /static/close.html {
-          return 302 $$portal_return_url;
-      }
-
-      location = /static/close2.html {
-          return 302 $$portal_return_url;
-      }
+    file: ./pilot/jitsi/web/custom-meet.development.conf
 
 volumes:
   backend-vault-runtime:
+  jitsi-jicofo-config:
+  jitsi-jvb-config:
+  jitsi-prosody-config:
+  jitsi-prosody-plugins:
+  jitsi-prosody-storage:
+  jitsi-web-config:
+  jitsi-web-storage:
   pgdata:
   vault-audit:
   vault-data:

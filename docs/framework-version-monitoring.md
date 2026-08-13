@@ -2,7 +2,9 @@
 
 The admin console exposes a backend-owned software inventory at
 `/admin/framework-versions`. It monitors the runtime Spring versions and the
-locked Qwik, Qwik Router and Express versions used by the frontend.
+locked Qwik, Qwik Router, Qwik UI, Express, Vite, TypeScript, Tailwind,
+Vitest and ESLint versions used by the frontend. Spring Retry and Spring
+Modulith are included alongside the runtime Spring platform.
 
 ## Data flow
 
@@ -17,8 +19,17 @@ locked Qwik, Qwik Router and Express versions used by the frontend.
 5. A failed refresh preserves the previous result as `stale`. It never clears
    a previously known critical finding merely because the provider is down.
 
-The monitor answers “is the installed version affected by a known
-vulnerability?”. It does not act as a general latest-release notifier.
+The admin monitor answers “is the installed version affected by a known
+vulnerability?”. Security status and release freshness are intentionally
+separate signals: zero OSV findings must never be presented as “latest”.
+
+`npm run stack:versions:audit` compares reviewed compatibility-group versions
+with fixed official Maven, Gradle and npm release channels. The command exits
+with code `2` when an update is available. A weekly GitHub Actions workflow runs
+the same online audit, while `npm run verify` runs the offline consistency check
+so a dependency bump cannot silently drift away from the reviewed baseline.
+Prerelease packages use an explicit channel (`beta` for Qwik); the audit never
+mistakes npm's older `latest` tag for a downgrade.
 
 ## Severity policy
 
@@ -51,10 +62,20 @@ frontend usability control.
 | `APP_VERSION_MONITOR_QWIK_VERSION` | locked package version | Override Qwik inventory version |
 | `APP_VERSION_MONITOR_QWIK_ROUTER_VERSION` | locked package version | Override Qwik Router inventory version |
 | `APP_VERSION_MONITOR_EXPRESS_VERSION` | locked package version | Override Express inventory version |
+| `APP_VERSION_MONITOR_QWIK_UI_VERSION` | locked package version | Override Qwik UI inventory version |
+| `APP_VERSION_MONITOR_VITE_VERSION` | locked package version | Override Vite inventory version |
+| `APP_VERSION_MONITOR_TYPESCRIPT_VERSION` | locked package version | Override TypeScript inventory version |
+| `APP_VERSION_MONITOR_TAILWIND_VERSION` | locked package version | Override Tailwind inventory version |
+| `APP_VERSION_MONITOR_VITEST_VERSION` | locked package version | Override Vitest inventory version |
+| `APP_VERSION_MONITOR_ESLINT_VERSION` | locked package version | Override ESLint inventory version |
 
-`scripts/validate-dev-stack-config.py` verifies that the three default frontend
+`scripts/validate-dev-stack-config.py` verifies that all nine default frontend
 versions match `frontend-qwik/package-lock.json`, preventing silent inventory
 drift after an upgrade.
+
+The release audit does not auto-upgrade compatibility groups. Major updates
+such as TypeScript/Vitest, Vault, Redis or Grafana still require a dedicated
+migration and runtime acceptance pass.
 
 ## Operator response
 

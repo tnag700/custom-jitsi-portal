@@ -151,6 +151,15 @@ def main() -> None:
         "jitsi-jicofo": (jitsi_jicofo, "image: ghcr.io/jitsi/jicofo:stable-11146-1@sha256:a5da296923010dcc2daf6a02e6a183181906cb969a088ae90b97516bdeb9737f"),
         "jitsi-jvb": (jitsi_jvb, "image: ghcr.io/jitsi/jvb:stable-11146-1@sha256:6a7cec66c6a2fdd8ffd3a90101a0f8e3297aff29494f258caf1bcfbd418a17f3"),
     }
+
+    approved_alpine_image = "image: alpine:3.22.5@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce"
+    if base_text.count(approved_alpine_image) != 2:
+        fail("Production one-shot services must use exactly two approved Alpine 3.22.5 image pins.")
+    assert_contains(
+        redis,
+        "image: redis:8.4.5@sha256:efe6e2625e4601cd7119c4fb48b1c04cf3071f8b1729ede1216ceee8bc99742d",
+        "Production Redis must pin the approved 8.4 security patch and manifest digest.",
+    )
     for service_name, (service_block, image) in approved_jitsi_images.items():
         assert_contains(
             service_block,
@@ -259,6 +268,167 @@ def main() -> None:
     assert_regex_count_at_least(nginx_config_text, r"proxy_set_header\s+X-Request-Id\s+\$request_id;", 3, "Production nginx config must forward edge-generated request IDs to downstream services.")
     assert_contains(nginx_config_text, "log_format edge_combined", "Production nginx config must define correlation-friendly edge access logging.")
     assert_contains(nginx_config_text, "access_log /var/log/nginx/access.log edge_combined;", "Production nginx config must enable correlation-friendly edge access logging.")
+
+    invite_log_match = __import__("re").search(
+        r"log_format\s+edge_invite_redacted\s+(.+?);",
+        nginx_config_text,
+        flags=__import__("re").DOTALL,
+    )
+    if invite_log_match is None:
+        fail("Production nginx must define a redacted access-log format for bearer invite paths.")
+    invite_log_format = invite_log_match.group(1)
+    regex = __import__("re")
+    for forbidden_variable in ["$request", "$request_uri", "$uri", "$args", "$http_referer"]:
+        if regex.search(rf"{regex.escape(forbidden_variable)}(?![A-Za-z0-9_])", invite_log_format):
+            fail(
+                "Redacted invite access logs must not contain request targets, arguments or referrers "
+                f"that can disclose the bearer token. Found '{forbidden_variable}'."
+            )
+    invite_locations = regex.findall(
+        r"location\s+~\*\s+\^/invite\(\?:/\|\$\)\s*\{\s*(.*?)\n    \}",
+        nginx_config_text,
+        flags=regex.DOTALL,
+    )
+    if len(invite_locations) != 4:
+        fail(
+            "Production nginx must define four case-insensitive protected /invite/<token> locations: "
+            "one before the HTTP redirect and one on each HTTPS hostname."
+        )
+    residual_encoding_locations = regex.findall(
+        r"location\s+~\*\s+%\[0-9a-f\]\[0-9a-f\]\s*\{\s*(.*?)\n    \}",
+        nginx_config_text,
+        flags=regex.DOTALL,
+    )
+    if len(residual_encoding_locations) != 4:
+        fail(
+            "Every production hostname must reject residual percent encoding before generic routing "
+            "so nested invite encodings cannot reach URI-bearing logs."
+        )
+    for residual_encoding_location in residual_encoding_locations:
+        assert_contains(
+            residual_encoding_location,
+            "access_log /var/log/nginx/access.log edge_invite_redacted;",
+            "Residual-encoding rejects must use the token-safe access-log format.",
+        )
+        assert_contains(
+            residual_encoding_location,
+            "error_log /dev/null crit;",
+            "Residual-encoding rejects must suppress URI-bearing nginx error logs.",
+        )
+        assert_contains(
+            residual_encoding_location,
+            "return 400;",
+            "Residual percent encoding must fail closed before an upstream or generic location.",
+        )
+    for invite_location in invite_locations:
+        assert_contains(
+            invite_location,
+            "access_log /var/log/nginx/access.log edge_invite_redacted;",
+            "Every invite location on every hostname must use the redacted bearer-token log format.",
+        )
+        assert_contains(
+            invite_location,
+            'add_header Cache-Control "no-store" always;',
+            "Every invite response on every hostname must be no-store.",
+        )
+        assert_contains(
+            invite_location,
+            'add_header X-Robots-Tag "noindex, nofollow, noarchive" always;',
+            "Every HTTP and HTTPS invite response must stay out of search indexes and archives.",
+        )
+        assert_contains(
+            invite_location,
+            "error_log /dev/null crit;",
+            "Invite locations must suppress URI-bearing nginx error logs for bearer-token paths.",
+        )
+        assert_contains(
+            invite_location,
+            "limit_req zone=invite_sensitive burst=20 nodelay;",
+            "Browser invite routes must rate-limit the SSR validation/exchange flow before internal API calls.",
+        )
+        assert_contains(
+            invite_location,
+            "limit_conn per_ip_conn 10;",
+            "Browser invite routes must bound concurrent SSR validation/exchange requests per source address.",
+        )
+    if sum("return 302 https://${PORTAL_HOST}$request_uri;" in location for location in invite_locations) != 3:
+        fail("HTTP, auth-host and meet-host invite paths must redirect to the canonical portal hostname.")
+    if sum("proxy_pass http://frontend_upstream;" in location for location in invite_locations) != 1:
+        fail("Exactly one redacted invite location must proxy the HTTPS invite page to the frontend.")
+    retired_invite_locations = regex.findall(
+        r"location\s+~\*\s+\^/api/v1/invites/\[\^/\]\+/validate/\?\$\s*\{\s*(.*?)\n    \}",
+        nginx_config_text,
+        flags=regex.DOTALL,
+    )
+    if len(retired_invite_locations) != 4:
+        fail("Every production hostname must redact and retire the legacy token-bearing invite validation URL.")
+    for retired_invite_location in retired_invite_locations:
+        assert_contains(
+            retired_invite_location,
+            "access_log /var/log/nginx/access.log edge_invite_redacted;",
+            "Retired token-bearing invite URLs must use redacted access logs.",
+        )
+        assert_contains(
+            retired_invite_location,
+            "error_log /dev/null crit;",
+            "Retired token-bearing invite URLs must suppress URI-bearing nginx error logs.",
+        )
+        assert_contains(
+            retired_invite_location,
+            'add_header Cache-Control "no-store" always;',
+            "Retired token-bearing invite URL responses must be no-store.",
+        )
+        assert_contains(
+            retired_invite_location,
+            "return 410;",
+            "Retired token-bearing invite validation URLs must never reach an upstream service.",
+        )
+    assert_contains(
+        nginx_config_text,
+        "limit_req_zone $binary_remote_addr zone=invite_sensitive:10m rate=10r/s;",
+        "Public invite validation and exchange must use a dedicated bounded rate-limit zone.",
+    )
+    invite_api_locations = regex.findall(
+        r"location\s+=\s+/api/v1/invites/(?:validate|exchange)\s*\{\s*(.*?)\n    \}",
+        nginx_config_text,
+        flags=regex.DOTALL,
+    )
+    if len(invite_api_locations) != 2:
+        fail("Production nginx must define protected exact locations for invite validation and exchange.")
+    for invite_api_location in invite_api_locations:
+        assert_contains(
+            invite_api_location,
+            "access_log /var/log/nginx/access.log edge_invite_redacted;",
+            "Invite API access logs must omit caller-controlled referrers and request targets.",
+        )
+        assert_contains(
+            invite_api_location,
+            "limit_req zone=invite_sensitive burst=20 nodelay;",
+            "Invite API endpoints must apply the dedicated bounded rate limit.",
+        )
+        assert_contains(
+            invite_api_location,
+            'add_header Cache-Control "no-store" always;',
+            "Invite API responses must be no-store.",
+        )
+        assert_contains(
+            invite_api_location,
+            'proxy_set_header Referer "";',
+            "Invite API endpoints must not forward bearer-bearing referrers downstream.",
+        )
+        assert_contains(
+            invite_api_location,
+            "proxy_pass http://backend_upstream;",
+            "Invite API endpoints must proxy only to the backend.",
+        )
+    assert_regex(
+        nginx_config_text,
+        r"server_name\s+\$\{PORTAL_HOST\}\s+\$\{AUTH_HOST\}\s+\$\{MEET_HOST\};"
+        r"[\s\S]*?location\s+~\*\s+\^/invite\(\?:/\|\$\)[\s\S]*?edge_invite_redacted;"
+        r"[\s\S]*?return\s+302\s+https://\$\{PORTAL_HOST\}\$request_uri;"
+        r"[\s\S]*?location\s+/\s*\{\s*return\s+301\s+https://\$host\$request_uri;\s*\}",
+        "The HTTP redirect vhost must route through locations so invite requests can select redacted logging first.",
+    )
 
     for required_template_value in [
         "server_name ${PORTAL_HOST} ${AUTH_HOST} ${MEET_HOST};",

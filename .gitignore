@@ -31,6 +31,7 @@ Thumbs.db
 /deploy/nginx/local/
 /deploy/personal/
 /deploy/production/local/
+/.playwright-cli/
 /deploy/vault/local/dev/
 
 # Logs

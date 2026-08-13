@@ -20,5 +20,9 @@ management:
         include: health,info
 
 app:
+  auth:
+    refresh:
+      atomic-store: ${APP_AUTH_REFRESH_ATOMIC_STORE:database}
+      accept-issued-after: ${APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER}
   openapi:
     server-url: ${APP_OPENAPI_SERVER_URL:https://portal.example.com}

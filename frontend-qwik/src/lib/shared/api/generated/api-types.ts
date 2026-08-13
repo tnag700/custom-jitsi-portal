@@ -500,16 +500,16 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/invites/{inviteToken}/validate": {
+    "/api/v1/invites/validate": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["validate"];
+        get?: never;
         put?: never;
-        post?: never;
+        post: operations["validate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1227,6 +1227,9 @@ export interface components {
             /** Format: int32 */
             usedCount?: number;
             valid?: boolean;
+        };
+        InviteValidationRequest: {
+            inviteToken: string;
         };
         InviteValidationResponse: {
             meetingId?: string;
@@ -2375,12 +2378,14 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                inviteToken: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteValidationRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

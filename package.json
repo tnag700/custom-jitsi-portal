@@ -47,6 +47,8 @@
     "observability:drill:extended": "python scripts/run-observability-live-drill.py -Cycles 6 -CycleIntervalSeconds 10 -JoinSuccessRequestsPerCycle 3 -JoinFailureRequestsPerCycle 3 -RefreshPairsPerCycle 2 -PrometheusWaitSeconds 25",
     "observability:alerting:validate": "python scripts/validate-observability-alerting.py",
     "observability:alerting:smoke": "python scripts/run-observability-live-drill.py -Cycles 1 -JoinSuccessRequestsPerCycle 1 -JoinFailureRequestsPerCycle 0 -RefreshPairsPerCycle 2 -PrometheusWaitSeconds 20 -WaitForAlertState cycle -AlertName JitsiAuthRefreshReuseSpike -AlertWarmupSeconds 20 -AlertPollIntervalSeconds 5 -AlertWaitTimeoutSeconds 180 -QuietWindowSeconds 135",
+    "stack:versions:audit": "node scripts/audit-stack-versions.mjs",
+    "stack:versions:validate": "node scripts/audit-stack-versions.mjs --offline && node --test --test-isolation=none scripts/tests/audit-stack-versions.test.mjs",
     "openapi:generate": "node scripts/generate-openapi.mjs",
     "frontend:api-types:generate": "node scripts/generate-frontend-api-types.mjs",
     "contracts:check": "node scripts/check-contracts.mjs",

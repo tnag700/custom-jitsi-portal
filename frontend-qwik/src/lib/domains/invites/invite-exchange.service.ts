@@ -1,6 +1,7 @@
 import type { ApiErrorPayload } from "../../shared/api";
 import { adaptProblemDetails } from "../../shared/api";
 import type { InviteErrorPayload, InviteExchangeResponse, InviteValidationResponse } from "./types";
+import { inviteExchangeResponseSchema } from "./invites.zod";
 
 export class InviteExchangeError extends Error {
   payload: InviteErrorPayload;
@@ -18,6 +19,14 @@ function fallbackErrorCode(status: number): string {
   if (status === 410) return "INVITE_EXPIRED";
   if (status >= 500) return "INVITE_SERVICE_UNAVAILABLE";
   return "INVITE_UNKNOWN";
+}
+
+function invalidExchangeResponse(): InviteExchangeError {
+  return new InviteExchangeError({
+    title: "Некорректный ответ гостевого входа",
+    detail: "Backend вернул неполный или некорректный ответ обмена инвайта.",
+    errorCode: "INVITE_RESPONSE_INVALID",
+  });
 }
 
 function resolveGoneErrorCode(problem: ApiErrorPayload): "INVITE_EXPIRED" | "INVITE_REVOKED" {
@@ -62,18 +71,29 @@ export async function exchangeInvite(
     throw new InviteExchangeError(await adaptExchangeProblemDetails(response));
   }
 
-  return (await response.json()) as InviteExchangeResponse;
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw invalidExchangeResponse();
+  }
+  const parsed = inviteExchangeResponseSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw invalidExchangeResponse();
+  }
+  return parsed.data satisfies InviteExchangeResponse;
 }
 
 export async function validateInviteToken(
   apiUrl: string,
   inviteToken: string,
 ): Promise<InviteValidationResponse> {
-  const response = await fetch(`${apiUrl}/invites/${encodeURIComponent(inviteToken)}/validate`, {
-    method: "GET",
+  const response = await fetch(`${apiUrl}/invites/validate`, {
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
+    body: JSON.stringify({ inviteToken }),
   });
 
   if (!response.ok) {

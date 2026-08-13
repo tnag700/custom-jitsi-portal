@@ -53,7 +53,7 @@ final class SecurityProblemResponseWriter {
           "problem_response status={} code={} path={} traceId={} requestId={}",
           status.value(),
           errorCode,
-          request.getRequestURI(),
+          resolveSafeRequestPath(request),
           traceId,
           requestId);
     }
@@ -67,5 +67,9 @@ final class SecurityProblemResponseWriter {
 
   String resolveTraceId(HttpServletRequest request) {
     return problemResponseFacade.resolveTraceId(request);
+  }
+
+  String resolveSafeRequestPath(HttpServletRequest request) {
+    return problemResponseFacade.resolveSafeRequestPath(request);
   }
 }

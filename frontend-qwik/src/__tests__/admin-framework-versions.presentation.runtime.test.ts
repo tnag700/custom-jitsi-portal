@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import {
   canRefreshFrameworkVersions,
   frameworkScanStatusLabel,
@@ -30,5 +32,19 @@ describe("admin framework version presentation", () => {
       } as never),
     ).toBe(true);
     expect(hasCriticalFrameworkAlert(null)).toBe(false);
+  });
+
+  it("does not present a clean CVE result as proof of the latest release", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        "src/lib/domains/admin/components/AdminFrameworkVersionsOverview.tsx",
+      ),
+      "utf8",
+    );
+
+    expect(source).toContain(
+      "Отсутствие CVE не означает, что версия последняя",
+    );
+    expect(source).toContain("stack-version audit");
   });
 });

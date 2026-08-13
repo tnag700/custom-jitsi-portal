@@ -50,7 +50,7 @@ class InvitesDomainExceptionHandler {
           "invites_domain_failed status={} code={} path={} traceId={} exceptionType={}",
           status.value(),
           errorCode,
-          request.getRequestURI(),
+          problemResponseFacade.resolveSafeRequestPath(request),
           traceId,
           ex.getClass().getSimpleName());
     }

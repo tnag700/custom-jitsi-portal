@@ -173,19 +173,6 @@ class RedisRefreshTokenStore implements RefreshTokenStore {
   }
 
   @Override
-  public void create(RefreshTokenState state) {
-    try {
-      saveState(key(state.tokenId()), state);
-    } catch (DataAccessException ex) {
-      throw new RetryableRefreshTokenException(
-          org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
-          ErrorCode.CONFIG_INCOMPATIBLE.code(),
-          "Redis недоступен для атомарного учета токенов.",
-          ex);
-    }
-  }
-
-  @Override
   public void revoke(String tokenId) {
     StringRedisTemplate redisTemplate = redisTemplateProvider.getIfAvailable();
     if (redisTemplate == null) {

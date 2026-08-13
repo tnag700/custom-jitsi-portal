@@ -168,12 +168,16 @@ class SecurityConfigRouteMatrixTest {
         .content("{}"))
       .andExpect(status().isBadRequest())
       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
-    mockMvc.perform(get("/api/v1/invites/token-1/validate"))
+    mockMvc.perform(post("/api/v1/invites/validate")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"inviteToken\":\"token-1\"}"))
       .andExpect(status().isNotFound())
       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-      .andExpect(jsonPath("$.instance").value("/api/v1/invites/token-1/validate"))
+      .andExpect(jsonPath("$.instance").value("/api/v1/invites/validate"))
       .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVITE_NOT_FOUND.code()))
       .andExpect(jsonPath("$.properties.traceId").isNotEmpty());
+    mockMvc.perform(get("/api/v1/invites/token-1/validate"))
+      .andExpect(status().isUnauthorized());
   }
 
   @Test

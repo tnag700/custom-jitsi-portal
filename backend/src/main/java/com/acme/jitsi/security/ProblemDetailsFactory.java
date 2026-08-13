@@ -25,7 +25,7 @@ public class ProblemDetailsFactory {
       String errorCode) {
     String traceId = resolveTraceId(request);
     String requestId = resolveRequestId(request);
-    String instance = request.getRequestURI();
+    String instance = SensitiveRequestPathSanitizer.sanitize(request.getRequestURI());
     int statusCode = status.value();
     return Map.of(
         "type", "about:blank",

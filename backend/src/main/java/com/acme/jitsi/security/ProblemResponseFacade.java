@@ -34,7 +34,7 @@ public class ProblemResponseFacade {
       String errorCode) {
     String traceId = resolveTraceId(request);
     String requestId = resolveRequestId(request);
-    String requestUri = request.getRequestURI();
+    String requestUri = resolveSafeRequestPath(request);
     ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(status, detail);
     URI instance = URI.create(requestUri);
     Map<String, Object> properties = new LinkedHashMap<>();
@@ -67,5 +67,9 @@ public class ProblemResponseFacade {
 
   public String resolveRequestId(HttpServletRequest request) {
     return problemDetailsFactory.resolveRequestId(request);
+  }
+
+  public String resolveSafeRequestPath(HttpServletRequest request) {
+    return SensitiveRequestPathSanitizer.sanitize(request.getRequestURI());
   }
 }

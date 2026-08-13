@@ -91,6 +91,7 @@ public class AuthRefreshService {
       }
 
       Instant now = Instant.now();
+      rejectPreCutoverToken(parsed);
 
       RefreshTokenStore.RefreshTokenState knownState;
       try {
@@ -166,6 +167,23 @@ public class AuthRefreshService {
         RefreshTokenStore.TokenStatus.ACTIVE);
   }
 
+  private void rejectPreCutoverToken(RefreshTokenPayload parsed) {
+    Instant acceptIssuedAfter = refreshProperties.acceptIssuedAfter();
+    if (acceptIssuedAfter == null || parsed.issuedAt().isAfter(acceptIssuedAfter)) {
+      return;
+    }
+    securityEventPublisher.publish(
+        "REFRESH_PRE_CUTOVER_REJECTED",
+        ErrorCode.TOKEN_REVOKED.code(),
+        parsed.tokenId(),
+        parsed.subject(),
+        parsed.meetingId());
+    throw new AuthTokenException(
+        HttpStatus.FORBIDDEN,
+        ErrorCode.TOKEN_REVOKED.code(),
+        "Refresh-сессия создана до безопасного cutover. Выполните вход через SSO.");
+  }
+
   private Instant minInstant(Instant first, Instant second) {
     return first.isBefore(second) ? first : second;
   }
@@ -177,6 +195,9 @@ public class AuthRefreshService {
     }
     if (simpleName.contains("memory")) {
       return "in-memory";
+    }
+    if (simpleName.contains("database")) {
+      return "database";
     }
     return "custom";
   }

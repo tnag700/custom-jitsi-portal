@@ -46,7 +46,7 @@ public class SecurityConfig {
     "/api/v1/auth/csrf",
     "/api/v1/auth/refresh",
     "/api/v1/invites/exchange",
-    "/api/v1/invites/*/validate",
+    "/api/v1/invites/validate",
     "/login/oauth2/**",
     "/oauth2/**"
   };
@@ -117,7 +117,9 @@ public class SecurityConfig {
     http.cors(Customizer.withDefaults());
     http.csrf(csrf -> csrf
         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-        .ignoringRequestMatchers("/api/v1/invites/exchange"));
+        .ignoringRequestMatchers(
+            "/api/v1/invites/exchange",
+            "/api/v1/invites/validate"));
     http.headers(headers -> headers
       .contentTypeOptions(Customizer.withDefaults())
       .frameOptions(frameOptions -> frameOptions.deny())

@@ -31,6 +31,9 @@ runtime_bridge_is_complete() {
     BACKEND_DB_VAULT_SOURCE
   do
     grep -q "^export ${key}='" "$BACKEND_ENV_OUTPUT_FILE" || return 1
+    if grep -q "^export ${key}=''$" "$BACKEND_ENV_OUTPUT_FILE"; then
+      return 1
+    fi
   done
 }
 
@@ -49,6 +52,10 @@ shell_escape() {
 write_export() {
   key="$1"
   value="$2"
+  if [ -z "$value" ]; then
+    echo "Refusing to render an empty required backend secret: $key" >&2
+    exit 1
+  fi
   escaped_value="$(shell_escape "$value")"
   printf "export %s='%s'\n" "$key" "$escaped_value" >> "$BACKEND_ENV_OUTPUT_FILE"
 }

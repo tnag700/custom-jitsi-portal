@@ -13,7 +13,7 @@ upgrade one compatibility group at a time.
 
 | Area | Current repository baseline | Upgrade direction |
 | --- | --- | --- |
-| Backend | Java 25, Spring Boot 4.0.7, Spring Modulith 2.0.7, Gradle 9.4 | Assess Spring Boot 4.1 and Spring Modulith 2.1 as a separate compatibility migration |
+| Backend | Java 25, Spring Boot 4.1.0, Spring Modulith 2.1.0, Gradle 9.7 | Keep the compatibility group aligned and review future feature-line changes separately |
 | Frontend | Qwik 2.0.0-beta.38, Vite 7.3.6, TypeScript 5.9 | Qwik beta/UI group aligned; move Vite/Vitest together only after Qwik declares Vitest 4 compatibility |
 | Node runtime | Node 24.18.0 LTS in `.nvmrc`, package engines and containers | Keep the supported LTS line aligned across local, build and runtime environments |
 | Data | PostgreSQL 18.4, Redis 8.4 | Retain supported major lines and pin approved patches/digests |
@@ -21,7 +21,7 @@ upgrade one compatibility group at a time.
 | Conference | Jitsi `stable-11146-1` | Keep all four conference images aligned and repeat JWT/WebSocket/UDP smoke tests before each upgrade |
 
 Version evidence must be refreshed immediately before an upgrade PR. The
-current upstream snapshot showed Spring Boot 4.0.7/4.1.0, PostgreSQL 18.4,
+current upstream snapshot showed Spring Boot 4.1.0, PostgreSQL 18.4,
 Keycloak 26.7.0 and Jitsi stable-11146-1.
 
 ### Quality gates
@@ -63,8 +63,8 @@ Keycloak 26.7.0 and Jitsi stable-11146-1.
   scanning.
 - Removed unused root npm dependencies and the unused frontend example domain.
 - Regenerated the OpenAPI snapshot and frontend API types.
-- Upgraded the compatible backend patch group to Spring Boot 4.0.7 and
-  Spring Modulith 2.0.7.
+- Upgraded the compatible backend feature group to Spring Boot 4.1.0 and
+  Spring Modulith 2.1.0 with Gradle 9.7.
 - Upgraded Datasource Micrometer to 2.2.1 and kept JDBC traces/Hikari pool
   metrics while filtering generic JDBC metric families that violate
   Prometheus' stable label-set requirement.
@@ -89,6 +89,8 @@ Keycloak 26.7.0 and Jitsi stable-11146-1.
   issuer drift between the backend and Jitsi fallbacks; both dev and
   production compose baselines now derive token issuance and validation from
   one issuer variable, with regression guards.
+- Aligned the development quartet with production on digest-pinned
+  `stable-11146-1` and its rootless storage and listener contract.
 - Verified the upgraded development stack with healthy aligned containers,
   portal redirects for root/close pages, a real HTTP 101 XMPP WebSocket
   handshake, UDP 10000 listener/publication, portal-issued JWT
@@ -170,7 +172,7 @@ Keycloak 26.7.0 and Jitsi stable-11146-1.
    only as a separate compatibility migration after Qwik declares Vitest 4
    support; do not use `npm audit fix --force`.
 4. Treat Spring Boot 4.1 and Spring Modulith 2.1 as a separate compatibility
-   migration after the 4.0.7/2.0.7 patch baseline is stable.
+   migration after the 4.1.0/2.1.0 compatibility baseline is stable.
 
 ### P2 — architecture and maintainability
 

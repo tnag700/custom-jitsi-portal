@@ -4,11 +4,13 @@ import argparse
 import ipaddress
 import json
 import os
+import re
 import socket
 import ssl
 import stat
 import sys
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable, Mapping
 from urllib.parse import SplitResult, urlsplit
@@ -160,6 +162,7 @@ def validate_deployment(
     realm = expected_realm or read_production_realm()
 
     _reject_example_env_file(env_file)
+    _validate_refresh_token_store(env)
     portal_host = _validate_portal_urls(env)
     auth_host = _validate_oidc_urls(env, realm)
     meet_host = _validate_meeting_urls(env)
@@ -203,6 +206,29 @@ def read_production_realm() -> str:
 def _reject_example_env_file(env_file: Path) -> None:
     if env_file.name.endswith(".example"):
         raise DeploymentValidationError("Example env files cannot be used for a production deployment.")
+
+
+def _validate_refresh_token_store(env: Mapping[str, str]) -> None:
+    configured_mode = env.get("APP_AUTH_REFRESH_ATOMIC_STORE", "").strip().lower()
+    if configured_mode != "database":
+        raise DeploymentValidationError(
+            "APP_AUTH_REFRESH_ATOMIC_STORE must be database in production; volatile or fallback stores are forbidden."
+        )
+    cutover = env.get("APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER", "").strip()
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z", cutover) is None:
+        raise DeploymentValidationError(
+            "APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER must be an explicit UTC instant in RFC 3339 format."
+        )
+    try:
+        parsed_cutover = datetime.fromisoformat(cutover.replace("Z", "+00:00"))
+    except ValueError as exception:
+        raise DeploymentValidationError(
+            "APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER must be an explicit UTC instant in RFC 3339 format."
+        ) from exception
+    if not cutover.endswith("Z") or parsed_cutover.tzinfo is None or parsed_cutover.utcoffset() != timedelta(0):
+        raise DeploymentValidationError(
+            "APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER must be an explicit UTC instant in RFC 3339 format."
+        )
 
 
 def _validate_portal_urls(env: Mapping[str, str]) -> str:

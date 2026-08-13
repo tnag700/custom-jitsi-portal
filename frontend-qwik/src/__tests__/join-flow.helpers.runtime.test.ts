@@ -49,6 +49,7 @@ describe("join-flow.helpers runtime", () => {
 
   it.each([
     [{}, "ответ без корректного joinUrl"],
+    [{ joinUrl: "javascript:alert(1)" }, "joinUrl с небезопасной схемой"],
     [
       { joinUrl: "http://meet.example.test/room" },
       "joinUrl с небезопасной схемой",
@@ -75,6 +76,24 @@ describe("join-flow.helpers runtime", () => {
     expect(
       resolveExpectedJoinOrigin("http://meet.example.test/room"),
     ).toBeNull();
+    expect(
+      resolveExpectedJoinOrigin(
+        "https://operator:secret@meet.example.test/room",
+      ),
+    ).toBeNull();
     expect(resolveExpectedJoinOrigin("not-a-url")).toBeNull();
+  });
+
+  it("fails closed when the canonical expected Jitsi origin is unavailable", () => {
+    const result = validateJoinRedirect(
+      { joinUrl: "https://attacker.example/room" },
+      null,
+    );
+
+    expect(result.joinUrl).toBeNull();
+    expect(result.error).toMatchObject({
+      errorCode: "JOIN_RESPONSE_INVALID",
+    });
+    expect(result.error?.detail).toContain("разрешенный origin не настроен");
   });
 });

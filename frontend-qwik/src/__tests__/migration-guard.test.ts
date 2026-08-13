@@ -123,7 +123,9 @@ describe("Story 14.1 Guard: framework and infrastructure baseline", () => {
       "utf-8",
     );
     for (const service of services) {
-      expect(devSource).toContain(`image: jitsi/${service}:stable-10978`);
+      expect(devSource).toContain(
+        `image: ghcr.io/jitsi/${service}:stable-11146-1@sha256:`,
+      );
       expect(productionSource).toContain(`image: ${productionImages[service]}`);
     }
     expect(
@@ -131,6 +133,7 @@ describe("Story 14.1 Guard: framework and infrastructure baseline", () => {
         /image: ghcr\.io\/jitsi\/(?:web|prosody|jicofo|jvb):/g,
       ),
     ).toHaveLength(services.length);
+    expect(devSource).not.toContain("stable-10978");
     expect(productionSource).not.toContain("stable-10741");
   });
 

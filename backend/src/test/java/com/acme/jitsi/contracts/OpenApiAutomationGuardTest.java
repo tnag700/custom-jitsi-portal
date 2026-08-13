@@ -22,8 +22,8 @@ class OpenApiAutomationGuardTest {
     String buildGradle = Files.readString(BACKEND_BUILD);
 
     assertTrue(
-        buildGradle.contains("id 'org.springframework.boot' version '4.0.7'"),
-        "backend/build.gradle must keep the approved Spring Boot 4.0.7 patch baseline");
+        buildGradle.contains("id 'org.springframework.boot' version '4.1.0'"),
+        "backend/build.gradle must keep the approved Spring Boot 4.1.0 compatibility baseline");
   }
 
   @Test

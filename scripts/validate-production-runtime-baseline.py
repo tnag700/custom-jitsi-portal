@@ -92,9 +92,21 @@ def main() -> None:
     base_text = read_repo_text("docker-compose.production.yml", "Production compose file")
     monitoring_text = read_repo_text("docker-compose.production.monitoring.yml", "Production monitoring compose file")
     env_example_text = read_repo_text(".env.production.example", "Production environment example")
+    application_prod_text = read_repo_text(
+        "backend/src/main/resources/application-prod.yml",
+        "Production backend configuration",
+    )
     operator_prepare_text = read_repo_text(
         "scripts/prepare-production-operator-files.sh",
         "Production operator preparation script",
+    )
+    refresh_migration_text = read_repo_text(
+        "backend/src/main/resources/db/migration/V21__Create_refresh_token_states_table.sql",
+        "Durable refresh-token state migration",
+    )
+    refresh_cutover_guard_text = read_repo_text(
+        "backend/src/main/java/com/acme/jitsi/domains/auth/service/ProductionRefreshTokenCutoverGuard.java",
+        "Production refresh-token cutover guard",
     )
 
     invoke_compose_config_validation(root, ".env.production.example", ["docker-compose.production.yml"])
@@ -128,6 +140,83 @@ def main() -> None:
         env_example_text,
         "JVB_ADVERTISE_IPS=10.10.100.29,86.57.222.216",
         "Production environment example must pin the current LAN and public NAT address set.",
+    )
+
+    backend_block = get_service_block(base_text, "backend")
+    assert_contains(
+        backend_block,
+        "SPRING_PROFILES_ACTIVE=prod",
+        "Production backend must activate the non-overridable prod profile that owns fail-closed guards.",
+    )
+    assert_not_contains(
+        backend_block,
+        "SPRING_PROFILES_ACTIVE=${",
+        "Production backend profile must not be operator-overridable through the environment.",
+    )
+    assert_contains(
+        backend_block,
+        "APP_AUTH_REFRESH_ATOMIC_STORE=${APP_AUTH_REFRESH_ATOMIC_STORE:-database}",
+        "Production backend must default refresh-token replay state to the durable database store.",
+    )
+    assert_contains(
+        backend_block,
+        "APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER=${APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER:?Set durable refresh store cutover instant}",
+        "Production backend must require an explicit refresh-token cutover epoch.",
+    )
+    assert_contains(
+        env_example_text,
+        "APP_AUTH_REFRESH_ATOMIC_STORE=database",
+        "Production environment example must select the durable refresh-token database store.",
+    )
+    assert_contains(
+        env_example_text,
+        "APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER=SET_DURABLE_STORE_CUTOVER_UTC",
+        "Production environment example must require an operator-selected refresh-token cutover epoch.",
+    )
+    assert_contains(
+        application_prod_text,
+        "atomic-store: ${APP_AUTH_REFRESH_ATOMIC_STORE:database}",
+        "Production Spring profile must default refresh-token replay state to the database store.",
+    )
+    assert_contains(
+        application_prod_text,
+        "accept-issued-after: ${APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER}",
+        "Production Spring profile must bind the explicit refresh-token cutover epoch.",
+    )
+    assert_contains(
+        refresh_migration_text,
+        "CREATE TABLE refresh_token_store_metadata",
+        "Refresh-token migration must persist the cutover boundary beside replay state.",
+    )
+    assert_contains(
+        refresh_migration_text,
+        "INSERT INTO refresh_token_store_metadata",
+        "Refresh-token migration must seed the singleton so concurrent first starts lock an existing row.",
+    )
+    assert_contains(
+        refresh_cutover_guard_text,
+        '@DependsOn("flywayInitializer")',
+        "Refresh cutover guard must run only after the durable schema migration is available.",
+    )
+    assert_contains(
+        refresh_cutover_guard_text,
+        "implements InitializingBean",
+        "Refresh cutover guard must fail during bean initialization before the web server accepts traffic.",
+    )
+    assert_not_contains(
+        refresh_cutover_guard_text,
+        "ApplicationRunner",
+        "Refresh cutover verification must not wait until after application startup.",
+    )
+    assert_contains(
+        refresh_cutover_guard_text,
+        "configuredCutover.isBefore(persistedCutover)",
+        "Production startup must fail closed when the configured refresh cutoff moves backward.",
+    )
+    assert_contains(
+        refresh_cutover_guard_text,
+        "SELECT accept_issued_after",
+        "Production startup must compare the configured cutoff with persisted metadata.",
     )
 
     keycloak_realm_bootstrap_block = get_service_block(base_text, "keycloak-realm-bootstrap")

@@ -81,6 +81,18 @@ app:
         version: ${APP_VERSION_MONITOR_QWIK_ROUTER_VERSION:2.0.0-beta.38}
       express:
         version: ${APP_VERSION_MONITOR_EXPRESS_VERSION:5.2.1}
+      qwik-ui:
+        version: ${APP_VERSION_MONITOR_QWIK_UI_VERSION:0.7.7}
+      vite:
+        version: ${APP_VERSION_MONITOR_VITE_VERSION:7.3.6}
+      typescript:
+        version: ${APP_VERSION_MONITOR_TYPESCRIPT_VERSION:5.9.3}
+      tailwind:
+        version: ${APP_VERSION_MONITOR_TAILWIND_VERSION:4.3.3}
+      vitest:
+        version: ${APP_VERSION_MONITOR_VITEST_VERSION:3.2.7}
+      eslint:
+        version: ${APP_VERSION_MONITOR_ESLINT_VERSION:10.8.1}
   frontend:
     origin: ${APP_FRONTEND_ORIGIN:http://localhost:3000}
   features:

@@ -9,15 +9,23 @@ function readWorkspaceFile(path: string): string {
 describe("Jitsi web access policy", () => {
   it("redirects the development welcome and close pages to the configured portal", () => {
     const source = readWorkspaceFile("docker-compose.yml");
+    const policy = readWorkspaceFile(
+      "pilot/jitsi/web/custom-meet.development.conf",
+    );
 
     expect(source).toContain("jitsi-web-portal-access:");
     expect(source).toContain("target: /config/nginx/custom-meet.conf");
-    expect(source).toContain("location = / {");
-    expect(source).toContain("location = /static/close.html {");
-    expect(source).toContain("location = /static/close2.html {");
-    expect(source).toContain("return 302 $$portal_return_url;");
     expect(source).toContain(
-      'test: ["CMD", "wget", "-qO-", "http://localhost/config.js"]',
+      "file: ./pilot/jitsi/web/custom-meet.development.conf",
+    );
+    expect(source).not.toContain("jitsi-web-portal-access:\n    content:");
+    expect(policy).toContain('set $portal_return_url "http://$host:3000";');
+    expect(policy).toContain("location = / {");
+    expect(policy).toContain("location = /static/close.html {");
+    expect(policy).toContain("location = /static/close2.html {");
+    expect(policy).toContain("return 302 $portal_return_url;");
+    expect(source).toContain(
+      'test: ["CMD", "wget", "-qO-", "http://localhost:8000/config.js"]',
     );
   });
 

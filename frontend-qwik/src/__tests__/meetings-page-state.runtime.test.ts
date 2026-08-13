@@ -7,6 +7,8 @@ import {
   getActionValidationFeedback,
   getFirstActionError,
   isSuccessfulAction,
+  resolveInviteCopyToast,
+  shouldReloadAfterParticipantMutation,
 } from "~/routes/meetings/meetings-page-state";
 
 function createMeeting(overrides: Partial<Meeting> = {}): Meeting {
@@ -76,6 +78,38 @@ describe("meetings page state", () => {
     expect(isSuccessfulAction({ success: false })).toBe(false);
     expect(isSuccessfulAction({ error: createError("FAILED") })).toBe(false);
     expect(isSuccessfulAction(null)).toBe(false);
+  });
+
+  it("reloads participant data only after a successful participant mutation", () => {
+    expect(
+      shouldReloadAfterParticipantMutation(
+        undefined,
+        { error: createError("FAILED") },
+        null,
+      ),
+    ).toBe(false);
+    expect(
+      shouldReloadAfterParticipantMutation(
+        undefined,
+        { success: true, assignments: [] },
+        null,
+      ),
+    ).toBe(true);
+  });
+
+  it("never reports clipboard success for manual or cancelled copying", () => {
+    expect(resolveInviteCopyToast("copied")).toEqual({
+      message: "Ссылка скопирована",
+      tone: "info",
+    });
+    expect(resolveInviteCopyToast("manual")).toEqual({
+      message: "Ссылка открыта для ручного копирования",
+      tone: "warning",
+    });
+    expect(resolveInviteCopyToast("cancelled")).toEqual({
+      message: "Ссылка не скопирована",
+      tone: "error",
+    });
   });
 
   it("normalizes route action validation failures for presentation", () => {

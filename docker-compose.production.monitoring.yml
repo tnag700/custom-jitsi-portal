@@ -17,7 +17,7 @@ services:
       options:
         max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
         max-file: "${DOCKER_LOG_MAX_FILES:-5}"
-    image: prom/prometheus:v3.3.1
+    image: prom/prometheus:v3.13.2@sha256:508729e0e2d18e11fd742a5a5ca70e557b940a93948c3c95fd0123a6fd538b69
     cap_drop:
       - ALL
     security_opt:
@@ -74,7 +74,7 @@ services:
       options:
         max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
         max-file: "${DOCKER_LOG_MAX_FILES:-5}"
-    image: prom/alertmanager:v0.28.1
+    image: prom/alertmanager:v0.33.1@sha256:9e082985f56f4c8c9f724e18f2288c6708f472e56a5286b8863d080434ea065d
     cap_drop:
       - ALL
     security_opt:
@@ -147,7 +147,7 @@ services:
       options:
         max-size: "${DOCKER_LOG_MAX_SIZE:-10m}"
         max-file: "${DOCKER_LOG_MAX_FILES:-5}"
-    image: grafana/grafana-oss:11.5.2
+    image: grafana/grafana:11.6.14-security-04@sha256:723f80992528efabc8fb9b0d220c28cc21b503ee970d3f775860c5464fb4d52f
     cap_drop:
       - ALL
     security_opt:

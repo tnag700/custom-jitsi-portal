@@ -39,7 +39,7 @@ final class JsonSecurityAccessDeniedHandler implements AccessDeniedHandler {
       log.warn(
           "access_denied code={} path={} traceId={} exceptionType={}",
           ErrorCode.ACCESS_DENIED.code(),
-          request.getRequestURI(),
+          securityProblemResponseWriter.resolveSafeRequestPath(request),
           traceId,
           accessDeniedException == null ? "unknown" : accessDeniedException.getClass().getSimpleName());
     }

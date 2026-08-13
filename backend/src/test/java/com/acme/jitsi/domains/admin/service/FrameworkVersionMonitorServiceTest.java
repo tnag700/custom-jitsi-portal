@@ -112,6 +112,12 @@ class FrameworkVersionMonitorServiceTest {
     FrameworkVersionInventory inventory = new FrameworkVersionInventory(
         QWIK.currentVersion(),
         "unknown",
+        "unknown",
+        "unknown",
+        "unknown",
+        "unknown",
+        "unknown",
+        "unknown",
         "unknown") {
       @Override
       public List<MonitoredFramework> list() {

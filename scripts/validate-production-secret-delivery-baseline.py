@@ -83,6 +83,8 @@ def main() -> None:
     for needle, message in [
         ('write_export APP_CONFIG_SETS_ENCRYPTION_KEY', "Backend fetch path must deliver the config-set encryption key from Vault."),
         ('runtime_bridge_is_complete', "Backend startup fetch must be idempotent after the one-use AppRole handoff is consumed."),
+        ('grep -q "^export ${key}=\'\'$"', "Backend runtime bridge completeness must reject empty required exports."),
+        ('Refusing to render an empty required backend secret', "Backend secret rendering must fail closed on an empty Vault field."),
         ("database/static-creds/backend-app", "Backend fetch path must prefer static-role DB credentials for the current long-lived runtime."),
         ("database/creds/backend-app", "Backend fetch path must keep an explicit dynamic-credentials fallback contract."),
         ('rm -f "$TOKEN_SINK_FILE"', "Backend fetch path must clean the temporary token sink after handoff."),

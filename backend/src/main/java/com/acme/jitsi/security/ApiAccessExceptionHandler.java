@@ -32,7 +32,7 @@ public class ApiAccessExceptionHandler {
     if (log.isWarnEnabled()) {
       log.warn(
         "access_denied path={} traceId={} code={} message={}",
-        request.getRequestURI(),
+        problemResponseFacade.resolveSafeRequestPath(request),
         traceId,
         errorCode,
         detail);

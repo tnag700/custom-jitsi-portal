@@ -2,6 +2,7 @@ package com.acme.jitsi.domains.auth.service;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -12,6 +13,8 @@ import org.springframework.validation.annotation.Validated;
 class AuthRefreshProperties {
 
   private String atomicStore = "in-memory";
+
+  private Instant acceptIssuedAfter;
 
   @Min(1)
   @Max(1440)
@@ -25,6 +28,14 @@ class AuthRefreshProperties {
 
   public void setAtomicStore(String atomicStore) {
     this.atomicStore = atomicStore;
+  }
+
+  Instant acceptIssuedAfter() {
+    return acceptIssuedAfter;
+  }
+
+  public void setAcceptIssuedAfter(Instant acceptIssuedAfter) {
+    this.acceptIssuedAfter = acceptIssuedAfter;
   }
 
   int idleTtlMinutes() {

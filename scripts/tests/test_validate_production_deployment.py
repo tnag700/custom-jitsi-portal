@@ -280,6 +280,28 @@ class ProductionDeploymentValidatorTest(unittest.TestCase):
         env_file = self._write_env(APP_MEETINGS_SERVICE_URL="https://meet.acme.org/api/v1")
         self._assert_validation_error(env_file, "portal HTTPS origin and the /api/v1 path")
 
+    def test_rejects_non_durable_refresh_token_store(self) -> None:
+        for mode in ("in-memory", "redis", "unexpected", ""):
+            with self.subTest(mode=mode):
+                env_file = self._write_env(APP_AUTH_REFRESH_ATOMIC_STORE=mode)
+                self._assert_validation_error(env_file, "APP_AUTH_REFRESH_ATOMIC_STORE must be database")
+
+    def test_rejects_missing_or_invalid_refresh_cutover_epoch(self) -> None:
+        for value in (
+            "",
+            "SET_DURABLE_STORE_CUTOVER_UTC",
+            "not-a-timestamp",
+            "2026-08-13",
+            "2026-08-13 12:00:00Z",
+            "2026-08-13T12:00:00+00:00",
+        ):
+            with self.subTest(value=value):
+                env_file = self._write_env(APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER=value)
+                self._assert_validation_error(
+                    env_file,
+                    "APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER must be an explicit UTC instant",
+                )
+
     def _write_env(self, **overrides: str) -> Path:
         values = {
             "APP_FRONTEND_ORIGIN": "https://portal.acme.org",
@@ -296,6 +318,8 @@ class ProductionDeploymentValidatorTest(unittest.TestCase):
             "KC_HOSTNAME": "https://auth.acme.org",
             "PUBLIC_URL": "https://meet.acme.org",
             "JVB_ADVERTISE_IPS": "8.8.8.8",
+            "APP_AUTH_REFRESH_ATOMIC_STORE": "database",
+            "APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER": "2026-08-13T12:00:00Z",
             "NGINX_CERTS_PATH": str(self.certs_path),
             "TLS_CERT_NAME": "portal.acme.org",
             "VAULT_TLS_DIR": str(self.vault_tls_dir),

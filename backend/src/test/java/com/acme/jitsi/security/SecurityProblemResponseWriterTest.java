@@ -32,6 +32,8 @@ class SecurityProblemResponseWriterTest {
     MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/rooms");
     MockHttpServletResponse response = new MockHttpServletResponse();
     when(problemResponseFacade.resolveTraceId(any(HttpServletRequest.class))).thenReturn("trace-writer-1");
+    when(problemResponseFacade.resolveSafeRequestPath(any(HttpServletRequest.class)))
+        .thenReturn("/api/v1/rooms");
     when(problemResponseFacade.buildProblemPayload(
         any(HttpServletRequest.class),
         eq(HttpStatus.FORBIDDEN),
@@ -79,6 +81,8 @@ class SecurityProblemResponseWriterTest {
     MockHttpServletResponse response = new MockHttpServletResponse();
     when(problemResponseFacade.resolveTraceId(any(HttpServletRequest.class))).thenReturn("trace-writer-log-1");
     when(problemResponseFacade.resolveRequestId(any(HttpServletRequest.class))).thenReturn("request-writer-log-1");
+    when(problemResponseFacade.resolveSafeRequestPath(any(HttpServletRequest.class)))
+        .thenReturn("/api/v1/rooms");
     when(problemResponseFacade.buildProblemPayload(
         any(HttpServletRequest.class),
         eq(HttpStatus.FORBIDDEN),

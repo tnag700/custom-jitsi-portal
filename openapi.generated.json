@@ -1293,6 +1293,16 @@
         },
         "type" : "object"
       },
+      "InviteValidationRequest" : {
+        "properties" : {
+          "inviteToken" : {
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "inviteToken" ],
+        "type" : "object"
+      },
       "InviteValidationResponse" : {
         "properties" : {
           "meetingId" : {
@@ -3503,17 +3513,19 @@
         "tags" : [ "invite-exchange-controller" ]
       }
     },
-    "/api/v1/invites/{inviteToken}/validate" : {
-      "get" : {
+    "/api/v1/invites/validate" : {
+      "post" : {
         "operationId" : "validate",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "inviteToken",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/InviteValidationRequest"
+              }
+            }
+          },
+          "required" : true
+        },
         "responses" : {
           "200" : {
             "content" : {

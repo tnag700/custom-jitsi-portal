@@ -1,0 +1,85 @@
+{
+  "checkedAt": "2026-08-13",
+  "components": [
+    {
+      "key": "spring-boot",
+      "displayName": "Spring Boot",
+      "currentVersion": "4.1.0",
+      "latestVersion": "4.1.0",
+      "channel": "stable",
+      "sourceUrl": "https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot/maven-metadata.xml"
+    },
+    {
+      "key": "spring-framework",
+      "displayName": "Spring Framework",
+      "currentVersion": "7.0.8",
+      "latestVersion": "7.0.8",
+      "channel": "spring-boot-managed",
+      "sourceUrl": "https://docs.spring.io/spring-boot/appendix/dependency-versions/coordinates.html"
+    },
+    {
+      "key": "spring-security",
+      "displayName": "Spring Security",
+      "currentVersion": "7.1.0",
+      "latestVersion": "7.1.0",
+      "channel": "spring-boot-managed",
+      "sourceUrl": "https://docs.spring.io/spring-boot/appendix/dependency-versions/coordinates.html"
+    },
+    {
+      "key": "spring-modulith",
+      "displayName": "Spring Modulith",
+      "currentVersion": "2.1.0",
+      "latestVersion": "2.1.0",
+      "channel": "stable",
+      "sourceUrl": "https://repo.maven.apache.org/maven2/org/springframework/modulith/spring-modulith-bom/maven-metadata.xml"
+    },
+    {
+      "key": "spring-retry",
+      "displayName": "Spring Retry",
+      "currentVersion": "2.0.13",
+      "latestVersion": "2.0.13",
+      "channel": "stable",
+      "sourceUrl": "https://repo.maven.apache.org/maven2/org/springframework/retry/spring-retry/maven-metadata.xml"
+    },
+    {
+      "key": "springdoc",
+      "displayName": "springdoc-openapi",
+      "currentVersion": "3.1.0",
+      "latestVersion": "3.1.0",
+      "channel": "stable",
+      "sourceUrl": "https://repo.maven.apache.org/maven2/org/springdoc/springdoc-openapi-starter-webmvc-api/maven-metadata.xml"
+    },
+    {
+      "key": "gradle",
+      "displayName": "Gradle",
+      "currentVersion": "9.7.0",
+      "latestVersion": "9.7.0",
+      "channel": "current",
+      "sourceUrl": "https://services.gradle.org/versions/current"
+    },
+    {
+      "key": "qwik",
+      "displayName": "Qwik",
+      "currentVersion": "2.0.0-beta.38",
+      "latestVersion": "2.0.0-beta.38",
+      "channel": "beta",
+      "sourceUrl": "https://registry.npmjs.org/@qwik.dev%2fcore/beta"
+    },
+    {
+      "key": "qwik-router",
+      "displayName": "Qwik Router",
+      "currentVersion": "2.0.0-beta.38",
+      "latestVersion": "2.0.0-beta.38",
+      "channel": "beta",
+      "sourceUrl": "https://registry.npmjs.org/@qwik.dev%2frouter/beta"
+    },
+    {
+      "key": "express",
+      "displayName": "Express",
+      "currentVersion": "5.2.1",
+      "latestVersion": "5.2.1",
+      "channel": "latest",
+      "sourceUrl": "https://registry.npmjs.org/express/latest"
+    }
+  ]
+}

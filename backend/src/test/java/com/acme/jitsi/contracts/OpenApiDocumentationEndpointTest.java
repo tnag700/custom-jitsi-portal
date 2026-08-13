@@ -53,6 +53,8 @@ class OpenApiDocumentationEndpointTest {
 
     assertThat(response).contains("\"/api/v1/health\"");
     assertThat(response).contains("\"/api/v1/rooms\"");
+    assertThat(response).contains("\"/api/v1/invites/validate\"");
+    assertThat(response).doesNotContain("\"/api/v1/invites/{inviteToken}/validate\"");
     assertThat(response).doesNotContain("/actuator/health");
   }
 }

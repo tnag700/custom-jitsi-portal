@@ -4,6 +4,7 @@ import com.acme.jitsi.shared.ErrorCode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -93,6 +94,33 @@ class InviteExchangeControllerTest {
 
   @Autowired
   private MockMvc mockMvc;
+
+  @Test
+  void publicInviteValidationReadsTokenFromPostBody() throws Exception {
+    mockMvc.perform(post("/api/v1/invites/validate")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"inviteToken\":\"invite-valid\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.valid").value(true))
+        .andExpect(jsonPath("$.meetingId").value("meeting-a"));
+  }
+
+  @Test
+  void publicInviteValidationRejectsBlankTokenBody() throws Exception {
+    mockMvc.perform(post("/api/v1/invites/validate")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"inviteToken\":\"   \"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVALID_INVITE.code()));
+  }
+
+  @Test
+  void legacyGetInviteValidationEndpointIsNotAvailable() throws Exception {
+    mockMvc.perform(get("/api/v1/invites/invite-valid/validate"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.instance")
+            .value("/api/v1/invites/[redacted]/validate"));
+  }
 
   @Test
   void validInviteReturnsParticipantTokenWithGuestClaims() throws Exception {

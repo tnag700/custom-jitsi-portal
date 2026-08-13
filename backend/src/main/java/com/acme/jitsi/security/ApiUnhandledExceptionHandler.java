@@ -29,7 +29,7 @@ public class ApiUnhandledExceptionHandler {
       InvalidDataAccessApiUsageException ex,
       HttpServletRequest request) {
     String traceId = problemResponseFacade.resolveTraceId(request);
-    String requestUri = request.getRequestURI();
+    String requestUri = problemResponseFacade.resolveSafeRequestPath(request);
     Throwable root = resolveRootCause(ex);
     String exceptionType = resolveExceptionType(ex);
     String rootCauseType = resolveExceptionType(root);
@@ -55,7 +55,7 @@ public class ApiUnhandledExceptionHandler {
   @ExceptionHandler(Exception.class)
   public ProblemDetail handleUnhandledException(Exception ex, HttpServletRequest request) {
     String traceId = problemResponseFacade.resolveTraceId(request);
-    String requestUri = request.getRequestURI();
+    String requestUri = problemResponseFacade.resolveSafeRequestPath(request);
     Throwable root = resolveRootCause(ex);
     String exceptionType = resolveExceptionType(ex);
     String rootCauseType = resolveExceptionType(root);

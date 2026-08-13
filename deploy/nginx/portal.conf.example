@@ -11,8 +11,16 @@ log_format edge_combined 'request_id=$request_id remote_addr=$remote_addr host=$
     'request_time=$request_time upstream_addr=$upstream_addr upstream_status=$upstream_status '
     'upstream_response_time=$upstream_response_time referer="$http_referer" user_agent="$http_user_agent"';
 
+# Invite tokens are bearer credentials. Keep the route observable without
+# recording the path, query string or referrer that can contain the token.
+log_format edge_invite_redacted 'request_id=$request_id remote_addr=$remote_addr host=$host '
+    'method=$request_method surface=invite_sensitive status=$status body_bytes_sent=$body_bytes_sent '
+    'request_time=$request_time upstream_addr=$upstream_addr upstream_status=$upstream_status '
+    'upstream_response_time=$upstream_response_time user_agent="$http_user_agent"';
+
 limit_req_zone $binary_remote_addr zone=auth_sensitive:10m rate=5r/s;
 limit_req_zone $binary_remote_addr zone=api_sensitive:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=invite_sensitive:10m rate=10r/s;
 limit_conn_zone $binary_remote_addr zone=per_ip_conn:10m;
 
 upstream frontend_upstream {
@@ -35,7 +43,41 @@ server {
     listen 8080;
     listen [::]:8080;
     server_name ${PORTAL_HOST} ${AUTH_HOST} ${MEET_HOST};
-    return 301 https://$host$request_uri;
+
+    # Nginx decodes one URI layer before location matching. Reject any residual
+    # percent-encoded octet so nested encodings cannot bypass sensitive-route logging.
+    location ~* %[0-9a-f][0-9a-f] {
+        access_log /var/log/nginx/access.log edge_invite_redacted;
+        error_log /dev/null crit;
+        add_header Cache-Control "no-store" always;
+        add_header Referrer-Policy no-referrer always;
+        add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+        return 400;
+    }
+
+    location ~* ^/invite(?:/|$) {
+        access_log /var/log/nginx/access.log edge_invite_redacted;
+        error_log /dev/null crit;
+        limit_req zone=invite_sensitive burst=20 nodelay;
+        limit_conn per_ip_conn 10;
+        add_header Cache-Control "no-store" always;
+        add_header Referrer-Policy no-referrer always;
+        add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+        return 302 https://${PORTAL_HOST}$request_uri;
+    }
+
+    location ~* ^/api/v1/invites/[^/]+/validate/?$ {
+        access_log /var/log/nginx/access.log edge_invite_redacted;
+        error_log /dev/null crit;
+        add_header Cache-Control "no-store" always;
+        add_header Referrer-Policy no-referrer always;
+        add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+        return 410;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
 }
 
 server {
@@ -113,6 +155,28 @@ server {
         proxy_http_version 1.1;
     }
 
+    location = /api/v1/invites/validate {
+        access_log /var/log/nginx/access.log edge_invite_redacted;
+        limit_req zone=invite_sensitive burst=20 nodelay;
+        limit_conn per_ip_conn 10;
+        proxy_set_header Referer "";
+        proxy_hide_header Cache-Control;
+        add_header Cache-Control "no-store" always;
+        proxy_pass http://backend_upstream;
+        proxy_http_version 1.1;
+    }
+
+    location = /api/v1/invites/exchange {
+        access_log /var/log/nginx/access.log edge_invite_redacted;
+        limit_req zone=invite_sensitive burst=20 nodelay;
+        limit_conn per_ip_conn 10;
+        proxy_set_header Referer "";
+        proxy_hide_header Cache-Control;
+        add_header Cache-Control "no-store" always;
+        proxy_pass http://backend_upstream;
+        proxy_http_version 1.1;
+    }
+
     location ^~ /api/v1/auth/ {
         limit_req zone=api_sensitive burst=20 nodelay;
         limit_conn per_ip_conn 10;
@@ -140,6 +204,42 @@ server {
         deny all;
         proxy_pass http://backend_upstream;
         proxy_http_version 1.1;
+    }
+
+    location ~* %[0-9a-f][0-9a-f] {
+        access_log /var/log/nginx/access.log edge_invite_redacted;
+        error_log /dev/null crit;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Cache-Control "no-store" always;
+        add_header Referrer-Policy no-referrer always;
+        add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+        return 400;
+    }
+
+    location ~* ^/invite(?:/|$) {
+        access_log /var/log/nginx/access.log edge_invite_redacted;
+        error_log /dev/null crit;
+        limit_req zone=invite_sensitive burst=20 nodelay;
+        limit_conn per_ip_conn 10;
+        proxy_hide_header Cache-Control;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy no-referrer always;
+        add_header X-Frame-Options DENY always;
+        add_header Cache-Control "no-store" always;
+        add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+        proxy_pass http://frontend_upstream;
+        proxy_http_version 1.1;
+    }
+
+    location ~* ^/api/v1/invites/[^/]+/validate/?$ {
+        access_log /var/log/nginx/access.log edge_invite_redacted;
+        error_log /dev/null crit;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Cache-Control "no-store" always;
+        add_header Referrer-Policy no-referrer always;
+        add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+        return 410;
     }
 
     location / {
@@ -206,6 +306,39 @@ server {
     proxy_set_header x-b3-flags "";
     proxy_set_header uber-trace-id "";
     proxy_set_header x-ot-span-context "";
+
+    location ~* %[0-9a-f][0-9a-f] {
+        access_log /var/log/nginx/access.log edge_invite_redacted;
+        error_log /dev/null crit;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Cache-Control "no-store" always;
+        add_header Referrer-Policy no-referrer always;
+        add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+        return 400;
+    }
+
+    location ~* ^/invite(?:/|$) {
+        access_log /var/log/nginx/access.log edge_invite_redacted;
+        error_log /dev/null crit;
+        limit_req zone=invite_sensitive burst=20 nodelay;
+        limit_conn per_ip_conn 10;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy no-referrer always;
+        add_header Cache-Control "no-store" always;
+        add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+        return 302 https://${PORTAL_HOST}$request_uri;
+    }
+
+    location ~* ^/api/v1/invites/[^/]+/validate/?$ {
+        access_log /var/log/nginx/access.log edge_invite_redacted;
+        error_log /dev/null crit;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Cache-Control "no-store" always;
+        add_header Referrer-Policy no-referrer always;
+        add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+        return 410;
+    }
 
     location = / {
         return 404;
@@ -322,6 +455,39 @@ server {
     proxy_set_header x-ot-span-context "";
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection $connection_upgrade;
+
+    location ~* %[0-9a-f][0-9a-f] {
+        access_log /var/log/nginx/access.log edge_invite_redacted;
+        error_log /dev/null crit;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Cache-Control "no-store" always;
+        add_header Referrer-Policy no-referrer always;
+        add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+        return 400;
+    }
+
+    location ~* ^/invite(?:/|$) {
+        access_log /var/log/nginx/access.log edge_invite_redacted;
+        error_log /dev/null crit;
+        limit_req zone=invite_sensitive burst=20 nodelay;
+        limit_conn per_ip_conn 10;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy no-referrer always;
+        add_header Cache-Control "no-store" always;
+        add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+        return 302 https://${PORTAL_HOST}$request_uri;
+    }
+
+    location ~* ^/api/v1/invites/[^/]+/validate/?$ {
+        access_log /var/log/nginx/access.log edge_invite_redacted;
+        error_log /dev/null crit;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Cache-Control "no-store" always;
+        add_header Referrer-Policy no-referrer always;
+        add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+        return 410;
+    }
 
     location ~* ^/(metrics|health|debug|_status|config)(/|$) {
         return 404;

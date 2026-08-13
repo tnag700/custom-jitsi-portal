@@ -40,7 +40,9 @@ export function resolveExpectedJoinOrigin(
   }
   try {
     const url = new URL(publicJoinUrl);
-    return url.protocol === "https:" ? url.origin : null;
+    return url.protocol === "https:" && !url.username && !url.password
+      ? url.origin
+      : null;
   } catch {
     return null;
   }
@@ -50,6 +52,15 @@ export function validateJoinRedirect(
   payload: unknown,
   expectedOrigin: string | null,
 ): ValidatedJoinRedirect {
+  if (!expectedOrigin) {
+    return {
+      joinUrl: null,
+      error: createInvalidJoinUrlError(
+        "Канонический разрешенный origin не настроен для Jitsi.",
+      ),
+    };
+  }
+
   if (
     !payload ||
     typeof payload !== "object" ||
@@ -82,7 +93,7 @@ export function validateJoinRedirect(
         ),
       };
     }
-    if (expectedOrigin && url.origin !== expectedOrigin) {
+    if (url.origin !== expectedOrigin) {
       return {
         joinUrl: null,
         error: createInvalidJoinUrlError(

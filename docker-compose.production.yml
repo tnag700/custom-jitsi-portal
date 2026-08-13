@@ -19,7 +19,7 @@ x-one-shot-runtime: &one-shot-runtime
 services:
   nginx-cert-bootstrap:
     <<: *one-shot-runtime
-    image: alpine:3.22
+    image: alpine:3.22.5@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce
     cap_drop:
       - ALL
     cap_add:
@@ -155,7 +155,7 @@ services:
       - "8080"
     environment:
       - BACKEND_SECRETS_FILE=/vault/runtime/backend/runtime.env
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
+      - SPRING_PROFILES_ACTIVE=prod
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=${SPRING_DATA_REDIS_PORT:-6379}
       - APP_FEATURES_CONFIG_SETS_FROM_DB=true
@@ -169,6 +169,8 @@ services:
       - APP_MEETINGS_TOKEN_ROLE_CLAIM_NAME=${APP_MEETINGS_TOKEN_ROLE_CLAIM_NAME:-role}
       - APP_MEETINGS_TOKEN_ALGORITHM=${APP_MEETINGS_TOKEN_ALGORITHM:?set APP_MEETINGS_TOKEN_ALGORITHM}
       - APP_AUTH_REFRESH_IDLE_TTL_MINUTES=${APP_AUTH_REFRESH_IDLE_TTL_MINUTES:-60}
+      - APP_AUTH_REFRESH_ATOMIC_STORE=${APP_AUTH_REFRESH_ATOMIC_STORE:-database}
+      - APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER=${APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER:?Set durable refresh store cutover instant}
       - APP_SECURITY_JWT_ISSUER=${APP_SECURITY_JWT_ISSUER:?Set APP_SECURITY_JWT_ISSUER}
       - APP_SECURITY_JWT_AUDIENCE=${APP_SECURITY_JWT_AUDIENCE:-jitsi-meet}
       - APP_SECURITY_JWT_ROLE_CLAIM=${APP_SECURITY_JWT_ROLE_CLAIM:-role}
@@ -318,7 +320,7 @@ services:
 
   redis:
     <<: *service-runtime
-    image: redis:8.4
+    image: redis:8.4.5@sha256:efe6e2625e4601cd7119c4fb48b1c04cf3071f8b1729ede1216ceee8bc99742d
     cap_drop:
       - ALL
     security_opt:
@@ -423,7 +425,7 @@ services:
 
   keycloak-realm-bootstrap:
     <<: *one-shot-runtime
-    image: alpine:3.22
+    image: alpine:3.22.5@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce
     cap_drop:
       - ALL
     cap_add:

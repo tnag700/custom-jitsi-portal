@@ -18,7 +18,7 @@ network topology changes.
 | Jitsi access | Portal-issued short-lived JWT | The Jitsi landing page and empty-JWT joins are not authorization paths |
 | Application secrets | Vault policies and service-specific rendered files | Git, Compose environment examples, frontend bundles and logs are outside the secret boundary |
 | Vulnerability intelligence | Backend-owned framework inventory and fixed OSV API endpoint | Browsers and API callers cannot select an outbound URL, package or version |
-| Production data | PostgreSQL and Redis private networks | Only explicitly connected application services may reach data services |
+| Production data | PostgreSQL and Redis private networks | Only explicitly connected application services may reach data services; refresh-token replay/revocation state is durable in PostgreSQL, production forbids volatile fallback, and a persisted monotonic cutover epoch invalidates untracked legacy sessions |
 
 ## Principal threats and controls
 

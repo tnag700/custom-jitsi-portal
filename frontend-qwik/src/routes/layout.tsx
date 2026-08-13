@@ -11,6 +11,7 @@ import {
 import {
   routeAction$,
   routeLoader$,
+  type DocumentHead,
   type RequestHandler,
 } from "@qwik.dev/router";
 import { ThemeContext, type Theme } from "~/lib/shared/stores/theme-context";
@@ -35,6 +36,7 @@ import {
   buildMutationRequestContext,
   buildServerRequestContext,
 } from "~/lib/shared/routes/server-handlers";
+import { resolveCanonicalHref } from "~/lib/shared/security/canonical-url";
 
 const THEME_COOKIE = "theme";
 const THEME_COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
@@ -43,6 +45,21 @@ const DEFAULT_PUBLIC_API_URL = "http://localhost:8080/api/v1";
 const AUTH_LOGOUT_ALLOWED_ORIGINS_ENV = "AUTH_LOGOUT_ALLOWED_ORIGINS";
 const AUTH_LOGOUT_ALLOW_INSECURE_PRIVATE_ORIGIN_ENV =
   "AUTH_LOGOUT_ALLOW_INSECURE_PRIVATE_ORIGIN";
+
+export const head: DocumentHead = ({ url }) => {
+  const canonicalHref = resolveCanonicalHref(url);
+  return canonicalHref
+    ? {
+        links: [
+          {
+            key: "canonical",
+            rel: "canonical",
+            href: canonicalHref,
+          },
+        ],
+      }
+    : {};
+};
 
 /** Read theme cookie on the server and pass it via sharedMap → routeLoader$. */
 export const onRequest: RequestHandler = async ({

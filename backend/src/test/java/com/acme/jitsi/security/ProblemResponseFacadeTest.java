@@ -74,6 +74,23 @@ class ProblemResponseFacadeTest {
   }
 
   @Test
+  void redactsRetiredInviteBearerPathFromProblemPayloads() {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setRequestURI("/api/v1/invites/secret-token/validate");
+
+    Map<String, Object> payload = facade.buildProblemPayload(
+        request,
+        HttpStatus.UNAUTHORIZED,
+        "Требуется вход",
+        "Выполните вход.",
+        ErrorCode.AUTH_REQUIRED.code());
+
+    assertThat(payload).containsEntry("instance", "/api/v1/invites/[redacted]/validate");
+    assertThat(facade.resolveSafeRequestPath(request))
+        .isEqualTo("/api/v1/invites/[redacted]/validate");
+  }
+
+  @Test
   void resolvesTraceIdConsistentlyForSameRequestWithoutHeader() {
     HttpServletRequest request = new MockHttpServletRequest();
 
@@ -116,5 +133,4 @@ class ProblemResponseFacadeTest {
     }
   }
 }
-
 

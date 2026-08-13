@@ -52,16 +52,16 @@ Backend, Keycloak, PostgreSQL, Redis, Vault и monitoring-интерфейсы �
 
 | Контур | Технологии |
 | --- | --- |
-| Backend | Java 25, Spring Boot 4.0.7, Spring Modulith 2.0.7, Gradle 9.4 |
+| Backend | Java 25, Spring Boot 4.1.0, Spring Modulith 2.1.0, Gradle 9.7 |
 | Frontend | Qwik/Qwik Router 2.0.0-beta.38, Qwik UI 0.7.7, TypeScript 5.9, Vite 7, Tailwind CSS 4 |
-| Данные | PostgreSQL 18.4, Redis 8.4, Flyway |
+| Данные | PostgreSQL 18.4, Redis 8.4.5, Flyway |
 | Identity | Keycloak 26.7.0, OAuth 2.0/OIDC, Spring Security |
 | Видеосвязь | Jitsi Web, Prosody, Jicofo и JVB |
 | Секреты | Vault 1.21.4, response-wrapped AppRole, service-specific delivery |
-| Edge и observability | Nginx 1.30.4, OpenTelemetry, Prometheus, Alertmanager, Grafana |
+| Edge и observability | Nginx 1.30.4, OpenTelemetry, Prometheus 3.13.2 LTS, Alertmanager 0.33.1, Grafana 11.6.14-security-04 |
 | Quality gates | JUnit, Vitest, ArchUnit, Spring Modulith, PMD, CPD, ESLint |
 
-Dev Compose использует Jitsi `stable-10978`. Production-группа из четырёх Jitsi-образов синхронно закреплена на `stable-11146-1` с digest pinning; обновлять один компонент отдельно нельзя.
+Dev и production используют одну rootless-группу Jitsi `stable-11146-1` из GHCR с digest pinning. Все четыре образа обновляются только синхронно; web-контейнер слушает непривилегированные порты `8000/8443`, а внешний UDP-порт JVB остаётся настраиваемым.
 
 ## Структура репозитория
 
@@ -88,7 +88,7 @@ docker-compose.production.monitoring.yml  private monitoring overlay для prod
 - Python 3, доступный как `python`;
 - JDK 25 для локальной сборки backend и полного `npm run verify`.
 
-Для production-подготовки дополнительно нужны POSIX `sh`, `openssl`, `awk`, `mktemp`, доступ к DNS и способ выпустить доверенный сертификат. Container-backed backend-тесты требуют работающий Docker.
+Для production-подготовки дополнительно нужны POSIX `sh`, `openssl`, `awk`, `mktemp`, доступ к DNS и способ выпустить доверенный сертификат. Container-backed backend-тесты на Testcontainers требуют работающий Docker.
 
 ## Быстрый локальный старт
 
@@ -160,7 +160,7 @@ Set-Location backend
 .\gradlew.bat build
 ```
 
-В POSIX shell используйте `./gradlew`. Доступны также `testUnit`, `testSlice`, `testIntegration`, `testContainer`, `testSmoke` и `generateOpenApiSpec`.
+В POSIX shell используйте `./gradlew`. Доступны также `testUnit`, `testSlice`, `testIntegration`, `testContainer`, `testSmoke` и `generateOpenApiSpec`. Категории backend-проверок: `unit / slice / non-container integration / container`.
 
 Перед публикацией изменений запускайте:
 

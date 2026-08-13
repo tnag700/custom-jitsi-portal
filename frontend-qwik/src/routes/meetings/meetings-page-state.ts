@@ -1,4 +1,6 @@
 import type { Meeting } from "~/lib/domains/meetings";
+import type { AppToastState } from "~/lib/shared/components/AppToast";
+import type { CopyTextOutcome } from "~/lib/shared/browser/copy-text";
 
 interface MeetingsHrefOptions {
   meetingId?: string;
@@ -73,6 +75,29 @@ export function isSuccessfulAction(
   actionValue: unknown,
 ): actionValue is SuccessfulActionValue {
   return isRecord(actionValue) && actionValue.success === true;
+}
+
+export function shouldReloadAfterParticipantMutation(
+  ...actionValues: unknown[]
+): boolean {
+  return actionValues.some(isSuccessfulAction);
+}
+
+export function resolveInviteCopyToast(
+  outcome: CopyTextOutcome,
+): AppToastState {
+  if (outcome === "copied") {
+    return { message: "Ссылка скопирована", tone: "info" };
+  }
+
+  if (outcome === "manual") {
+    return {
+      message: "Ссылка открыта для ручного копирования",
+      tone: "warning",
+    };
+  }
+
+  return { message: "Ссылка не скопирована", tone: "error" };
 }
 
 export function getActionValidationFeedback(

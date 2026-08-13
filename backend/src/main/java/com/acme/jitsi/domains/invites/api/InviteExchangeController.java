@@ -2,8 +2,6 @@ package com.acme.jitsi.domains.invites.api;
 
 import com.acme.jitsi.domains.invites.service.InviteExchangeService;
 import jakarta.validation.Valid;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,9 +17,9 @@ class InviteExchangeController {
     this.inviteExchangeService = inviteExchangeService;
   }
 
-  @GetMapping("/{inviteToken}/validate")
-  InviteValidationResponse validate(@PathVariable String inviteToken) {
-    InviteExchangeService.ValidationResult result = inviteExchangeService.validate(inviteToken);
+  @PostMapping("/validate")
+  InviteValidationResponse validate(@Valid @RequestBody InviteValidationRequest request) {
+    InviteExchangeService.ValidationResult result = inviteExchangeService.validate(request.inviteToken());
     return new InviteValidationResponse(true, result.meetingId());
   }
 

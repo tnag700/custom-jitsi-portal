@@ -7,7 +7,7 @@
 - SQL-миграции: `backend/src/main/resources/db/migration/`
 - Java-миграции: `backend/src/main/java/db/migration/`
 
-## Список миграций V1-V19
+## Список миграций V1-V21
 
 | Version | File | Type | Summary |
 |---|---|---|---|
@@ -30,6 +30,8 @@
 | V17 | `V17__Create_user_profiles_table.sql` | SQL | Создает таблицу user profiles. |
 | V18 | `V18__Create_event_publication_table.sql` | SQL | Создает таблицу публикации modulith-событий. |
 | V19 | `V19__Create_auth_audit_events_table.sql` | SQL | Создает аудит-таблицу auth/token событий. |
+| V20 | `V20__Create_admin_incident_coordination_tables.sql` | SQL | Создает durable state и audit stream координации инцидентов. |
+| V21 | `V21__Create_refresh_token_states_table.sql` | SQL | Создает durable replay/revocation state и монотонную cutover-границу для production refresh-токенов. |
 
 ## V10: Add single host partial index (Java migration)
 

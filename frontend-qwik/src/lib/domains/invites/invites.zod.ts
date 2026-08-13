@@ -24,3 +24,10 @@ export const exchangeInviteSchema = z.object({
       },
     ),
 });
+
+export const inviteExchangeResponseSchema = z.object({
+  joinUrl: z.string().min(1),
+  expiresAt: z.string().datetime({ offset: true }),
+  role: z.literal("participant"),
+  meetingId: z.string().min(1),
+});

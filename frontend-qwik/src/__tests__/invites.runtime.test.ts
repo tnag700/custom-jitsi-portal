@@ -41,7 +41,70 @@ function invite(overrides: Partial<Invite>): Invite {
 }
 
 describe("invites exchange runtime", () => {
-  it("validateInviteToken calls GET validate endpoint and returns payload", async () => {
+  it("validates the complete guest exchange response at runtime", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse(
+        {
+          joinUrl: "https://meet.example.test/room?jwt=token",
+          expiresAt: "2026-08-13T12:00:00Z",
+          role: "participant",
+          meetingId: "meeting-1",
+        },
+        200,
+      ),
+    );
+
+    await expect(
+      exchangeInvite("http://localhost:8080/api/v1", "token-1", "Guest User"),
+    ).resolves.toEqual({
+      joinUrl: "https://meet.example.test/room?jwt=token",
+      expiresAt: "2026-08-13T12:00:00Z",
+      role: "participant",
+      meetingId: "meeting-1",
+    });
+  });
+
+  it.each([
+    {},
+    { joinUrl: "https://meet.example.test/room" },
+    {
+      joinUrl: 42,
+      expiresAt: "2026-08-13T12:00:00Z",
+      role: "participant",
+      meetingId: "meeting-1",
+    },
+  ])("rejects malformed guest exchange payloads: %o", async (payload) => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(payload, 200));
+
+    await expect(
+      exchangeInvite("http://localhost:8080/api/v1", "token-1", "Guest User"),
+    ).rejects.toMatchObject({
+      name: "InviteExchangeError",
+      payload: {
+        errorCode: "INVITE_RESPONSE_INVALID",
+      },
+    });
+  });
+
+  it("maps a non-JSON successful exchange response to a controlled contract error", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("not-json", {
+        status: 200,
+        headers: { "content-type": "text/plain" },
+      }),
+    );
+
+    await expect(
+      exchangeInvite("http://localhost:8080/api/v1", "token-1", "Guest User"),
+    ).rejects.toMatchObject({
+      name: "InviteExchangeError",
+      payload: {
+        errorCode: "INVITE_RESPONSE_INVALID",
+      },
+    });
+  });
+
+  it("validateInviteToken posts the token in JSON instead of the request URL", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(jsonResponse({ valid: true, meetingId: "m-1" }, 200));
@@ -52,12 +115,13 @@ describe("invites exchange runtime", () => {
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/v1/invites/token-123/validate",
+      "http://localhost:8080/api/v1/invites/validate",
       {
-        method: "GET",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ inviteToken: "token-123" }),
       },
     );
     expect(result).toEqual({ valid: true, meetingId: "m-1" });

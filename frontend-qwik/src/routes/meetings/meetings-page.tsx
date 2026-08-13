@@ -5,6 +5,7 @@ import type { Invite, InviteErrorPayload } from "~/lib/domains/invites";
 import type { Meeting, MeetingErrorPayload } from "~/lib/domains/meetings";
 import { ParticipantPanel } from "~/lib/domains/meetings";
 import { AppToast, useAppToast } from "~/lib/shared";
+import { copyTextWithFallback } from "~/lib/shared/browser/copy-text";
 import { MeetingConfirmationDialogs } from "./components/MeetingConfirmationDialogs";
 import { MeetingInvitesWorkspace } from "./components/MeetingInvitesWorkspace";
 import { MeetingsOverview } from "./components/MeetingsOverview";
@@ -15,11 +16,10 @@ import {
   getActionValidationFeedback,
   getFirstActionError,
   isSuccessfulAction,
+  resolveInviteCopyToast,
+  shouldReloadAfterParticipantMutation,
 } from "./meetings-page-state";
-import {
-  useCreateInvite,
-  useRevokeInvite,
-} from "./invite-actions";
+import { useCreateInvite, useRevokeInvite } from "./invite-actions";
 import {
   useActiveRooms,
   useAssignableUsers,
@@ -154,14 +154,14 @@ export default component$(() => {
     void openOnNextFrame$(showRevokeInviteDialog);
   });
 
-  const copyInviteLink$ = $((invite: Invite) => {
+  const copyInviteLink$ = $(async (invite: Invite) => {
     if (typeof window === "undefined") {
       return;
     }
 
     const url = `${window.location.origin}/invite/${invite.token}/`;
-    void navigator.clipboard.writeText(url);
-    void showToast$({ message: "Ссылка скопирована", tone: "info" });
+    const outcome = await copyTextWithFallback(url);
+    await showToast$(resolveInviteCopyToast(outcome));
   });
 
   useTask$(async ({ track }) => {
@@ -207,6 +207,18 @@ export default component$(() => {
         message: "Ссылка удалена из активного списка",
         tone: "warning",
       });
+    }
+  });
+
+  useTask$(({ track }) => {
+    const shouldReload = shouldReloadAfterParticipantMutation(
+      track(() => bulkAssignAction.value),
+      track(() => updateRoleAction.value),
+      track(() => unassignAction.value),
+    );
+
+    if (shouldReload && typeof window !== "undefined") {
+      window.location.reload();
     }
   });
 

@@ -1,6 +1,8 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { rm } from "node:fs/promises";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
@@ -62,9 +64,23 @@ runNpm("Frontend architecture boundaries", [
   "verify:architecture",
 ]);
 runNpm("Development configuration guardrails", ["run", "stack:validate"]);
+runNpm("Reviewed stack version baseline", ["run", "stack:versions:validate"]);
 runNpm("Production configuration guardrails", [
   "run",
   "prod:baseline:validate",
 ]);
+
+const generatedArtifacts = [
+  path.join(repoRoot, ".playwright-cli"),
+  path.join(repoRoot, "frontend-qwik", "dummy-non-existing-folder"),
+];
+for (const artifact of generatedArtifacts) {
+  if (!existsSync(artifact)) continue;
+  await rm(artifact, { recursive: true, force: true });
+  if (existsSync(artifact)) {
+    console.error(`Generated test artifact could not be cleaned up: ${artifact}`);
+    process.exit(1);
+  }
+}
 
 console.log("\nRepository verification completed successfully.");
