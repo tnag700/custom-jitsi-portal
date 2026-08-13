@@ -76,6 +76,10 @@ def main() -> None:
     monitoring_text = read_repo_text("docker-compose.production.monitoring.yml", "Monitoring compose file")
     nginx_config_text = read_repo_text("deploy/nginx/portal.conf.example", "Nginx portal config")
     ip_bootstrap_config_text = read_repo_text("deploy/nginx/portal-ip.conf.example", "IP bootstrap config")
+    jitsi_access_policy_text = read_repo_text(
+        "pilot/jitsi/web/custom-meet.production.conf",
+        "Jitsi production access policy",
+    )
     application_prod_text = read_repo_text("backend/src/main/resources/application-prod.yml", "Spring production config")
     realm_path = root / "pilot/keycloak/realm/production/jitsi-realm.json"
     production_realm = json.loads(realm_path.read_text(encoding="utf-8"))
@@ -89,10 +93,12 @@ def main() -> None:
         "edge_net": False,
         "app_net": True,
         "identity_net": True,
+        "identity_data_net": True,
         "realtime_net": False,
         "data_net": True,
         "secret_net": True,
         "ops_net": True,
+        "osv_egress_net": False,
     }
     for network_name, expected_internal in required_networks.items():
         assert_network_internal(base_text, network_name, expected_internal)
@@ -104,9 +110,12 @@ def main() -> None:
     )
 
     nginx = get_service_block(base_text, "nginx")
+    nginx_cert_bootstrap = get_service_block(base_text, "nginx-cert-bootstrap")
     frontend = get_service_block(base_text, "frontend")
     backend = get_service_block(base_text, "backend")
+    osv_egress_proxy = get_service_block(base_text, "osv-egress-proxy")
     keycloak = get_service_block(base_text, "keycloak")
+    keycloak_db = get_service_block(base_text, "keycloak-db")
     db = get_service_block(base_text, "db")
     redis = get_service_block(base_text, "redis")
     jitsi_web = get_service_block(base_text, "jitsi-web")
@@ -114,19 +123,51 @@ def main() -> None:
     jitsi_jicofo = get_service_block(base_text, "jitsi-jicofo")
     jitsi_jvb = get_service_block(base_text, "jitsi-jvb")
 
+    assert_contains(
+        nginx,
+        "image: nginx:1.30.4-alpine@sha256:97d490c12ba55b4946b01546d1c3ed324e8d41ab1c9fcb2a616aa470620e5b46",
+        "Production edge must use the reviewed stable nginx patch release and manifest digest.",
+    )
+    assert_contains(
+        nginx,
+        "nc -z -w 2 127.0.0.1 8080 && nc -z -w 2 127.0.0.1 8443",
+        "Production edge healthcheck must verify both unprivileged listeners.",
+    )
+
+    assert_contains(
+        base_text,
+        "file: ./pilot/jitsi/web/custom-meet.production.conf",
+        "Production Jitsi access policy must use a file-backed Compose config compatible with a read-only rootfs.",
+    )
+    assert_contains(
+        jitsi_access_policy_text,
+        'set $portal_return_url "https://jitsi-mgorka.top";',
+        "Production Jitsi access policy must return users to the portal origin.",
+    )
+
     approved_jitsi_images = {
-        "jitsi-web": (jitsi_web, "image: jitsi/web:stable-10978"),
-        "jitsi-prosody": (jitsi_prosody, "image: jitsi/prosody:stable-10978"),
-        "jitsi-jicofo": (jitsi_jicofo, "image: jitsi/jicofo:stable-10978"),
-        "jitsi-jvb": (jitsi_jvb, "image: jitsi/jvb:stable-10978"),
+        "jitsi-web": (jitsi_web, "image: ghcr.io/jitsi/web:stable-11146-1@sha256:ff81559621732d3dfc4815f261d41fd826566833016ea772f4d43a77aa88fe9a"),
+        "jitsi-prosody": (jitsi_prosody, "image: ghcr.io/jitsi/prosody:stable-11146-1@sha256:0e3d9ada40c03e6eef151348e0872dce7b4b1c16c173ff4a67afeae60aba2404"),
+        "jitsi-jicofo": (jitsi_jicofo, "image: ghcr.io/jitsi/jicofo:stable-11146-1@sha256:a5da296923010dcc2daf6a02e6a183181906cb969a088ae90b97516bdeb9737f"),
+        "jitsi-jvb": (jitsi_jvb, "image: ghcr.io/jitsi/jvb:stable-11146-1@sha256:6a7cec66c6a2fdd8ffd3a90101a0f8e3297aff29494f258caf1bcfbd418a17f3"),
     }
     for service_name, (service_block, image) in approved_jitsi_images.items():
         assert_contains(
             service_block,
             image,
-            f"{service_name} must use the approved Jitsi stable-10978 release.",
+            f"{service_name} must use the approved Jitsi stable-11146-1 release.",
         )
-    if base_text.count("image: jitsi/") != len(approved_jitsi_images):
+        assert_contains(
+            service_block,
+            "/run:size=16M,uid=1000,gid=1000,mode=1750,exec",
+            f"{service_name} must give the rootless s6 user ownership of its writable /run tmpfs.",
+        )
+    assert_contains(
+        jitsi_prosody,
+        "http://127.0.0.1:5280/health",
+        "Production Prosody must use its built-in HTTP health endpoint.",
+    )
+    if base_text.count("image: ghcr.io/jitsi/") != len(approved_jitsi_images):
         fail("Production baseline must define exactly the four approved Jitsi service images.")
     assert_not_contains(
         base_text,
@@ -134,7 +175,7 @@ def main() -> None:
         "Production baseline must not retain the retired Jitsi stable-10741 tag.",
     )
 
-    issuer_contract = "${APP_MEETINGS_TOKEN_ISSUER:-https://portal.example.com}"
+    issuer_contract = "${APP_MEETINGS_TOKEN_ISSUER:?Set APP_MEETINGS_TOKEN_ISSUER}"
     issuer_assignments = [
         f"APP_MEETINGS_TOKEN_ISSUER={issuer_contract}",
         f"JWT_APP_ID={issuer_contract}",
@@ -150,7 +191,7 @@ def main() -> None:
             )
 
     published_ports = {service_name: get_port_list(get_service_block(base_text, service_name)) for service_name in get_service_names(base_text)}
-    allowed_published_ports = {"80:80", "443:443", "10000:10000/udp"}
+    allowed_published_ports = {"80:8080", "443:8443", "10000:10000/udp"}
     actual_published_ports = [port for ports in published_ports.values() for port in ports]
     for port in actual_published_ports:
         if port not in allowed_published_ports:
@@ -159,22 +200,27 @@ def main() -> None:
     forbidden_patterns = ["8080", "8081", "5432", "6379", "9090", "9093", "3001", "9080", "8200"]
     for service_name, ports in published_ports.items():
         for port in ports:
+            if port in allowed_published_ports:
+                continue
             for forbidden in forbidden_patterns:
                 if __import__("re").search(rf"(^|:){forbidden}(/|$|:)", port):
                     fail(f"Forbidden public port '{forbidden}' found on service '{service_name}': {port}")
 
-    assert_port_set("nginx", get_port_list(nginx), ["80:80", "443:443"])
+    assert_port_set("nginx", get_port_list(nginx), ["80:8080", "443:8443"])
     assert_port_set("jitsi-jvb", get_port_list(jitsi_jvb), ["10000:10000/udp"])
 
-    for service_name in ["frontend", "backend", "keycloak", "db", "redis", "jitsi-web", "jitsi-prosody", "jitsi-jicofo"]:
+    for service_name in ["nginx-cert-bootstrap", "frontend", "backend", "osv-egress-proxy", "keycloak", "keycloak-db", "db", "redis", "jitsi-web", "jitsi-prosody", "jitsi-jicofo"]:
         assert_no_published_ports(service_name, get_service_block(base_text, service_name))
 
     assert_has_networks("nginx", nginx, ["edge_net", "app_net", "identity_net", "realtime_net"])
+    assert_contains(nginx_cert_bootstrap, "network_mode: none", "TLS certificate bootstrap must have no network access.")
     assert_contains(nginx, "ipv4_address: 172.28.240.10", "Nginx must pin its identity_net address so Keycloak can trust the strict edge proxy only.")
     assert_has_networks("frontend", frontend, ["app_net"])
     assert_has_networks("backend", backend, ["app_net", "identity_net", "data_net"])
+    assert_has_networks("osv-egress-proxy", osv_egress_proxy, ["app_net", "osv_egress_net"])
     assert_has_networks("backend-vault-bootstrap", get_service_block(base_text, "backend-vault-bootstrap"), ["secret_net"])
-    assert_has_networks("keycloak", keycloak, ["identity_net"])
+    assert_has_networks("keycloak", keycloak, ["identity_net", "identity_data_net"])
+    assert_has_networks("keycloak-db", keycloak_db, ["identity_data_net"])
     assert_has_networks("db", db, ["data_net"])
     assert_has_networks("redis", redis, ["data_net"])
     assert_has_networks("jitsi-web", jitsi_web, ["realtime_net"])
@@ -184,15 +230,22 @@ def main() -> None:
 
     assert_no_networks("frontend", frontend, ["data_net", "secret_net", "edge_net"])
     assert_no_networks("backend", backend, ["edge_net", "secret_net", "ops_net"])
+    assert_no_networks("osv-egress-proxy", osv_egress_proxy, ["edge_net", "identity_net", "identity_data_net", "data_net", "secret_net", "ops_net", "realtime_net"])
     assert_no_networks("nginx", nginx, ["data_net", "secret_net", "ops_net"])
     assert_no_networks("keycloak", keycloak, ["edge_net", "data_net", "secret_net", "ops_net"])
+    assert_no_networks("keycloak-db", keycloak_db, ["edge_net", "identity_net", "data_net", "secret_net", "ops_net"])
 
     assert_contains(nginx, "${NGINX_PORTAL_CONFIG_PATH:-./deploy/nginx/portal.conf.example}", "Nginx must default to deploy/nginx/portal.conf.example for production baseline.")
     assert_not_contains(nginx, "./deploy/nginx/portal-ip.conf.example", "IP-only bootstrap config must not become the production baseline mount target.")
     assert_contains(keycloak, "KC_HOSTNAME_STRICT=true", "Keycloak must keep strict hostname mode enabled in production baseline.")
-    assert_contains(keycloak, "image: quay.io/keycloak/keycloak:26.7.0", "Production must use the approved Keycloak patch.")
+    assert_contains(keycloak, "image: jitsi-keycloak:26.7.0", "Production must use the locally optimized approved Keycloak patch.")
+    assert_contains(keycloak, "KC_DB=postgres", "Production Keycloak must use PostgreSQL rather than the development file store.")
+    assert_contains(keycloak, "/health/ready", "Production Keycloak healthcheck must verify the management readiness endpoint.")
     assert_contains(keycloak, "KC_PROXY_HEADERS=xforwarded", "Keycloak must use xforwarded proxy headers mode in production baseline.")
     assert_contains(keycloak, "KC_PROXY_TRUSTED_ADDRESSES=${KC_PROXY_TRUSTED_ADDRESSES:-172.28.240.10}", "Keycloak must trust only the pinned nginx reverse proxy address by default.")
+    assert_contains(osv_egress_proxy, "OSV_TARGET_HOST=api.osv.dev", "The CVE egress proxy must allow only the OSV API hostname.")
+    assert_contains(osv_egress_proxy, "OSV_TARGET_PORT=443", "The CVE egress proxy must allow only TLS to OSV.")
+    assert_contains(backend, "-Dhttps.proxyHost=osv-egress-proxy", "Backend CVE checks must use the allowlisted egress proxy.")
     assert_not_contains(keycloak, "9000:", "Keycloak management port 9000 must not be published in production baseline.")
     for forbidden in ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.1,::1"]:
         assert_not_contains(keycloak, forbidden, f"Keycloak trusted proxy baseline must not use broad private-range defaults like '{forbidden}'.")
@@ -206,6 +259,70 @@ def main() -> None:
     assert_regex_count_at_least(nginx_config_text, r"proxy_set_header\s+X-Request-Id\s+\$request_id;", 3, "Production nginx config must forward edge-generated request IDs to downstream services.")
     assert_contains(nginx_config_text, "log_format edge_combined", "Production nginx config must define correlation-friendly edge access logging.")
     assert_contains(nginx_config_text, "access_log /var/log/nginx/access.log edge_combined;", "Production nginx config must enable correlation-friendly edge access logging.")
+
+    for required_template_value in [
+        "server_name ${PORTAL_HOST} ${AUTH_HOST} ${MEET_HOST};",
+        "server_name ${PORTAL_HOST};",
+        "server_name ${AUTH_HOST};",
+        "server_name ${MEET_HOST};",
+        "ssl_certificate /etc/nginx/certs/fullchain.pem;",
+        "ssl_certificate_key /etc/nginx/certs/privkey.pem;",
+        "listen 8080;",
+        "listen 8443 ssl;",
+        "http2 on;",
+    ]:
+        assert_contains(
+            nginx_config_text,
+            required_template_value,
+            f"Production nginx envsubst template is missing '{required_template_value}'.",
+        )
+    regex = __import__("re")
+    if nginx_config_text.count("http2 on;") != 3:
+        fail("Production nginx must enable HTTP/2 exactly once in each public TLS vhost.")
+    if len(regex.findall(r"(?m)^\s*listen\s+8443\s+ssl;\s*$", nginx_config_text)) != 3:
+        fail("Production nginx must define exactly three IPv4 TLS listeners on 8443.")
+    if len(regex.findall(r"(?m)^\s*listen\s+\[::\]:8443\s+ssl;\s*$", nginx_config_text)) != 3:
+        fail("Production nginx must define exactly three IPv6 TLS listeners on 8443.")
+    if regex.search(r"(?m)^\s*listen\b[^;]*\bhttp2\b[^;]*;", nginx_config_text):
+        fail("Production nginx must use the current server-level HTTP/2 directive.")
+    for forbidden_example_host in ["portal.example.com", "auth.example.com", "meet.example.com"]:
+        assert_not_contains(
+            nginx_config_text,
+            forbidden_example_host,
+            f"Production nginx envsubst template must not retain placeholder host '{forbidden_example_host}'.",
+        )
+
+    assert_contains(
+        nginx_config_text,
+        "server jitsi-web:8000;",
+        "Production nginx must use the rootless Jitsi web HTTP port 8000.",
+    )
+
+    stripped_proxy_headers = [
+        "Forwarded",
+        "X-Forwarded-Prefix",
+        "X-Original-Forwarded-For",
+        "X-Original-URL",
+        "X-Original-Method",
+        "X-Forwarded-Access-Token",
+        "traceparent",
+        "tracestate",
+        "baggage",
+        "b3",
+        "x-b3-traceid",
+        "x-b3-spanid",
+        "x-b3-parentspanid",
+        "x-b3-sampled",
+        "x-b3-flags",
+        "uber-trace-id",
+        "x-ot-span-context",
+    ]
+    for header_name in stripped_proxy_headers:
+        directive = f'proxy_set_header {header_name} "";'
+        if nginx_config_text.count(directive) < 3:
+            fail(
+                f"Production nginx must strip untrusted '{header_name}' at every public TLS vhost."
+            )
 
     for directive in [
         "limit_req_zone $binary_remote_addr zone=auth_sensitive:10m rate=5r/s;",
@@ -231,11 +348,37 @@ def main() -> None:
         "location ^~ /actuator/",
         "location = /actuator/health",
         "location ~* ^/(swagger-ui|swagger-ui\\.html|v3/api-docs|api-docs|prometheus|metrics|env|configprops)(/|$)",
+        "location = /admin",
         "location ^~ /admin/",
+        "location = /realms/master",
+        "location ^~ /realms/master/",
         "location ~* ^/(metrics|health)(/|$)",
         "location ~* ^/realms/[^/]+/(metrics|health)(/|$)",
+        "location /realms/",
+        "location ^~ /resources/",
+        "location ^~ /.well-known/",
+        "location /xmpp-websocket",
+        "location /colibri-ws",
     ]:
         assert_contains(nginx_config_text, location, f"Production nginx config is missing required protected location '{location}'.")
+
+    if nginx_config_text.count("proxy_pass http://keycloak_upstream;") != 4:
+        fail(
+            "Production nginx must proxy only the four explicit Keycloak public surfaces; "
+            "a root fallback or another public path is forbidden."
+        )
+    assert_regex_count_at_least(
+        nginx_config_text,
+        r"location\s+/\s*\{\s*return\s+404;\s*\}",
+        1,
+        "Production Keycloak vhost must deny unmatched public paths.",
+    )
+    assert_regex_count_at_least(
+        nginx_config_text,
+        r"location\s+/(xmpp-websocket|colibri-ws)\s*\{[^}]*proxy_read_timeout\s+900s;[^}]*proxy_send_timeout\s+900s;",
+        2,
+        "Production Jitsi websocket routes must keep explicit long-lived read and send timeouts.",
+    )
 
     monitoring_backend = get_service_block(monitoring_text, "backend")
     prometheus = get_service_block(monitoring_text, "prometheus")

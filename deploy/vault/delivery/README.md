@@ -18,7 +18,7 @@
 
 ## Vault target matrix
 
-- `kv/app/backend/runtime`: `APP_MEETINGS_TOKEN_SIGNING_SECRET`
+- `kv/app/backend/runtime`: `APP_MEETINGS_TOKEN_SIGNING_SECRET`, `APP_CONFIG_SETS_ENCRYPTION_KEY`
 - `kv/identity/backend/oidc`: `SSO_CLIENT_SECRET`
 - `kv/app/redis/runtime`: `REDIS_PASSWORD`
 - `database/static-creds/backend-app` или `database/creds/backend-app`: backend DB username/password

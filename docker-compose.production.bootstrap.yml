@@ -1,0 +1,11 @@
+services:
+  vault:
+    # Temporary only: return generated recovery/AppRole files to the host
+    # operator who owns the bind-mounted handoff directories.
+    cap_add:
+      - CHOWN
+    volumes:
+      - ./deploy/vault/policies:/vault/policies:ro
+      - ${VAULT_RECOVERY_DIR:?Set VAULT_RECOVERY_DIR}:/vault/recovery
+      - ${VAULT_SEED_ENV_FILE_PATH:?Set VAULT_SEED_ENV_FILE_PATH}:/vault/operator/seed.env:ro
+      - ${BACKEND_VAULT_HANDOFF_DIR:?Set BACKEND_VAULT_HANDOFF_DIR}:/vault/operator/backend

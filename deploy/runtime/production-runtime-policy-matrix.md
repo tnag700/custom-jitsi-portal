@@ -12,7 +12,8 @@
 
 | Service | Least-Privilege | Read-only rootfs | Writable paths / exception | Runtime limits | Notes |
 | --- | --- | --- | --- | --- | --- |
-| nginx | `cap_drop: [ALL]`, `cap_add: [NET_BIND_SERVICE]`, `no-new-privileges` | yes | `tmpfs`: `/var/cache/nginx`, `/var/run`, `/var/log/nginx` | no fixed critical requirement in validator | `NET_BIND_SERVICE` нужен из-за bind на 80/443 внутри контейнера. |
+| nginx-cert-bootstrap | `cap_drop: [ALL]`, `cap_add: [CHOWN]`, `no-new-privileges`, no network | yes | named volume `/target` | one-shot | Копирует только fullchain/key из operator Certbot tree, выставляет 0444/0400 и owner 101:101; runtime nginx не получает доступ к host `/etc/letsencrypt`. |
+| nginx | `user: 101:101`, `cap_drop: [ALL]`, no `cap_add`, `no-new-privileges` | yes | owner-scoped `tmpfs`: `/var/cache/nginx`, `/var/run`, `/etc/nginx/conf.d`; read-only cert volume | healthcheck validates both 8080/8443 listeners | Host 80/443 перенаправляются на непривилегированные container 8080/8443; root master и Linux capabilities отсутствуют; official stable image закреплён patch-тегом и manifest digest. |
 | frontend | `cap_drop: [ALL]`, `no-new-privileges` | yes | `tmpfs`: `/tmp` | `cpus`, `mem_limit`, `pids_limit` required | Stateless SSR runtime, writable rootfs не нужен. |
 | backend | `cap_drop: [ALL]`, `no-new-privileges` | yes | `tmpfs`: `/tmp` | `cpus`, `mem_limit`, `pids_limit` required | Spring Boot runtime не должен получать broad writable rootfs. |
 | backend-vault-bootstrap | `cap_drop: [ALL]`, `no-new-privileges` | yes | named volume `/vault/runtime`, `tmpfs`: `/tmp` | optional for one-shot bootstrap helper | Одноразовый helper для startup-fetch AppRole token delivery; writable scope ограничен runtime sink volume. |

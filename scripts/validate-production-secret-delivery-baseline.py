@@ -13,11 +13,14 @@ def main() -> None:
     vault_governance_matrix = read_repo_text("deploy/vault/secret-governance-matrix.md")
 
     for secret_var in [
+        "APP_CONFIG_SETS_ENCRYPTION_KEY=",
         "APP_MEETINGS_TOKEN_SIGNING_SECRET=",
         "SSO_CLIENT_SECRET=",
         "SPRING_DATASOURCE_PASSWORD=",
         "POSTGRES_PASSWORD=",
         "KEYCLOAK_ADMIN_PASSWORD=",
+        "KC_BOOTSTRAP_ADMIN_PASSWORD=",
+        "KC_DB_PASSWORD=",
         "JWT_APP_SECRET=",
         "JICOFO_AUTH_PASSWORD=",
         "JVB_AUTH_PASSWORD=",
@@ -28,11 +31,13 @@ def main() -> None:
     for path_hint in [
         "POSTGRES_VAULT_ENV_FILE_PATH=",
         "REDIS_VAULT_ENV_FILE_PATH=",
+        "KEYCLOAK_POSTGRES_VAULT_ENV_FILE_PATH=",
         "KEYCLOAK_VAULT_ENV_FILE_PATH=",
         "JITSI_WEB_VAULT_ENV_FILE_PATH=",
         "JITSI_PROSODY_VAULT_ENV_FILE_PATH=",
         "JITSI_JICOFO_VAULT_ENV_FILE_PATH=",
         "JITSI_JVB_VAULT_ENV_FILE_PATH=",
+        "GRAFANA_VAULT_ENV_FILE_PATH=",
     ]:
         assert_contains(env_example_text, path_hint, f".env.production.example must keep service-specific Vault delivery path hint '{path_hint}'.")
 
@@ -42,6 +47,7 @@ def main() -> None:
     db = get_service_block(compose_text, "db")
     redis = get_service_block(compose_text, "redis")
     keycloak = get_service_block(compose_text, "keycloak")
+    keycloak_db = get_service_block(compose_text, "keycloak-db")
     jitsi_web = get_service_block(compose_text, "jitsi-web")
     jitsi_prosody = get_service_block(compose_text, "jitsi-prosody")
     jitsi_jicofo = get_service_block(compose_text, "jitsi-jicofo")
@@ -62,6 +68,7 @@ def main() -> None:
     for service_block, token, name in [
         (db, "POSTGRES_VAULT_ENV_FILE_PATH", "PostgreSQL"),
         (redis, "REDIS_VAULT_ENV_FILE_PATH", "Redis"),
+        (keycloak_db, "KEYCLOAK_POSTGRES_VAULT_ENV_FILE_PATH", "Keycloak PostgreSQL"),
         (keycloak, "KEYCLOAK_VAULT_ENV_FILE_PATH", "Keycloak"),
         (jitsi_web, "JITSI_WEB_VAULT_ENV_FILE_PATH", "Jitsi Web"),
         (jitsi_prosody, "JITSI_PROSODY_VAULT_ENV_FILE_PATH", "Jitsi Prosody"),
@@ -74,6 +81,8 @@ def main() -> None:
     assert_regex(redis, r'redis-cli --no-auth-warning -a \\"\$\$REDIS_PASSWORD\\" ping \| grep -q PONG', "Redis healthcheck must authenticate with the container-scoped Vault-delivered password without host-side Compose interpolation.")
 
     for needle, message in [
+        ('write_export APP_CONFIG_SETS_ENCRYPTION_KEY', "Backend fetch path must deliver the config-set encryption key from Vault."),
+        ('runtime_bridge_is_complete', "Backend startup fetch must be idempotent after the one-use AppRole handoff is consumed."),
         ("database/static-creds/backend-app", "Backend fetch path must prefer static-role DB credentials for the current long-lived runtime."),
         ("database/creds/backend-app", "Backend fetch path must keep an explicit dynamic-credentials fallback contract."),
         ('rm -f "$TOKEN_SINK_FILE"', "Backend fetch path must clean the temporary token sink after handoff."),
@@ -101,11 +110,13 @@ def main() -> None:
     for example_file in [
         "deploy/vault/delivery/examples/postgres.env.example",
         "deploy/vault/delivery/examples/redis.env.example",
+        "deploy/vault/delivery/examples/keycloak-postgres.env.example",
         "deploy/vault/delivery/examples/keycloak.env.example",
         "deploy/vault/delivery/examples/jitsi-web.env.example",
         "deploy/vault/delivery/examples/jitsi-prosody.env.example",
         "deploy/vault/delivery/examples/jitsi-jicofo.env.example",
         "deploy/vault/delivery/examples/jitsi-jvb.env.example",
+        "deploy/vault/delivery/examples/grafana.env.example",
     ]:
         example_text = read_repo_text(example_file)
         assert_contains(example_text, "SET_IN_VAULT_RENDERED_FILE_ONLY", f"{example_file} must stay a non-secret placeholder file only.")

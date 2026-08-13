@@ -22,7 +22,8 @@ def main() -> None:
         fail("backend-vault-bootstrap must be attached to secret_net as the canonical backend-scoped Vault client.")
 
     for needle, message in [
-        ("VAULT_ADDR=http://vault:8200", "Backend bootstrap helper must pin Vault private address for startup fetch examples."),
+        ("VAULT_ADDR=https://vault:8200", "Backend bootstrap helper must pin the TLS-protected Vault private address for startup fetch examples."),
+        ("VAULT_CACERT=/vault/tls/ca.crt", "Backend bootstrap helper must trust only the private Vault CA."),
         ("ROLE_ID_FILE=/vault/local/backend/role_id", "Backend bootstrap helper must read the backend role_id from a private handoff path."),
         ("WRAPPED_SECRET_ID_FILE=/vault/local/backend/wrapped-secret-id", "Backend bootstrap helper must read the wrapped secret_id from a private handoff path."),
         ("TOKEN_SINK_FILE=/vault/runtime/backend-batch-token", "Backend bootstrap helper must emit the bounded token to the committed runtime sink path."),

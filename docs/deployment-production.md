@@ -1,8 +1,8 @@
 # Production deployment
 
 This guide prepares the portal for a hostname-based deployment on one Ubuntu 24
-host. Replace `portal.example.com`, `auth.example.com`, and `meet.example.com`
-with the real portal, identity, and conference hostnames before deployment.
+host. The canonical public names are `jitsi-mgorka.top`,
+`auth.jitsi-mgorka.top`, and `meet.jitsi-mgorka.top`.
 
 The canonical public perimeter is intentionally small:
 
@@ -13,8 +13,8 @@ The canonical public perimeter is intentionally small:
 
 ## DNS and router prerequisites
 
-Create public DNS records for the three hostnames pointing to the router's
-public address. If the ISP equipment and the site router both perform NAT,
+Create public DNS A records for all three hostnames pointing to
+`86.57.222.216`. If the ISP equipment and the site router both perform NAT,
 configure forwarding on both devices or switch the ISP device to bridge mode.
 
 Forward these ports to the application VM:
@@ -27,8 +27,16 @@ Forward these ports to the application VM:
 
 Do not forward SSH globally. Restrict TCP 22 to an operator VPN or a known
 source CIDR. Test UDP 10000 from a genuinely external network; a TCP port
-scanner cannot validate the media path. Set `JVB_ADVERTISE_IPS` to the public
-NAT address, not to `10.10.100.29`.
+scanner cannot validate the media path. This deployment uses split-horizon ICE
+candidates: `JVB_ADVERTISE_IPS=10.10.100.29,86.57.222.216`. Internal clients
+can reach the VM directly on UDP 10000, while external clients use the public
+NAT address. Keep the public address in the list and allow UDP 10000 from every
+authorized LAN/VPN segment to the VM.
+
+Prefer split-horizon DNS for browser traffic: internal resolvers return
+`10.10.100.29` for the portal, auth and meet hostnames, while public DNS keeps
+returning `86.57.222.216`. If internal DNS cannot be changed, configure NAT
+reflection for TCP 80/443 and UDP 10000 instead.
 
 ## Repository preparation
 
@@ -36,15 +44,16 @@ NAT address, not to `10.10.100.29`.
 2. Clone the repository onto a filesystem with at least 20 GiB free before
    pulling images and building both applications.
 3. Copy `.env.production.example` to `.env.production`.
-4. Replace every `*.example.com` URL and the documentation address
-   `203.0.113.10`.
+4. Verify the committed domain values and public NAT address against the live
+   router before every cutover.
 5. Keep secret values out of `.env.production`; repo-managed env files contain
    only non-secret config и path hints to private, Vault-rendered delivery
    files.
-6. Replace hostname and certificate paths in
-   `deploy/nginx/portal.conf.example`, preferably by copying it into the
-   ignored `deploy/nginx/local/` directory and setting
-   `NGINX_PORTAL_CONFIG_PATH`.
+6. Run `npm run prod:operator:prepare`. It generates coherent service files,
+   an internal Vault CA/server certificate and `.env.production` under the
+   ignored operator directory without printing any secret values. The CA
+   signing key is isolated under `deploy/production/local/custody/vault-ca/`;
+   it is never placed in the runtime-mounted Vault TLS directory.
 
 Before any deployment:
 
@@ -52,7 +61,7 @@ Before any deployment:
 npm run stack:validate
 npm run prod:baseline:validate
 npm run prod:host:baseline:validate
-docker compose --env-file .env.production \
+docker compose --project-name jitsi-prod --env-file .env.production \
   -f docker-compose.production.yml config >/tmp/jitsi-compose.yml
 ```
 
@@ -62,9 +71,44 @@ The configuration render must show only `80/tcp`, `443/tcp`, and
 
 ## Certificates
 
-Obtain certificates for all three hostnames before starting the hardened Nginx
-service. The directory referenced by `NGINX_CERTS_PATH` is mounted read-only
-as `/etc/letsencrypt`.
+Obtain one trusted certificate containing all three hostnames before starting
+the hardened Nginx service. The default certificate name is
+`jitsi-mgorka.top`. `NGINX_CERTS_PATH` points to the operator-managed Certbot
+tree. A network-isolated one-shot `nginx-cert-bootstrap` service copies only
+`fullchain.pem` and `privkey.pem` into the private `nginx-certs` volume, assigns
+them to the rootless Nginx UID/GID 101, and then exits. The long-lived edge
+container never mounts the host Certbot tree.
+
+```bash
+sudo certbot certonly --standalone \
+  -d jitsi-mgorka.top \
+  -d auth.jitsi-mgorka.top \
+  -d meet.jitsi-mgorka.top
+```
+
+The command requires public TCP 80 forwarding to the VM. Do not substitute a
+self-signed or expired edge certificate for the public cutover.
+
+If DNS-01 is used manually before TCP 80 is forwarded, the resulting
+certificate has no unattended renewal. Before its expiry, automate DNS-01 with
+an operator-managed DNS API credential or switch to a tested HTTP-01 renewal
+path. After every successful renewal, refresh only the certificate handoff and
+then recreate the edge container:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml \
+  up --no-deps --force-recreate nginx-cert-bootstrap
+docker compose --env-file .env.production -f docker-compose.production.yml \
+  up -d --no-deps --force-recreate nginx
+```
+
+Require `nginx-cert-bootstrap` to exit with code 0 and run `nginx -t` plus the
+trusted-TLS smoke checks before accepting the refreshed edge.
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml \
+  exec -T nginx nginx -t
+```
 
 The `deploy/nginx/portal-ip.conf.example` file is a bootstrap-only fallback. It
 does not provide the hostname-separated Keycloak and Jitsi production policy
@@ -72,16 +116,53 @@ and is not the production source of truth.
 
 ## Keycloak
 
-Production imports `pilot/keycloak/realm/production/jitsi-realm.json`. It has
-no seeded users. The OIDC client secret is substituted from
+Production imports a private realm copy from `KEYCLOAK_REALM_IMPORT_DIR`. Build
+it by merging only the exported user records into the reviewed production
+template; development clients, URLs and realm settings are never promoted:
+
+```bash
+python scripts/merge-keycloak-production-users.py \
+  --production-template pilot/keycloak/realm/production/jitsi-realm.json \
+  --development-export /secure/backup/keycloak-export/jitsi-dev-realm.json \
+  --output deploy/production/local/keycloak/realm-import/jitsi-realm.json
+```
+
+The source realm remains host-private. A network-isolated one-shot container
+materializes it into a dedicated Docker volume readable by the rootless
+Keycloak process; do not loosen the source directory or JSON permissions.
+
+If the backend runtime-secret volume must be recreated after the initial Vault
+bootstrap, issue a fresh five-minute, one-use handoff and start the backend
+immediately:
+
+```bash
+sh scripts/reissue-production-backend-approle.sh
+docker compose --env-file .env.production -f docker-compose.production.yml up -d backend frontend
+```
+
+When restoring the development application database for the first production
+cutover, promote its single active config set before starting the backend. The
+migration is transactional, refuses ambiguous state, replaces the meeting JWT
+secret with an independently encrypted production value, and writes a durable
+redacted audit event. Use `scripts/encrypt-config-set-secret.mjs` to reproduce
+the application's AES-GCM payload format; never put plaintext secret values in
+SQL files, command arguments, shell history, or logs.
+
+The OIDC client secret is substituted from
 `SSO_CLIENT_SECRET` in the Keycloak service-specific Vault delivery file.
 Keycloak realm import supports environment placeholders; never replace the
 placeholder with a committed secret.
 
+`--import-realm` does not overwrite an existing realm. During this one-time
+cutover, stop Keycloak and run
+`scripts/migrate-keycloak-post-logout-policy.sql` against its private database;
+the guarded migration explicitly allows only
+`https://jitsi-mgorka.top/auth` as the post-logout redirect.
+
 The backend's public redirect URI is:
 
 ```text
-https://portal.example.com/login/oauth2/code/keycloak
+https://jitsi-mgorka.top/login/oauth2/code/keycloak
 ```
 
 Nginx forwards `/login/oauth2/` and `/oauth2/` to the backend. Create production
@@ -101,8 +182,10 @@ users cannot change their own tenant. The stack validators reject a missing
 declaration, relaxed permissions, missing requirement, or a value outside the
 approved 1–64 character identifier format.
 
-The approved server image is `quay.io/keycloak/keycloak:26.7.0` in both Compose
-baselines. Treat every later Keycloak change as a database migration: stop all
+Production builds an optimized `jitsi-keycloak:26.7.0` image from the official
+`quay.io/keycloak/keycloak:26.7.0` base and stores state in a dedicated
+PostgreSQL service. Development remains independent. Treat every later
+Keycloak change as a database migration: stop all
 old nodes, back up the Keycloak data volume and realm/configuration artifacts,
 review every intervening migration note, then start exactly one upgraded node
 and wait for `/health/ready` before routing traffic. A schema upgraded by a
@@ -111,15 +194,27 @@ the same volume; restore the matching pre-upgrade backup instead.
 
 ## Jitsi
 
-The approved conference release is `stable-10978`. Web, Prosody, Jicofo and
+The approved production conference release is `stable-11146-1`. Web, Prosody, Jicofo and
 JVB are one compatibility group: never upgrade or roll back only a subset of
-the four images. The repository validators reject mixed tags.
+the four GHCR images. This release runs rootless and uses web ports 8000/8443;
+the repository pins the reviewed manifest digest of every image and validators
+reject mixed tags, changed digests and the retired volume layout.
+
+After a recreation, verify that `/run` is owned by UID/GID 1000 with mode 1750
+inside every Jitsi container. A tmpfs ownership change requires
+`--force-recreate`; a plain restart retains the old container mount contract.
 
 The backend and Jitsi must also share one token issuer. Development derives
 `APP_MEETINGS_TOKEN_ISSUER`, `JWT_APP_ID` and `JWT_ACCEPTED_ISSUERS` from
 `DEV_PORTAL_ORIGIN`; production derives all three assignments from
 `APP_MEETINGS_TOKEN_ISSUER`. Do not add an independent Jitsi issuer override:
 that makes correctly signed portal tokens fail at XMPP authentication.
+
+`pilot/jitsi/web/custom-meet.production.conf` intentionally pins the canonical
+portal return origin `https://jitsi-mgorka.top`. If the production origin ever
+changes, update that file and `APP_FRONTEND_ORIGIN` together and rerun the
+perimeter validator before recreating `jitsi-web`; Compose does not interpolate
+the contents of file-backed configs.
 
 Before changing the Jitsi release, archive and checksum the active web,
 Prosody, Prosody custom-plugin, Jicofo and JVB configuration volumes. Preserve
@@ -134,6 +229,8 @@ following before routing production traffic:
    subprotocol;
 6. JVB listens on UDP 10000 and the host publishes only the approved UDP port;
 7. leaving a joined conference returns the browser to the portal;
+8. each running RepoDigest matches the four reviewed references in the Compose
+   file.
 8. two external clients complete real audio/video exchange.
 
 ## Vault internal-only secret zone
@@ -184,12 +281,45 @@ and recovery checks in `deploy/host/README.md` pass.
 
 ## Start and migration
 
-Initialize Vault and render the service-specific secret files through the
-private operator workflow. Then start the stack:
+Prepare and provision the single-node Vault through the staged private operator
+workflow. The bootstrap overlay is removed before the script returns; it does
+not remain attached to recovery or seed material:
 
 ```bash
-npm run prod:baseline:up
+npm run prod:operator:prepare
+npm run prod:vault:bootstrap
 ```
+
+Move `deploy/production/local/vault/recovery/init.txt` and the complete
+`deploy/production/local/custody/vault-ca/` directory to approved offline
+custody before public cutover. The CA private key is needed only to issue or
+renew Vault server certificates and must never be mounted into Vault. Two of
+the three unseal shares are required after
+a Vault restart; do not retain the recovery file on the application host.
+
+Run the fail-closed deployment preflight and then start the stack:
+
+```bash
+npm run prod:preflight
+npm run prod:up
+```
+
+`npm run prod:preflight:offline` skips only live DNS comparison for staging. It
+still requires real operator files, coherent cross-service credentials, a
+private production realm import and TLS files.
+
+During a pre-cutover maintenance window, the application and identity services
+may be started without nginx or the Jitsi media quartet. Verify that isolated
+service plane before opening any host port:
+
+```bash
+sh scripts/smoke-production-private-plane.sh
+```
+
+The smoke check requires every private service to be healthy, validates the
+canonical Keycloak issuer and the allowlisted OSV proxy, and fails if any
+production container publishes a host port. It is not a substitute for the
+external TLS, login, invite and two-client media checks below.
 
 Flyway migrations run as part of backend startup. Do not run multiple backend
 instances against an unverified migration state. Wait for health checks rather
@@ -206,8 +336,8 @@ tunnel or a separately reviewed private reverse-proxy path.
 
 ## Production smoke checklist
 
-1. `curl -I http://portal.example.com` returns an HTTPS redirect.
-2. `curl -fsS https://portal.example.com/api/v1/health` returns healthy JSON.
+1. `curl -I http://jitsi-mgorka.top` returns an HTTPS redirect.
+2. `curl -fsS https://jitsi-mgorka.top/api/v1/health` returns healthy JSON.
 3. The browser login flow returns through
    `/login/oauth2/code/keycloak` and `/api/v1/auth/me` contains the expected
    `tenantId` and role.
@@ -218,6 +348,8 @@ tunnel or a separately reviewed private reverse-proxy path.
 7. No host port other than TCP 80/443 and UDP 10000 is reachable externally.
 8. Prometheus evaluates the committed rules and Alertmanager sends both firing
    and resolved notifications during the controlled drill.
+9. `curl --http2 -fsS -o /dev/null -w '%{http_version}\n' https://jitsi-mgorka.top/healthz`
+   prints `2` from an external client.
 
 For rollback, preserve PostgreSQL, Keycloak, Vault and Jitsi configuration
 volumes, stop the new application containers, restore the previously tested

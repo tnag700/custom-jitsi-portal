@@ -14,7 +14,8 @@ RUN apk add --no-cache ca-certificates coreutils curl grep unzip \
 
 FROM alpine:3.22
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates \
+    && mkdir -p /vault/config /vault/bootstrap /vault/policies /vault/tls /vault/data /vault/audit /vault/operator /vault/recovery
 
 COPY --from=vault-fetch /out/vault /usr/local/bin/vault
 

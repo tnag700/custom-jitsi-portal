@@ -67,6 +67,9 @@
       "webOrigins": [
         "${APP_FRONTEND_ORIGIN}"
       ],
+      "attributes": {
+        "post.logout.redirect.uris": "${APP_FRONTEND_ORIGIN}/auth"
+      },
       "protocolMappers": [
         {
           "name": "tenant-id",

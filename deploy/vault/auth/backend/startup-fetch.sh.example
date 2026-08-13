@@ -1,7 +1,10 @@
 #!/bin/sh
 set -eu
 
-export VAULT_ADDR="${VAULT_ADDR:-http://vault:8200}"
+export VAULT_ADDR="${VAULT_ADDR:-https://vault:8200}"
+case "$VAULT_ADDR" in
+  https://*) export VAULT_CACERT="${VAULT_CACERT:-/vault/tls/ca.crt}" ;;
+esac
 
 ROLE_ID_FILE="${ROLE_ID_FILE:-/vault/local/backend/role_id}"
 WRAPPED_SECRET_ID_FILE="${WRAPPED_SECRET_ID_FILE:-/vault/local/backend/wrapped-secret-id}"
@@ -14,6 +17,30 @@ BACKEND_DB_STATIC_CREDENTIAL_PATH="${BACKEND_DB_STATIC_CREDENTIAL_PATH:-database
 BACKEND_DB_DYNAMIC_CREDENTIAL_PATH="${BACKEND_DB_DYNAMIC_CREDENTIAL_PATH:-database/creds/backend-app}"
 OUTPUT_UID="${OUTPUT_UID:-10001}"
 OUTPUT_GID="${OUTPUT_GID:-10001}"
+
+runtime_bridge_is_complete() {
+  test -s "$BACKEND_ENV_OUTPUT_FILE" || return 1
+  for key in \
+    APP_MEETINGS_TOKEN_SIGNING_SECRET \
+    APP_CONFIG_SETS_ENCRYPTION_KEY \
+    SSO_CLIENT_SECRET \
+    SPRING_DATA_REDIS_PASSWORD \
+    SPRING_DATASOURCE_USERNAME \
+    SPRING_DATASOURCE_PASSWORD \
+    BACKEND_DB_ROTATION_CONTRACT \
+    BACKEND_DB_VAULT_SOURCE
+  do
+    grep -q "^export ${key}='" "$BACKEND_ENV_OUTPUT_FILE" || return 1
+  done
+}
+
+# Compose may start a completed one-shot dependency again on a later `up`.
+# Reuse the protected runtime bridge rather than attempting to unwrap the
+# intentionally one-use SecretID a second time.
+if runtime_bridge_is_complete; then
+  echo "Backend runtime env bridge is already complete; no Vault handoff was consumed."
+  exit 0
+fi
 
 shell_escape() {
   printf '%s' "$1" | sed "s/'/'\\''/g"
@@ -59,13 +86,14 @@ printf '%s' "$TOKEN" > "$TOKEN_SINK_FILE"
 
 BACKEND_ENV_DIR="$(dirname "$BACKEND_ENV_OUTPUT_FILE")"
 mkdir -p "$BACKEND_ENV_DIR"
-chown "$OUTPUT_UID:$OUTPUT_GID" "$BACKEND_ENV_DIR"
 chmod 0700 "$BACKEND_ENV_DIR"
+chown "$OUTPUT_UID:$OUTPUT_GID" "$BACKEND_ENV_DIR"
 : > "$BACKEND_ENV_OUTPUT_FILE"
 
 export VAULT_TOKEN="$TOKEN"
 
 write_export APP_MEETINGS_TOKEN_SIGNING_SECRET "$(read_kv_field "$BACKEND_APP_SECRET_PATH" APP_MEETINGS_TOKEN_SIGNING_SECRET)"
+write_export APP_CONFIG_SETS_ENCRYPTION_KEY "$(read_kv_field "$BACKEND_APP_SECRET_PATH" APP_CONFIG_SETS_ENCRYPTION_KEY)"
 write_export SSO_CLIENT_SECRET "$(read_kv_field "$BACKEND_OIDC_SECRET_PATH" SSO_CLIENT_SECRET)"
 write_export SPRING_DATA_REDIS_PASSWORD "$(read_kv_field "$BACKEND_REDIS_SECRET_PATH" REDIS_PASSWORD)"
 
@@ -81,8 +109,8 @@ else
   write_export BACKEND_DB_VAULT_SOURCE "$BACKEND_DB_DYNAMIC_CREDENTIAL_PATH"
 fi
 
-chown "$OUTPUT_UID:$OUTPUT_GID" "$BACKEND_ENV_OUTPUT_FILE"
 chmod 0600 "$BACKEND_ENV_OUTPUT_FILE"
+chown "$OUTPUT_UID:$OUTPUT_GID" "$BACKEND_ENV_OUTPUT_FILE"
 
 rm -f "$TOKEN_SINK_FILE"
 

@@ -92,30 +92,66 @@ def main() -> None:
     base_text = read_repo_text("docker-compose.production.yml", "Production compose file")
     monitoring_text = read_repo_text("docker-compose.production.monitoring.yml", "Production monitoring compose file")
     env_example_text = read_repo_text(".env.production.example", "Production environment example")
+    operator_prepare_text = read_repo_text(
+        "scripts/prepare-production-operator-files.sh",
+        "Production operator preparation script",
+    )
 
     invoke_compose_config_validation(root, ".env.production.example", ["docker-compose.production.yml"])
     invoke_compose_config_validation(root, ".env.production.example", ["docker-compose.production.yml", "docker-compose.production.monitoring.yml"])
 
     assert_no_dangerous_runtime_modes(base_text, "Production compose baseline")
     assert_no_dangerous_runtime_modes(monitoring_text, "Production monitoring overlay")
+    assert_contains(
+        operator_prepare_text,
+        'VAULT_CA_DIR="$VAULT_CUSTODY_DIR/vault-ca"',
+        "Vault CA signing material must be generated in a separate operator-custody directory.",
+    )
+    assert_contains(
+        operator_prepare_text,
+        '-CAkey "$VAULT_CA_DIR/ca.key"',
+        "Vault server certificates must be signed with the custody-only CA key.",
+    )
+    assert_not_contains(
+        operator_prepare_text,
+        '"$VAULT_TLS_DIR/ca.key"',
+        "The runtime-mounted Vault TLS directory must never receive the CA private key.",
+    )
 
     jvb_block = get_service_block(base_text, "jitsi-jvb")
     assert_contains(
         jvb_block,
-        "JVB_ADVERTISE_IPS=${JVB_ADVERTISE_IPS:?set JVB_ADVERTISE_IPS to the public NAT address}",
-        "JVB must require the public NAT address explicitly so WebRTC candidates do not advertise a private container address.",
+        "JVB_ADVERTISE_IPS=${JVB_ADVERTISE_IPS:?set JVB_ADVERTISE_IPS to the LAN and public NAT addresses}",
+        "JVB must require the reviewed split-horizon address set so WebRTC does not advertise a private container address.",
     )
     assert_contains(
         env_example_text,
-        "JVB_ADVERTISE_IPS=203.0.113.10",
-        "Production environment example must expose the documentation-only JVB public NAT placeholder.",
+        "JVB_ADVERTISE_IPS=10.10.100.29,86.57.222.216",
+        "Production environment example must pin the current LAN and public NAT address set.",
     )
 
+    keycloak_realm_bootstrap_block = get_service_block(base_text, "keycloak-realm-bootstrap")
+    assert_contains(
+        keycloak_realm_bootstrap_block,
+        "${KEYCLOAK_REALM_IMPORT_DIR:?Set KEYCLOAK_REALM_IMPORT_DIR to the private production realm directory}:/source:ro",
+        "Production realm bootstrap must read the operator-managed realm directory without exposing it to the long-lived service.",
+    )
+    assert_contains(
+        keycloak_realm_bootstrap_block,
+        "network_mode: none",
+        "Production realm bootstrap must not have network access.",
+    )
     keycloak_block = get_service_block(base_text, "keycloak")
     assert_contains(
         keycloak_block,
-        "./pilot/keycloak/realm/production:/opt/keycloak/data/import:ro",
-        "Production Keycloak must import the production-only realm directory.",
+        "keycloak-realm-import:/opt/keycloak/data/import:ro",
+        "Production Keycloak must import its private realm from the isolated materialized volume.",
+    )
+    frontend_block = get_service_block(base_text, "frontend")
+    assert_contains(
+        frontend_block,
+        "AUTH_LOGOUT_ALLOWED_ORIGINS=${KC_HOSTNAME:?Set KC_HOSTNAME}",
+        "Production frontend must explicitly allow only the canonical Keycloak origin for logout redirects.",
     )
     production_realm_path = root / "pilot/keycloak/realm/production/jitsi-realm.json"
     production_realm = json.loads(production_realm_path.read_text(encoding="utf-8"))
@@ -123,12 +159,17 @@ def main() -> None:
         fail("Production Keycloak realm must not seed test users.")
 
     least_privilege_base_services = [
+        "nginx-cert-bootstrap",
         "nginx",
         "frontend",
         "backend",
+        "osv-egress-proxy",
         "backend-vault-bootstrap",
         "db",
         "redis",
+        "vault",
+        "keycloak-db",
+        "keycloak-realm-bootstrap",
         "keycloak",
         "jitsi-web",
         "jitsi-prosody",
@@ -137,28 +178,65 @@ def main() -> None:
     ]
     least_privilege_overlay_services = ["prometheus", "alertmanager", "mock-alert-receiver", "grafana"]
     read_only_services = {
-        "nginx": ["/var/cache/nginx", "/var/run", "/var/log/nginx"],
+        "nginx-cert-bootstrap": [],
+        "nginx": ["/var/cache/nginx", "/var/run", "/etc/nginx/conf.d"],
         "frontend": ["/tmp"],
         "backend": ["/tmp"],
+        "osv-egress-proxy": ["/tmp"],
         "backend-vault-bootstrap": ["/tmp"],
         "redis": ["/data", "/tmp"],
-        "keycloak": ["/tmp"],
-        "jitsi-web": ["/tmp", "/var/cache/nginx", "/var/run", "/var/log/nginx"],
-        "jitsi-prosody": ["/tmp"],
-        "jitsi-jicofo": ["/tmp"],
-        "jitsi-jvb": ["/tmp"],
+        "vault": ["/tmp"],
+        "keycloak-realm-bootstrap": ["/tmp"],
+        "keycloak": ["/tmp", "/opt/keycloak/data/tmp", "/opt/keycloak/data/transaction-logs"],
+        "jitsi-web": ["/run", "/tmp"],
+        "jitsi-prosody": ["/run", "/tmp"],
+        "jitsi-jicofo": ["/run", "/tmp"],
+        "jitsi-jvb": ["/run", "/tmp"],
         "mock-alert-receiver": ["/tmp"],
     }
     writable_volume_targets = {
+        "nginx-cert-bootstrap": ["/target"],
         "backend-vault-bootstrap": ["/vault/runtime"],
-        "keycloak": ["/opt/keycloak/data"],
-        "jitsi-web": ["/config"],
-        "jitsi-prosody": ["/config"],
+        "keycloak-realm-bootstrap": ["/target"],
+        "jitsi-web": ["/config", "/storage"],
+        "jitsi-prosody": ["/config", "/prosody-plugins-custom", "/var/lib/prosody"],
         "jitsi-jicofo": ["/config"],
         "jitsi-jvb": ["/config"],
     }
-    runtime_limited_services = ["frontend", "backend", "keycloak", "jitsi-web", "jitsi-prosody", "jitsi-jicofo", "jitsi-jvb"]
-    allowed_cap_add = {"nginx": ["NET_BIND_SERVICE"], "jitsi-web": ["NET_BIND_SERVICE"]}
+    runtime_limited_services = ["nginx", "frontend", "backend", "osv-egress-proxy", "keycloak", "jitsi-web", "jitsi-prosody", "jitsi-jicofo", "jitsi-jvb"]
+    postgres_init_capabilities = ["CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID"]
+    allowed_cap_add = {
+        "nginx-cert-bootstrap": ["CHOWN"],
+        "vault": ["DAC_OVERRIDE", "IPC_LOCK"],
+        "backend-vault-bootstrap": ["CHOWN", "DAC_OVERRIDE", "FOWNER"],
+        "keycloak-realm-bootstrap": ["CHOWN", "DAC_OVERRIDE"],
+        "db": postgres_init_capabilities,
+        "keycloak-db": postgres_init_capabilities,
+    }
+
+    for needle, message in [
+        ("restart: unless-stopped", "Production runtime anchor must restart long-lived services after host reboot."),
+        ("max-size: \"${DOCKER_LOG_MAX_SIZE:-10m}\"", "Production runtime must cap Docker log-file size."),
+        ("max-file: \"${DOCKER_LOG_MAX_FILES:-5}\"", "Production runtime must cap retained Docker log files."),
+        ("name: jitsi-prod", "Production Compose must use an isolated project name."),
+    ]:
+        assert_contains(base_text, needle, message)
+
+    nginx_block = get_service_block(base_text, "nginx")
+    assert_contains(nginx_block, 'user: "101:101"', "Production nginx must run entirely as the unprivileged nginx uid/gid.")
+    assert_not_contains(nginx_block, "cap_add:", "Rootless production nginx must not add Linux capabilities.")
+    assert_contains(nginx_block, "80:8080", "Rootless production nginx must receive public HTTP on its unprivileged internal port.")
+    assert_contains(nginx_block, "443:8443", "Rootless production nginx must receive public HTTPS on its unprivileged internal port.")
+
+    certificate_bootstrap_caps = get_list_section_items(
+        get_service_block(base_text, "nginx-cert-bootstrap"),
+        "cap_add",
+    )
+    assert_list_contains(
+        certificate_bootstrap_caps,
+        "CHOWN",
+        "TLS certificate bootstrap requires only CHOWN to hand files to nginx uid/gid 101.",
+    )
 
     for service_name in least_privilege_base_services:
         service_block = get_service_block(base_text, service_name)

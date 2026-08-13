@@ -21,7 +21,7 @@
 - Backend: Java 25, Spring Boot 4.0.7, Spring Modulith 2.0.7, Gradle 9.4.
 - Data: PostgreSQL 18, Redis 8, Flyway.
 - Security/SSO: Spring Security, OAuth2 client/resource server, Keycloak 26.7.0.
-- Conferencing: Jitsi Meet `stable-10978` (web, Prosody, Jicofo and JVB).
+- Conferencing: Jitsi Meet `stable-11146-1` from GHCR (web, Prosody, Jicofo and JVB as one rootless compatibility group).
 - Frontend: Qwik 2, Qwik Router, Vite 7, TypeScript 5.9, ESLint 10, Vitest 3.
 - API contract: `openapi.yaml` и сгенерированный `openapi.generated.json`.
 - Observability: Spring Boot Actuator, OpenTelemetry, Prometheus, Alertmanager, Grafana.
@@ -167,7 +167,7 @@ Runtime hardening вынесен в отдельный validator `prod:runtime:b
 Для реального запуска hardened baseline нужно дополнительно указать:
 
 - `NGINX_PORTAL_CONFIG_PATH` - путь до реального nginx-конфига стенда;
-- `NGINX_CERTS_PATH` - путь до каталога, который монтируется в контейнер как `/etc/letsencrypt`.
+- `NGINX_CERTS_PATH` - путь до operator-managed дерева Certbot; одноразовый `nginx-cert-bootstrap` переносит только fullchain/key в закрытый volume rootless nginx.
 
 По умолчанию production compose закрепляет nginx на `identity_net` с адресом `172.28.240.10`, и именно этот адрес попадает в `KC_PROXY_TRUSTED_ADDRESSES`. Если меняете сетевую схему, обновляйте это значение точечно, а не расширяйте доверие до `10.0.0.0/8`, `172.16.0.0/12` или `192.168.0.0/16`.
 

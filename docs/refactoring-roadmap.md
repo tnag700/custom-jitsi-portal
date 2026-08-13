@@ -18,11 +18,11 @@ upgrade one compatibility group at a time.
 | Node runtime | Node 24.18.0 LTS in `.nvmrc`, package engines and containers | Keep the supported LTS line aligned across local, build and runtime environments |
 | Data | PostgreSQL 18.4, Redis 8.4 | Retain supported major lines and pin approved patches/digests |
 | Identity | Keycloak 26.7.0 | Keep the approved patch aligned across development and production after migration smoke tests |
-| Conference | Jitsi `stable-10978` | Keep all four conference images aligned and repeat JWT/WebSocket/UDP smoke tests before each upgrade |
+| Conference | Jitsi `stable-11146-1` | Keep all four conference images aligned and repeat JWT/WebSocket/UDP smoke tests before each upgrade |
 
 Version evidence must be refreshed immediately before an upgrade PR. The
 current upstream snapshot showed Spring Boot 4.0.7/4.1.0, PostgreSQL 18.4,
-Keycloak 26.7.0 and Jitsi stable-10978.
+Keycloak 26.7.0 and Jitsi stable-11146-1.
 
 ### Quality gates
 
@@ -163,7 +163,7 @@ Keycloak 26.7.0 and Jitsi stable-10978.
 
 1. Repeat the completed Keycloak 26.7.0 dev migration smoke against a restored
    production backup in staging before the separately authorized deployment.
-2. Repeat the completed Jitsi `stable-10978` migration smoke against staging
+2. Repeat the Jitsi `stable-11146-1` rootless migration smoke against staging
    with two external media-capable clients before production deployment.
 3. Keep the completed Qwik/UI/toolchain group locked by the executable version
    guard and zero-advisory audit. Move Vite 7/Vitest 3 to their next majors

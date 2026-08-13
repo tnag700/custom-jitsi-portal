@@ -23,7 +23,8 @@ into incident notes.
 1. Compare join attempt, success, failure, and latency series in the Jitsi
    Portal Grafana dashboard.
 2. Check JVB health and UDP 10000 reachability from outside the LAN.
-3. Confirm `JVB_ADVERTISE_IPS` equals the router's public address.
+3. Confirm `JVB_ADVERTISE_IPS` contains exactly the VM LAN address and the
+   router's public address for split-horizon ICE.
 4. If signaling works but media fails, inspect both router layers for UDP NAT
    forwarding and symmetric-NAT behavior.
 

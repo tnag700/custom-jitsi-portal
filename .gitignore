@@ -30,6 +30,7 @@ Thumbs.db
 # Personal deployment overrides
 /deploy/nginx/local/
 /deploy/personal/
+/deploy/production/local/
 /deploy/vault/local/dev/
 
 # Logs
@@ -84,6 +85,8 @@ coverage/
 /agent_docs/
 /deprecated.frontend.1/
 /frontend-qwik/tmp/
+# Vitest's embedded Vite server writes an ESM marker here during test runs.
+/frontend-qwik/dummy-non-existing-folder/
 .kilocodemodes
 changed_files.txt
 test_output.txt

@@ -1,0 +1,133 @@
+#!/bin/sh
+set -eu
+
+export VAULT_ADDR="${VAULT_ADDR:-https://vault:8200}"
+export VAULT_CACERT="${VAULT_CACERT:-/vault/tls/ca.crt}"
+
+SEED_FILE="${VAULT_SEED_FILE:-/vault/operator/seed.env}"
+RECOVERY_FILE="${VAULT_RECOVERY_FILE:-/vault/recovery/init.txt}"
+BACKEND_HANDOFF_DIR="${BACKEND_HANDOFF_DIR:-/vault/operator/backend}"
+
+test -r "$SEED_FILE" || {
+  echo "Vault seed file is missing." >&2
+  exit 1
+}
+
+set -a
+. "$SEED_FILE"
+set +a
+
+RECOVERY_DIR="$(dirname "$RECOVERY_FILE")"
+mkdir -p "$RECOVERY_DIR" "$BACKEND_HANDOFF_DIR"
+
+# Bind-mounted operator directories deliberately remain owned by the host
+# operator. Files created by the temporary bootstrap container are returned to
+# those owners so offline custody and host-side preflight do not require root.
+RECOVERY_OWNER="$(stat -c '%u:%g' "$RECOVERY_DIR")"
+BACKEND_HANDOFF_OWNER="$(stat -c '%u:%g' "$BACKEND_HANDOFF_DIR")"
+
+status_output="$(vault status 2>&1 || true)"
+if printf '%s\n' "$status_output" | grep -Eq 'Initialized[[:space:]]+false'; then
+  test ! -e "$RECOVERY_FILE" || {
+    echo "Vault is uninitialized but a recovery file already exists; refusing to replace it." >&2
+    exit 1
+  }
+  vault operator init -key-shares=3 -key-threshold=2 > "$RECOVERY_FILE"
+  chmod 0600 "$RECOVERY_FILE"
+  chown "$RECOVERY_OWNER" "$RECOVERY_FILE"
+elif ! printf '%s\n' "$status_output" | grep -Eq 'Initialized[[:space:]]+true'; then
+  echo "Unable to determine Vault initialization state." >&2
+  exit 1
+fi
+
+test -r "$RECOVERY_FILE" || {
+  echo "The recovery file for this initialized Vault is unavailable." >&2
+  exit 1
+}
+
+if vault status 2>&1 | grep -Eq 'Sealed[[:space:]]+true'; then
+  vault operator unseal "$(awk -F': ' '/Unseal Key 1/ {print $2}' "$RECOVERY_FILE")" >/dev/null
+  vault operator unseal "$(awk -F': ' '/Unseal Key 2/ {print $2}' "$RECOVERY_FILE")" >/dev/null
+fi
+
+export VAULT_TOKEN="$(awk -F': ' '/Initial Root Token/ {print $2}' "$RECOVERY_FILE")"
+test -n "$VAULT_TOKEN"
+
+if ! vault secrets list | grep -q '^kv/'; then
+  vault secrets enable -path=kv -version=2 kv >/dev/null
+fi
+if ! vault secrets list | grep -q '^database/'; then
+  vault secrets enable -path=database -version=1 kv >/dev/null
+fi
+if ! vault auth list | grep -q '^approle-workloads/'; then
+  vault auth enable -path=approle-workloads approle >/dev/null
+fi
+
+vault policy write backend-service /vault/policies/backend.hcl.example >/dev/null
+vault policy write keycloak-service /vault/policies/keycloak.hcl.example >/dev/null
+vault policy write jitsi-service /vault/policies/jitsi.hcl.example >/dev/null
+
+vault write auth/approle-workloads/role/backend-service \
+  token_policies=backend-service \
+  token_type=batch \
+  token_ttl=15m \
+  token_max_ttl=30m \
+  secret_id_ttl=10m \
+  secret_id_num_uses=1 \
+  bind_secret_id=true >/dev/null
+
+vault kv put kv/app/backend/runtime \
+  APP_MEETINGS_TOKEN_SIGNING_SECRET="$APP_MEETINGS_TOKEN_SIGNING_SECRET" \
+  APP_CONFIG_SETS_ENCRYPTION_KEY="$APP_CONFIG_SETS_ENCRYPTION_KEY" >/dev/null
+vault kv put kv/identity/backend/oidc \
+  SSO_CLIENT_SECRET="$SSO_CLIENT_SECRET" >/dev/null
+vault kv put kv/identity/keycloak/runtime \
+  KC_BOOTSTRAP_ADMIN_PASSWORD="$KEYCLOAK_ADMIN_PASSWORD" \
+  KC_DB_PASSWORD="$KEYCLOAK_DB_PASSWORD" \
+  SSO_CLIENT_SECRET="$SSO_CLIENT_SECRET" >/dev/null
+vault kv put kv/app/redis/runtime REDIS_PASSWORD="$REDIS_PASSWORD" >/dev/null
+vault kv put kv/realtime/jitsi/web \
+  JWT_APP_SECRET="$APP_MEETINGS_TOKEN_SIGNING_SECRET" \
+  JICOFO_AUTH_PASSWORD="$JICOFO_AUTH_PASSWORD" \
+  JVB_AUTH_PASSWORD="$JVB_AUTH_PASSWORD" >/dev/null
+vault kv put kv/realtime/jitsi/prosody \
+  JWT_APP_SECRET="$APP_MEETINGS_TOKEN_SIGNING_SECRET" \
+  JICOFO_AUTH_PASSWORD="$JICOFO_AUTH_PASSWORD" \
+  JVB_AUTH_PASSWORD="$JVB_AUTH_PASSWORD" >/dev/null
+vault kv put kv/realtime/jitsi/jicofo \
+  JICOFO_AUTH_PASSWORD="$JICOFO_AUTH_PASSWORD" \
+  JICOFO_COMPONENT_SECRET="$JICOFO_COMPONENT_SECRET" >/dev/null
+vault kv put kv/realtime/jitsi/jvb JVB_AUTH_PASSWORD="$JVB_AUTH_PASSWORD" >/dev/null
+vault kv put kv/ops/grafana GF_SECURITY_ADMIN_PASSWORD="$GRAFANA_ADMIN_PASSWORD" >/dev/null
+vault write database/static-creds/backend-app \
+  username="${POSTGRES_USER:-jitsi}" \
+  password="$APP_POSTGRES_PASSWORD" >/dev/null
+vault write database/static-creds/keycloak-app \
+  username="${KEYCLOAK_POSTGRES_USER:-keycloak}" \
+  password="$KEYCLOAK_DB_PASSWORD" >/dev/null
+
+if ! vault audit list | grep -q '^file/'; then
+  vault audit enable file file_path=/vault/audit/vault-audit.log mode=0600 log_raw=false >/dev/null
+fi
+
+ROLE_ID="$(vault read -field=role_id auth/approle-workloads/role/backend-service/role-id)"
+WRAP_JSON="$(vault write -wrap-ttl=5m -format=json -f auth/approle-workloads/role/backend-service/secret-id)"
+WRAPPED_SECRET_ID="$(printf '%s\n' "$WRAP_JSON" | awk -F'"' '/^[[:space:]]*"token":/ {print $4; exit}')"
+test -n "$ROLE_ID"
+test -n "$WRAPPED_SECRET_ID"
+printf '%s\n' "$ROLE_ID" > "$BACKEND_HANDOFF_DIR/role_id"
+printf '%s\n' "$WRAPPED_SECRET_ID" > "$BACKEND_HANDOFF_DIR/wrapped-secret-id"
+chmod 0600 "$BACKEND_HANDOFF_DIR/role_id" "$BACKEND_HANDOFF_DIR/wrapped-secret-id"
+chown "$BACKEND_HANDOFF_OWNER" \
+  "$BACKEND_HANDOFF_DIR/role_id" \
+  "$BACKEND_HANDOFF_DIR/wrapped-secret-id"
+
+vault status >/dev/null
+vault audit list | grep -q '^file/'
+unset VAULT_TOKEN ROLE_ID WRAP_JSON WRAPPED_SECRET_ID
+unset APP_POSTGRES_PASSWORD REDIS_PASSWORD KEYCLOAK_DB_PASSWORD KEYCLOAK_ADMIN_PASSWORD
+unset SSO_CLIENT_SECRET APP_MEETINGS_TOKEN_SIGNING_SECRET APP_CONFIG_SETS_ENCRYPTION_KEY
+unset JICOFO_AUTH_PASSWORD JVB_AUTH_PASSWORD JICOFO_COMPONENT_SECRET
+unset GRAFANA_ADMIN_PASSWORD
+
+echo "Production Vault initialization and provisioning completed."

@@ -95,29 +95,43 @@ describe("Story 14.1 Guard: framework and infrastructure baseline", () => {
     const expectedImage = "image: quay.io/keycloak/keycloak:26.7.0";
 
     expect(devCompose.split(expectedImage)).toHaveLength(2);
-    expect(productionCompose.split(expectedImage)).toHaveLength(2);
+    expect(productionCompose).toContain("image: jitsi-keycloak:26.7.0");
+    expect(productionCompose).toContain("context: ./deploy/keycloak");
     expect(devCompose).not.toContain("keycloak:26.1.2");
     expect(productionCompose).not.toContain("keycloak:26.1.2");
   });
 
   it("pins one supported Jitsi release across all conference services", () => {
-    const composeFiles = [
-      "docker-compose.yml",
-      "docker-compose.production.yml",
-    ];
-    const services = ["web", "prosody", "jicofo", "jvb"];
+    const productionImages = {
+      web: "ghcr.io/jitsi/web:stable-11146-1@sha256:ff81559621732d3dfc4815f261d41fd826566833016ea772f4d43a77aa88fe9a",
+      prosody:
+        "ghcr.io/jitsi/prosody:stable-11146-1@sha256:0e3d9ada40c03e6eef151348e0872dce7b4b1c16c173ff4a67afeae60aba2404",
+      jicofo:
+        "ghcr.io/jitsi/jicofo:stable-11146-1@sha256:a5da296923010dcc2daf6a02e6a183181906cb969a088ae90b97516bdeb9737f",
+      jvb: "ghcr.io/jitsi/jvb:stable-11146-1@sha256:6a7cec66c6a2fdd8ffd3a90101a0f8e3297aff29494f258caf1bcfbd418a17f3",
+    } as const;
+    const services = Object.keys(productionImages) as Array<
+      keyof typeof productionImages
+    >;
 
-    for (const composeFile of composeFiles) {
-      const source = readFileSync(join(REPOSITORY_DIR, composeFile), "utf-8");
-
-      for (const service of services) {
-        expect(source).toContain(`image: jitsi/${service}:stable-10978`);
-      }
-      expect(
-        source.match(/image: jitsi\/(?:web|prosody|jicofo|jvb):/g),
-      ).toHaveLength(services.length);
-      expect(source).not.toContain("stable-10741");
+    const devSource = readFileSync(
+      join(REPOSITORY_DIR, "docker-compose.yml"),
+      "utf-8",
+    );
+    const productionSource = readFileSync(
+      join(REPOSITORY_DIR, "docker-compose.production.yml"),
+      "utf-8",
+    );
+    for (const service of services) {
+      expect(devSource).toContain(`image: jitsi/${service}:stable-10978`);
+      expect(productionSource).toContain(`image: ${productionImages[service]}`);
     }
+    expect(
+      productionSource.match(
+        /image: ghcr\.io\/jitsi\/(?:web|prosody|jicofo|jvb):/g,
+      ),
+    ).toHaveLength(services.length);
+    expect(productionSource).not.toContain("stable-10741");
   });
 
   it("should NOT use legacy @builder.io import paths in source files", () => {
