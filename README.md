@@ -1,374 +1,278 @@
-# ВНИМАНИЕ: это эксперимент по работе ИИ-агентов, возможен "ИИ слоп"; ответственный за код слоператор не является профессиональным программистом.
+# Custom Jitsi Portal
 
-## Jitsi видеоконференция с веб-порталом
+Self-hosted веб-портал для управления комнатами и встречами Jitsi: единый вход через Keycloak, роли и приглашения гостей, административный контур, мониторинг версий и production-oriented развёртывание.
 
-Монорепозиторий для разработки собственного портала вокруг сценариев видеоконференций на базе Jitsi:
-- backend API на Spring Boot 4;
-- frontend на Qwik City с SSR;
-- локальная инфраструктура и интеграции через Docker Compose;
-- observability и alerting-сценарии для локального self-hosted контура.
+> Проект находится в активной разработке. Репозиторий содержит hardened production baseline, но публикация требует подготовки DNS, TLS, NAT/firewall, секретов и обязательного внешнего media smoke-теста. Совместимость API между коммитами пока не гарантируется.
 
-## Зачем этот проект
+## Возможности
 
-Проект используется как полигон для:
-- разработки API и UI в домене видеоконференций;
-- проверки архитектурных решений и quality gates;
-- практики разработки с поддержкой ИИ-агентов;
-- локального self-hosted сценария вместо внешних провайдеров видеосвязи.
+- создание комнат и встреч с отдельными ролями организатора, модератора и участника;
+- вход через OIDC/Keycloak, профиль пользователя и tenant-scoped каталог;
+- приглашения гостей с ограничением срока и числа использований, а также возможностью отзыва;
+- административное редактирование профилей в пределах tenant, просмотр ролевой истории и управление конфигурациями окружений;
+- журналирование критичных изменений и история назначений ролей;
+- инвентаризация закреплённых версий и проверка их на известные критические CVE через OSV;
+- выдача подписанного JWT для входа в Jitsi без публичной страницы создания конференций;
+- метрики, алерты и Grafana/Prometheus overlay для эксплуатационных проверок.
+
+## Архитектура
+
+```mermaid
+flowchart LR
+    browser["Браузер"] -->|HTTPS| edge["Nginx edge"]
+    edge --> frontend["Qwik SSR"]
+    edge --> backend["Spring Boot API"]
+    edge --> keycloak["Keycloak"]
+    edge --> web["Jitsi Web"]
+
+    backend --> postgres[(PostgreSQL)]
+    backend --> redis[(Redis)]
+    vault["Vault"] --> delivery["Ограниченный secret delivery"]
+    delivery -.-> backend
+    delivery -.-> keycloak
+    delivery -.-> postgres
+    delivery -.-> redis
+    delivery -.-> prosody
+
+    web --> prosody["Prosody"]
+    jicofo["Jicofo"] <--> prosody
+    jvb["JVB"] <--> prosody
+    media["WebRTC-клиенты"] -->|UDP 10000| jvb
+```
+
+В production сервисы разделены на edge, application, identity, realtime, data, secret и operations trust zones. На хосте публикуются только:
+
+- `80/tcp` — HTTP redirect и ACME HTTP-01 при необходимости;
+- `443/tcp` — портал, OIDC и Jitsi по каноническим hostname;
+- `10000/udp` — медиатрафик Jitsi Videobridge.
+
+Backend, Keycloak, PostgreSQL, Redis, Vault и monitoring-интерфейсы напрямую наружу не публикуются. Это инвариант Compose, а не доказательство корректной настройки роутера и host firewall.
 
 ## Технологический стек
 
-- Backend: Java 25, Spring Boot 4.0.7, Spring Modulith 2.0.7, Gradle 9.4.
-- Data: PostgreSQL 18, Redis 8, Flyway.
-- Security/SSO: Spring Security, OAuth2 client/resource server, Keycloak 26.7.0.
-- Conferencing: Jitsi Meet `stable-11146-1` from GHCR (web, Prosody, Jicofo and JVB as one rootless compatibility group).
-- Frontend: Qwik 2, Qwik Router, Vite 7, TypeScript 5.9, ESLint 10, Vitest 3.
-- API contract: `openapi.yaml` и сгенерированный `openapi.generated.json`.
-- Observability: Spring Boot Actuator, OpenTelemetry, Prometheus, Alertmanager, Grafana.
-- Architecture governance: ArchUnit, PMD, CPD.
-- Local environment: Docker Compose.
+| Контур | Технологии |
+| --- | --- |
+| Backend | Java 25, Spring Boot 4.0.7, Spring Modulith 2.0.7, Gradle 9.4 |
+| Frontend | Qwik/Qwik Router 2.0.0-beta.38, Qwik UI 0.7.7, TypeScript 5.9, Vite 7, Tailwind CSS 4 |
+| Данные | PostgreSQL 18.4, Redis 8.4, Flyway |
+| Identity | Keycloak 26.7.0, OAuth 2.0/OIDC, Spring Security |
+| Видеосвязь | Jitsi Web, Prosody, Jicofo и JVB |
+| Секреты | Vault 1.21.4, response-wrapped AppRole, service-specific delivery |
+| Edge и observability | Nginx 1.30.4, OpenTelemetry, Prometheus, Alertmanager, Grafana |
+| Quality gates | JUnit, Vitest, ArchUnit, Spring Modulith, PMD, CPD, ESLint |
+
+Dev Compose использует Jitsi `stable-10978`. Production-группа из четырёх Jitsi-образов синхронно закреплена на `stable-11146-1` с digest pinning; обновлять один компонент отдельно нельзя.
 
 ## Структура репозитория
 
-- `backend/` - REST API, доменные модули, безопасность, миграции, архитектурные и интеграционные тесты.
-- `frontend-qwik/` - SSR-веб-клиент, маршруты, shared API client, UI и frontend-тесты.
-- `openapi.yaml` - канонический контракт API.
-- `openapi.generated.json` - повторяемо сгенерированный runtime-снимок OpenAPI.
-- `docker-compose.yml` - локальный запуск frontend, backend, Keycloak, Postgres, Redis и Jitsi stack.
-- `docker-compose.production.yml` - production-oriented perimeter baseline с trust-zone сетями и закрытыми internal surfaces.
-- `docker-compose.production.monitoring.yml` - private-only monitoring overlay для production baseline.
-- `deploy/runtime/production-runtime-policy-matrix.md` - service-by-service runtime hardening matrix для least-privilege, read-only и writable exceptions.
-- `docs/access-control.md` - каноническая матрица платформенных ролей, ролей встречи и backend-разрешений.
-- `docs/threat-model.md` - модель угроз, trust boundaries, security invariants и обязательные release-проверки.
-- `docs/framework-version-monitoring.md` - инвентарь фреймворков, OSV-проверка, роли и порядок реакции на критические CVE.
-- `docs/refactoring-roadmap.md` - baseline ревью, приоритетный backlog, целевая архитектура и порядок обновления стека/UI.
-- `.env.example` - обязательные переменные окружения для docker-compose.
+```text
+backend/                             Spring Boot API, доменные модули и миграции
+frontend-qwik/                       Qwik SSR-приложение и UI-тесты
+deploy/                              Nginx, Vault, host и runtime policy artifacts
+docs/                                архитектура, безопасность и runbooks
+pilot/                               Keycloak realms и Jitsi-конфигурация
+scripts/                             validators, bootstrap, backup и smoke-сценарии
+openapi.generated.json               воспроизводимый runtime-снимок OpenAPI
+docker-compose.yml                   локальный dev stack
+docker-compose.monitoring.yml        monitoring overlay для dev
+docker-compose.production.yml        hardened production stack
+docker-compose.production.monitoring.yml  private monitoring overlay для production
+```
 
-## Быстрый старт
+## Требования
 
-1. Подготовьте окружение:
-   - скопируйте `.env.example` в `.env`;
-   - при необходимости переопределите `KEYCLOAK_ADMIN` и `DEV_VAULT_*` значения для локального Vault bootstrap.
-2. Frontend dev-режим без контейнеров (из корня):
-   - `npm run frontend:install`
-   - `npm run frontend:dev`
-3. Локальная production-like проверка frontend (из корня):
-   - `npm run frontend:build`
-   - `npm run frontend:start`
-4. Полная локальная среда в контейнерах (из корня):
-   - `npm run prod:up`
-   - команда автоматически поднимет локальный Vault, выполнит bootstrap dev-секретов и только затем запустит остальной стек.
-5. Полная локальная среда + monitoring overlay (из корня):
-   - `npm run prod:up:monitoring`
-6. Проверка dev-конфигурации перед пересборкой стека:
-   - `npm run stack:validate`
-7. Проверка production perimeter baseline без запуска стенда:
-   - `npm run prod:baseline:validate`
-   - `npm run prod:baseline:config`
-8. Проверка production runtime baseline без запуска стенда:
-   - `npm run prod:runtime:baseline:validate`
-9. Проверка Ubuntu host/control-plane baseline без запуска стенда:
-   - `npm run prod:host:baseline:validate`
-   - `npm run prod:host:baseline:simulate`
-10. Проверка Vault secret-plane baseline без запуска стенда: `npm run prod:secret:baseline:validate`
-11. Единый локальный quality gate перед публикацией изменений: `npm run verify`
+Для локальной разработки:
 
-Все validator/smoke entrypoints из `package.json` теперь вызывают Python-скрипты из `scripts/`. Если удобнее обходиться без npm-обёрток, используйте прямой кроссплатформенный запуск через `python scripts/...`, например:
+- Docker Engine и Docker Compose plugin;
+- Node.js `>=24.18.0 <25` и npm;
+- Python 3, доступный как `python`;
+- JDK 25 для локальной сборки backend и полного `npm run verify`.
 
-- `python scripts/validate-dev-stack-config.py`
-- `python scripts/validate-production-perimeter.py`
-- `python scripts/run-observability-live-drill.py`
+Для production-подготовки дополнительно нужны POSIX `sh`, `openssl`, `awk`, `mktemp`, доступ к DNS и способ выпустить доверенный сертификат. Container-backed backend-тесты требуют работающий Docker.
 
-`npm run verify` является каноническим воспроизводимым гейтом репозитория.
-Он одним Gradle build проверяет runtime OpenAPI contract, backend tests,
-ArchUnit/Spring Modulith, PMD и CPD; затем сверяет с тем же OpenAPI-снимком
-сгенерированные frontend-типы, запускает Vitest, TypeScript, client/SSR build,
-ESLint, frontend architecture boundaries и статические dev/production
-guardrails. Перед первым запуском установите зависимости командами `npm ci` и
-`npm --prefix frontend-qwik ci`. Этот гейт не заменяет container health и
-browser/media smoke на dev или staging.
+## Быстрый локальный старт
 
-Важно: Postgres-данные в Docker Compose сохраняются в volume `pgdata`. Если раньше среда запускалась с некорректным маппингом volume и после перезапуска пропадали профили или другие данные, пересоздайте stack после исправления compose-конфигурации, чтобы Postgres 18 использовал ожидаемый mount path `/var/lib/postgresql` и image-managed data layout.
+```powershell
+git clone https://github.com/tnag700/custom-jitsi-portal.git
+Set-Location custom-jitsi-portal
+npm ci
+npm --prefix frontend-qwik ci
+Copy-Item .env.example .env
+npm run stack:up
+```
 
-Важно: `npm run prod:up` и `npm run prod:up:monitoring` теперь сначала валидируют dev-конфигурацию. Проверка останавливает запуск, если в `pilot/keycloak/realm/dev/jitsi-dev-realm.json` у seeded users нет явных `id` или если в `docker-compose.yml` снова появится некорректный Postgres volume mount. Production импортирует отдельный realm без тестовых пользователей из `pilot/keycloak/realm/production/`.
+Для Linux/macOS замените `Copy-Item` на `cp`. Файл `.env` нужен только для переопределения локальных defaults и не коммитится.
 
-Docker Compose теперь следует воспринимать как production-like сценарий локальной проверки: frontend и backend собираются из исходников внутри Docker, без требования заранее готовить локальные `dist/` или `build/libs/` артефакты.
+`stack:up` проверяет dev-конфигурацию, подготавливает локальный Vault и запускает Compose в foreground. Остановка — `Ctrl+C`, последующая очистка контейнеров и сети без удаления volumes:
 
-Production perimeter baseline вынесен отдельно в `docker-compose.production.yml` и не заменяет локальный bootstrap из `docker-compose.yml`. Это осознанное разделение: локальный self-hosted контур остаётся удобным для разработки, а production baseline фиксирует закрытую сеть и минимальную публичную поверхность.
+```powershell
+npm run stack:down
+```
 
-Host/control-plane baseline для Ubuntu 24 вынесен отдельно в `deploy/host/`. Он дополняет perimeter baseline требованиями к SSH, UFW, named admin accounts, AppArmor, time sync и audit retention, а не подменяет production compose или nginx source of truth.
+Monitoring overlay запускается отдельно:
 
-Vault secret-plane baseline для Story 19.1 вынесен в `deploy/vault/` и добавляет internal-only secret zone поверх уже существующих trust zones. Story 19.2 добавляет сверху scoped auth model: backend-scoped helper `backend-vault-bootstrap` реализует response-wrapped AppRole startup fetch, operators используют named OIDC identities с explicit group binding, а frontend SSR по умолчанию не становится Vault client. Story 19.3 переводит delivery off repo-managed secret env values: `.env.production*` теперь должны содержать только non-secret config и path hints к private Vault delivery surfaces, а service-specific rendered env files и backend runtime bridge остаются вне git. Story 19.4 добавляет governance layer через `deploy/vault/secret-governance-matrix.md` и `deploy/vault/break-glass-runbook.md`: rotation остаётся Vault-driven, а break-glass path отделяется от day-2 deploy/operator access.
+```powershell
+npm run stack:up:monitoring
+```
 
-## Сценарии запуска
+### Локальные адреса
 
-### 1. Frontend dev build
+| Сервис | Адрес |
+| --- | --- |
+| Портал | `http://localhost:3000` |
+| Backend API | `http://localhost:8080/api/v1` |
+| Backend health | `http://localhost:8080/actuator/health` |
+| Swagger UI | `http://localhost:8082` |
+| Keycloak | `http://localhost:8081` |
+| Jitsi HTTP / HTTPS | `http://localhost:8000` / `https://localhost:8443` |
+| Prometheus / Alertmanager | `http://localhost:9090` / `http://localhost:9093` |
+| Mock alert receiver / Grafana | `http://localhost:9080/notifications` / `http://localhost:3001` |
 
-Используйте этот режим, когда нужен быстрый цикл разработки UI на Vite dev server.
+Для доступа к dev-стенду из LAN согласованно задайте в `.env` значения `DEV_BACKEND_ORIGIN`, `DEV_PUBLIC_API_URL`, `DEV_KEYCLOAK_ORIGIN`, `DEV_PORTAL_ORIGIN` и адрес JVB. Если realm уже импортирован, отдельно обновите callback клиента `jitsi-backend`.
 
-- `npm run frontend:dev`
+Production-контур открывается по каноническим DNS-именам, а не через `http://LAN_IP:80`: OIDC issuer, callbacks, cookies и TLS привязаны к hostname. Для LAN-клиентов нужен рабочий split DNS или NAT hairpin.
 
-Это эквивалент `npm --prefix frontend-qwik run dev`. Режим использует Vite SSR dev server и не отражает production-поведение загрузки ассетов.
+## Разработка и проверки
 
-### 2. Frontend production build локально
+Основные команды из корня репозитория:
 
-Используйте этот режим, когда нужно проверить реальный SSR-бандл frontend без полного Docker-окружения.
+| Команда | Назначение |
+| --- | --- |
+| `npm run frontend:dev` | Vite/Qwik SSR dev server |
+| `npm run frontend:build` | production build frontend |
+| `npm run frontend:start` | запуск собранного SSR bundle |
+| `npm run frontend:verify:ssr` | build и SSR/resumability smoke |
+| `npm run stack:validate` | проверка dev Compose и realm invariants |
+| `npm run stack:config` | подготовка dev Vault и рендер Compose-конфигурации |
+| `npm run contracts:check` | сверка OpenAPI и frontend-типов |
+| `npm run observability:alerting:validate` | проверка Prometheus/Alertmanager artifacts |
+| `npm run prod:secret:baseline:validate` | проверка private Vault secret-plane |
+| `npm run prod:secret:auth:validate` | проверка workload/operator auth boundaries |
+| `npm run verify` | полный репозиторный quality gate |
 
-- `npm run frontend:build`
-- `npm run frontend:start`
+`stack:config` не является чисто read-only командой: перед рендером он запускает dev Vault preparation и создаёт ignored operator artifacts.
 
-Полезные варианты:
+Backend можно проверять отдельно:
 
-- `npm run frontend:preview` - локальный preview production-бандла через Vite preview.
-- `npm run frontend:verify:ssr` - build + smoke-проверка SSR/resumability.
+```powershell
+Set-Location backend
+.\gradlew.bat test
+.\gradlew.bat build
+```
 
-### 3. Full stack в контейнерах
+В POSIX shell используйте `./gradlew`. Доступны также `testUnit`, `testSlice`, `testIntegration`, `testContainer`, `testSmoke` и `generateOpenApiSpec`.
 
-Используйте этот режим, когда нужна prod-like интеграция frontend, backend, Postgres, Redis, Keycloak и Jitsi.
+Перед публикацией изменений запускайте:
 
-- `npm run prod:up`
-- `npm run prod:down`
+```powershell
+npm run verify
+```
 
-Технические aliases `stack:*` сохранены как низкоуровневые обёртки над Docker Compose, но для повседневной работы ориентируйтесь на `prod:*`.
+Гейт проверяет backend tests, архитектурные границы, статический анализ, OpenAPI-контракт, frontend tests, TypeScript, SSR/client builds, ESLint и dev/production guardrails. Он не заменяет health checks и browser/WebRTC smoke на реальном стенде.
 
-### 4. Full stack с monitoring
+## Production
 
-Используйте этот режим, когда нужно локально проверить observability и alerting поверх основного контура.
+Production — отдельный контур. Не используйте `.env.example`, dev realm, seeded users или локальные секреты в production.
 
-- `npm run prod:up:monitoring`
-- `npm run prod:down:monitoring`
+Статические проверки, не требующие реальных operator files:
 
-Для предварительной валидации compose-конфигурации:
+```powershell
+npm run prod:baseline:validate
+npm run prod:host:baseline:validate
+npm run prod:config
+```
 
-- `npm run prod:config`
-- `npm run prod:config:monitoring`
+Для новой пустой установки сначала подготавливается закрытый operator-контур:
 
-### 5. Production perimeter baseline
+```powershell
+npm run prod:operator:prepare
+npm run prod:vault:bootstrap
+npm run prod:preflight
+```
 
-Используйте этот режим, когда нужно проверить hardened production topology, не смешивая её с локальным dev bootstrap.
+После bootstrap перенесите Vault recovery material и CA signing key в approved offline custody, поднимите и проверьте private service plane без nginx/Jitsi media и подготовьте проверяемый rollback. Точный порядок приведён в [production deployment guide](docs/deployment-production.md); он обязателен, если Vault уже инициализирован, база восстанавливается из dev или меняется active config set.
 
-- `npm run prod:baseline:validate`
-- `npm run prod:baseline:config`
-- `npm run prod:baseline:config:monitoring`
+Только после прохождения pre-cutover gates запускается публичный контур:
 
-`prod:baseline:validate` теперь проверяет не только perimeter/trust-zone membership, но и strict edge hardening: overwrite `X-Forwarded-*`, correlation-friendly access logging, rate/connection limits, блокировку public debug/management surfaces и Keycloak trusted proxy policy с pinned nginx reverse-proxy address вместо broad private-range defaults.
+```powershell
+npm run prod:up
+```
 
-Runtime hardening вынесен в отдельный validator `prod:runtime:baseline:validate`, а `prod:baseline:validate` теперь запускает perimeter guardrails и runtime guardrails вместе. Каноническая service-by-service матрица исключений и writable paths находится в `deploy/runtime/production-runtime-policy-matrix.md`.
+Эта команда сразу публикует host ports `80/tcp`, `443/tcp` и `10000/udp`. После запуска выполните внешние acceptance-проверки ниже; при их провале используйте подготовленный rollback.
 
-Если подготовлены реальные `.env.production`, nginx-конфиг и сертификаты для стенда:
+Важные свойства production workflow:
 
-- `npm run prod:baseline:up`
-- `npm run prod:baseline:up:monitoring`
-- `npm run prod:baseline:down`
-- `npm run prod:baseline:down:monitoring`
+- `prod:operator:prepare` сам создаёт `.env.production` и отказывается перезаписывать существующий файл;
+- `prod:operator:prepare` готовит internal Vault PKI, но не выпускает публичный edge-сертификат;
+- реальные секреты, Vault recovery material и TLS private keys остаются вне Git;
+- repo-managed env files содержат только non-secret config и path hints;
+- CA signing key хранится в operator custody и не должен находиться в runtime-mounted Vault TLS directory;
+- `prod:preflight` fail-closed проверяет DNS, сертификаты, secret files, permissions и конфигурационные контракты;
+- `prod:up` запускает project `jitsi-prod` в detached mode и ожидает health до 300 секунд;
+- `prod:down` сохраняет named volumes; удаление volumes не является способом rollback;
+- monitoring overlay включается через `npm run prod:up:monitoring`, но Alertmanager по умолчанию использует mock receiver для drill. До эксплуатационной приёмки настройте и проверьте реальный webhook.
 
-`prod:baseline:config*` использует committed `.env.production.example`, чтобы guardrails и compose rendering можно было проверить без приватных секретов. `prod:baseline:up*` по-прежнему ожидает реальный `.env.production`.
+### DNS, NAT и JVB
 
-Для реального запуска hardened baseline нужно дополнительно указать:
+Production использует три канонических имени из `.env.production`:
 
-- `NGINX_PORTAL_CONFIG_PATH` - путь до реального nginx-конфига стенда;
-- `NGINX_CERTS_PATH` - путь до operator-managed дерева Certbot; одноразовый `nginx-cert-bootstrap` переносит только fullchain/key в закрытый volume rootless nginx.
+- `PORTAL_HOST` — портал;
+- `AUTH_HOST` — Keycloak/OIDC;
+- `MEET_HOST` — Jitsi.
 
-По умолчанию production compose закрепляет nginx на `identity_net` с адресом `172.28.240.10`, и именно этот адрес попадает в `KC_PROXY_TRUSTED_ADDRESSES`. Если меняете сетевую схему, обновляйте это значение точечно, а не расширяйте доверие до `10.0.0.0/8`, `172.16.0.0/12` или `192.168.0.0/16`.
+Все записи должны указывать на внешний адрес роутера. На VM пробрасываются `80/tcp`, `443/tcp` и `10000/udp`. Для split-horizon JVB задайте оба кандидата без пробелов:
 
-Для long-term production baseline используйте hostname-based template из `deploy/nginx/portal.conf.example`. `deploy/nginx/portal-ip.conf.example` остаётся bootstrap-only fallback без права диктовать trusted proxy policy и final edge hardening.
+```dotenv
+JVB_ADVERTISE_IPS=LAN_IP,PUBLIC_IP
+```
 
-### 6. Ubuntu host control plane baseline
+Изменение переменной требует recreate контейнера JVB, обычный restart не обновляет environment. Проверка Compose и health доказывает только конфигурацию; реальный NAT подтверждается звонком минимум с тремя участниками, включая LAN и внешнего клиента, и выбранной ICE-парой на `10000/udp`.
 
-Используйте этот режим, когда нужно проверить repo-kept baseline для Ubuntu 24 host и operator access path.
+### Production acceptance
 
-- `npm run prod:host:baseline:validate`
-- `npm run prod:host:baseline:simulate`
+После cutover и до завершения публичной приёмки должны быть подтверждены:
 
-Прямые Python entrypoints для тех же проверок:
+- `npm run verify`, production baseline и live preflight;
+- валидный SAN-сертификат для всех трёх hostname;
+- healthy state всех long-lived сервисов и успешное завершение one-shot bootstrap jobs;
+- вход через OIDC, logout, создание встречи и гостевой invite flow;
+- LAN и внешний WebRTC media path через JVB;
+- реальный alert receiver, backup и проверяемый restore/unseal procedure;
+- отсутствие опубликованных management/data ports и dev-контейнеров.
 
-- `python scripts/validate-production-host-baseline.py`
-- `python scripts/run-production-host-baseline-container-smoke.py`
+## Модель безопасности
 
-Baseline artifacts находятся в `deploy/host/` и фиксируют:
+- Keycloak отвечает за идентификацию, backend — за авторизацию и tenant boundaries.
+- Платформенные роли не равны ролям встречи: администратор портала не становится автоматически организатором конференции.
+- Гость входит только по действительному invite token, всегда как участник и без полноценной portal session.
+- Frontend скрывает недоступные действия только для удобства; окончательное решение всегда принимает backend.
+- Jitsi принимает подписанный JWT, а публичная landing page не используется как обход портала.
+- Vault не публикуется на host network; workload-доступ ограничен policy и одноразовым bootstrap-контуром.
+- frontend SSR по умолчанию не становится Vault client; браузер никогда не получает workload credentials.
+- Forwarded headers, публичные Keycloak paths, rate limits и least-privilege/read-only posture с документированными исключениями контролируются валидаторами.
 
-- SSH key-only posture через `sshd_config.d` snippet;
-- UFW default-deny baseline c placeholder для operator allowlist;
-- named admin accounts + sudo model вместо shared root practices;
-- AppArmor/time sync checks и evidence retention для SSH, sudo, container restarts и firewall changes.
+OSV-монитор отвечает на вопрос, затронута ли закреплённая версия известной уязвимостью; он не является auto-updater или универсальным поиском последних релизов.
 
-Этот validator не заменяет `prod:baseline:validate`: perimeter и host guardrails должны оставаться зелеными вместе.
+Runtime Vault собирается по committed definition `deploy/vault/Dockerfile`, закрепляющему approved Yandex mirror artifact path и checksum policy. Ротация, custody и аварийный доступ описаны отдельно в [secret governance matrix](deploy/vault/secret-governance-matrix.md) и [break-glass runbook](deploy/vault/break-glass-runbook.md).
 
-`prod:host:baseline:simulate` полезен, когда целевой Ubuntu host ещё не готов. Он поднимает `ubuntu:24.04` container, прогоняет `sshd -t`, исполняет committed `ufw --dry-run` preview для allow rules и отдельно валидирует committed default policy команды в disposable окружении. Это только partial smoke: AppArmor, journald, `timedatectl` и реальная host auditability всё равно требуют проверки на реальном сервере.
+Канонические правила находятся в [матрице доступа](docs/access-control.md) и [модели угроз](docs/threat-model.md).
 
-### 7. Container runtime baseline
+## Документация
 
-Используйте этот режим, когда нужно проверить least-privilege posture production-контейнеров поверх perimeter и host baseline.
+| Документ | Содержание |
+| --- | --- |
+| [Production deployment](docs/deployment-production.md) | DNS, TLS, Keycloak, Vault, миграция, запуск и smoke checklist |
+| [Operations runbook](docs/runbook.md) | диагностика alerts и эксплуатационные действия |
+| [Access control](docs/access-control.md) | платформенные роли, роли встречи и guest invariants |
+| [Threat model](docs/threat-model.md) | trust boundaries, угрозы и release evidence |
+| [Framework/CVE monitoring](docs/framework-version-monitoring.md) | OSV flow, severity policy и реакция оператора |
+| [Refactoring roadmap](docs/refactoring-roadmap.md) | архитектурный baseline и дальнейший backlog |
+| [Runtime policy matrix](deploy/runtime/production-runtime-policy-matrix.md) | capabilities, read-only и writable exceptions по сервисам |
+| [Ubuntu host baseline](deploy/host/README.md) | SSH, UFW, AppArmor, audit и host hardening |
+| [Vault baseline](deploy/vault/README.md) | secret topology, auth model и custody rules |
+| [Secret governance](deploy/vault/secret-governance-matrix.md) | rotation, ownership и delivery surfaces |
+| [Break-glass runbook](deploy/vault/break-glass-runbook.md) | аварийный доступ, аудит и post-use rotation |
 
-- `npm run prod:runtime:baseline:validate`
+## Состояние проекта
 
-Прямой Python entrypoint:
-
-- `python scripts/validate-production-runtime-baseline.py`
-
-Baseline фиксирует и проверяет:
-
-- `cap_drop: [ALL]` и `security_opt: ["no-new-privileges:true"]` как default runtime posture;
-- запрет `privileged`, `use_api_socket`, `network_mode: host`, `pid: host`, `ipc: host` и Docker socket mounts;
-- `read_only: true` для stateless и runtime-configured сервисов, где writable paths вынесены в явные targets (`nginx`, `frontend`, `backend`, `redis`, `keycloak`, `jitsi-web`, `jitsi-prosody`, `jitsi-jicofo`, `jitsi-jvb`, `mock-alert-receiver`);
-- runtime limits для critical services: `frontend`, `backend`, `keycloak`, `jitsi-web`, `jitsi-prosody`, `jitsi-jicofo`, `jitsi-jvb`.
-
-Documented exceptions не держатся в голове: они зафиксированы в `deploy/runtime/production-runtime-policy-matrix.md`. Сейчас blanket writable rootfs остаётся только у PostgreSQL и части monitoring tooling, а Redis, Keycloak и critical Jitsi services переведены на `read_only: true` с явными writable targets через `tmpfs` и named volumes.
-
-Runtime images frontend и backend также запускаются не под root user, чтобы least-privilege baseline не ограничивался только Linux capabilities.
-
-Минимальный smoke path после изменения runtime baseline:
-
-- `npm run prod:runtime:baseline:validate`
-- `npm run prod:baseline:config`
-- `npm run prod:baseline:config:monitoring`
-- `docker inspect <container>` или эквивалентный evidence path для `CapDrop`, `SecurityOpt`, `ReadonlyRootfs` и mounts после реального rollout.
-
-### 8. Vault secret plane baseline
-
-Используйте этот режим, когда нужно проверить, что Vault добавлен в production topology как internal-only secret zone, а не как новый публичный control-plane surface.
-
-Committed runtime definition остаётся в `deploy/vault/Dockerfile`: Vault image собирается локально из approved Yandex mirror artifact path, а не тянется как отдельный unmanaged runtime source.
-
-- `npm run prod:secret:baseline:validate`
-- `npm run prod:secret:auth:validate`
-- `npm run prod:secret:delivery:validate`
-
-Прямые Python entrypoints:
-
-- `python scripts/validate-production-secret-plane.py`
-- `python scripts/validate-production-vault-auth-baseline.py`
-- `python scripts/validate-production-secret-delivery-baseline.py`
-
-### 9. Vault auth/policy baseline
-
-Используйте этот режим, когда нужно проверить scoped workload/operator auth model поверх уже введённого secret plane.
-
-- `npm run prod:secret:auth:validate`
-
-Baseline фиксирует и проверяет:
-
-- backend-scoped helper `backend-vault-bootstrap` как единственный default application-side Vault client с `secret_net` membership и canonical AppRole startup-fetch baseline;
-- least-privilege policy templates для backend, backup runner, Keycloak, Jitsi и operators без broad `kv/*`, `secret/*`, `sys/*` для workload-ов;
-- `auth/approle-workloads` для machine identities и `auth/oidc-operators` для named operators;
-- explicit decision, что `database` secrets engine остаётся preferred target для DB credentials;
-- отсутствие direct Vault client model по умолчанию для frontend SSR и browser runtime.
-
-Focused auth validator не означает, что migration secrets уже завершена. Он подтверждает только repo-kept auth/policy baseline, backend-scoped bootstrap helper path и service boundary guardrails.
-
-### 10. Vault secret delivery baseline
-
-Используйте этот режим, когда нужно проверить, что реальные production secrets больше не ожидаются через global `.env.production`, а delivery идёт через backend startup fetch и service-specific Vault-rendered files.
-
-- `npm run prod:secret:delivery:validate`
-
-Baseline фиксирует и проверяет:
-
-- отсутствие critical secret values в `.env.production.example`;
-- backend pre-start env bridge поверх `backend-vault-bootstrap` и named runtime volume;
-- service-specific env files для PostgreSQL, Redis, Keycloak и Jitsi вместо repo-managed secret env placeholders;
-- отсутствие direct Vault access у frontend/browser path и сохранение `backend-vault-bootstrap` как канонического backend consumer-а.
-
-Baseline фиксирует и проверяет:
-
-- наличие `vault` service только в `secret_net` и `ops_net`, без host-published `8200/tcp`;
-- repo-kept Vault baseline artifacts в `deploy/vault/`, включая build-from-mirror `Dockerfile`;
-- pinned stable release policy через approved Yandex mirror path `https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_linux_amd64.zip` и checksum source `https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_SHA256SUMS`;
-- обязательный audit device baseline и private-only operator path через bastion, VPN или equivalent private path;
-- явное разделение scope: Story 19.1 не реализует service-to-Vault auth model из Story 19.2, migration app secrets из repo-managed env files из Story 19.3 и backup/restore or incident response redesign из Epic 20.
-
-Для контейнерного baseline используется локально собираемый runtime image `jitsi-vault:1.21.4`, но его build path жёстко привязан к approved mirror artifact path и checksum source того же stable release. Это убирает отдельный неуправляемый runtime source и делает mirror policy частью реального deploy path.
-
-## Основные адреса локальной среды
-
-- Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:8080/api/v1`
-- Actuator health: `http://localhost:8080/actuator/health`
-- Swagger UI: `http://localhost:8082`
-- Keycloak: `http://localhost:8081`
-- Jitsi Web: `https://localhost:8443`
-- Jitsi Web HTTP: `http://localhost:8000`
-
-Для доступа к dev-контуру с другого компьютера скопируйте `.env.example` в
-локальный `.env` и замените `localhost` на адрес dev-хоста в
-`DEV_BACKEND_ORIGIN`, `DEV_PUBLIC_API_URL`, `DEV_KEYCLOAK_ORIGIN` и
-`DEV_PORTAL_ORIGIN`. Эти значения должны описывать один и тот же внешний
-контур: frontend использует `DEV_PUBLIC_API_URL` для перехода на backend, а
-Keycloak разрешает callback из `DEV_BACKEND_ORIGIN`. Файл `.env` содержит
-настройки конкретного окружения и не коммитится.
-
-Если realm Keycloak уже был импортирован до смены адреса backend, обновите у
-клиента `jitsi-backend` разрешённый redirect URI на
-`<DEV_BACKEND_ORIGIN>/login/oauth2/code/keycloak`; повторный импорт
-существующего realm не перезаписывает сохранённую конфигурацию клиента.
-
-Если поднят monitoring overlay через `docker-compose.monitoring.yml`:
-- Prometheus: `http://localhost:9090`
-- Alertmanager: `http://localhost:9093`
-- Mock alert receiver: `http://localhost:9080/notifications`
-- Grafana: `http://localhost:3001`
-
-## Команды разработки
-
-### Root-скрипты запуска
-
-- `npm run frontend:install` - установка зависимостей frontend-qwik из корня репозитория.
-- `npm run frontend:dev` - frontend dev server на Vite/Qwik SSR.
-- `npm run frontend:build` - production build frontend.
-- `npm run frontend:start` - запуск production SSR frontend поверх собранного `dist/`.
-- `npm run frontend:preview` - локальный preview production-бандла frontend.
-- `npm run frontend:verify:ssr` - production build + smoke-проверка SSR/resumability.
-- `npm run prod:up` - основной production-like сценарий контейнерного запуска.
-- `npm run prod:down` - остановка основного production-like контейнерного сценария.
-- `npm run prod:up:monitoring` - production-like контейнерный запуск с monitoring overlay.
-- `npm run prod:down:monitoring` - остановка production-like контейнерного сценария с monitoring overlay.
-- `npm run prod:config` - проверка итоговой compose-конфигурации production-like контура.
-- `npm run prod:config:monitoring` - проверка compose-конфигурации production-like контура с monitoring overlay.
-- `npm run prod:baseline:validate` - guardrail-проверка production perimeter, trust-zone membership, strict forwarded headers, throttling и закрытия debug/management surfaces.
-- `npm run prod:runtime:baseline:validate` - guardrail-проверка container runtime baseline: least-privilege posture, read-only/tmpfs expectations, runtime limits и запрет Docker socket/host-mode drift.
-- `npm run prod:host:baseline:validate` - guardrail-проверка repo-kept Ubuntu 24 host/control-plane baseline: SSH, UFW, operator model, AppArmor, time sync и journald retention.
-- `npm run prod:host:baseline:simulate` - partial container smoke для Ubuntu 24 host baseline: `sshd -t`, committed `ufw --dry-run` preview для allow rules и disposable validation для default policy команд внутри временного `ubuntu:24.04` container.
-- `npm run prod:secret:baseline:validate` - guardrail-проверка Vault secret-plane baseline: internal-only topology, approved mirror policy, audit bootstrap и private operator path notes.
-- `npm run prod:secret:delivery:validate` - guardrail-проверка bounded secret delivery baseline: backend runtime bridge, service-specific rendered env files и отсутствие long-lived repo-managed secret env delivery.
-- `npm run prod:baseline:up` - запуск отдельного production baseline из `docker-compose.production.yml`.
-- `npm run prod:baseline:down` - остановка отдельного production baseline.
-- `npm run prod:baseline:up:monitoring` - запуск production baseline с private monitoring overlay.
-- `npm run prod:baseline:down:monitoring` - остановка production baseline с monitoring overlay.
-- `npm run prod:baseline:config` - развёртка и проверка итоговой compose-конфигурации hardened production baseline.
-- `npm run prod:baseline:config:monitoring` - проверка compose-конфигурации hardened production baseline с monitoring overlay.
-- `npm run stack:up` - поднять полный контейнерный контур.
-- `npm run stack:up:monitoring` - поднять полный контейнерный контур с monitoring overlay.
-- `npm run stack:down` - остановить основной compose-контур.
-- `npm run stack:down:monitoring` - остановить compose-контур вместе с monitoring overlay.
-- `npm run stack:config` - развернуть и проверить итоговую compose-конфигурацию.
-- `npm run stack:config:monitoring` - развернуть и проверить compose-конфигурацию с monitoring overlay.
-
-### Backend
-
-- `./gradlew.bat build` - полная сборка backend.
-- `./gradlew.bat test` - весь backend test suite.
-- `./gradlew.bat testSmoke` - быстрые тесты без integration tag.
-- `./gradlew.bat testUnit` - unit-only тесты.
-- `./gradlew.bat testSlice` - slice-тесты Spring.
-- `./gradlew.bat testIntegration` - integration тесты без container tag.
-- `./gradlew.bat testContainer` - container-backed тесты.
-- `./gradlew.bat generateOpenApiSpec` - генерация runtime OpenAPI snapshot.
-
-Тестовая пирамида в backend зафиксирована как `unit / slice / non-container integration / container`.
-Container-сценарии запускаются через `testContainer`, требуют `Docker` и используют `Testcontainers` как канонический baseline для PostgreSQL и Redis.
-
-### Root-скрипты observability
-
-- `npm run observability:alerting:validate` - валидация Prometheus и Alertmanager артефактов.
-- `npm run observability:drill` - одиночный synthetic drill для backend и alerting-контура.
-- `npm run observability:drill:extended` - расширенный drill с несколькими traffic cycles.
-
-Те же observability-проверки можно запускать напрямую через Python:
-
-- `python scripts/validate-observability-alerting.py`
-- `python scripts/run-observability-live-drill.py`
-- `npm run observability:alerting:smoke` - smoke-проверка полного firing/resolved цикла для alerting.
-
-## Текущее состояние
-
-Проект находится в активной экспериментальной разработке. Структура модулей, API и инфраструктурные сценарии продолжают эволюционировать, поэтому обратная совместимость между коммитами не гарантируется.
+Проект развивается итеративно и ориентирован на self-hosted single-host deployment. Для каждого production-изменения сохраняйте проверяемый rollback, не смешивайте dev/prod volumes и обновляйте Jitsi compatibility group только целиком.
