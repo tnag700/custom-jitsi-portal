@@ -19,7 +19,7 @@ Self-hosted веб-портал для управления комнатами �
 
 ```mermaid
 flowchart LR
-    browser["Браузер"] -->|HTTPS| edge["Nginx edge"]
+    browser["Браузер"] -->|HTTPS TCP 443 / HTTP/3 UDP 443| edge["Nginx edge"]
     edge --> frontend["Qwik SSR"]
     edge --> backend["Spring Boot API"]
     edge --> keycloak["Keycloak"]
@@ -44,6 +44,7 @@ flowchart LR
 
 - `80/tcp` — HTTP redirect и ACME HTTP-01 при необходимости;
 - `443/tcp` — портал, OIDC и Jitsi по каноническим hostname;
+- `443/udp` — HTTP/3 QUIC к тому же Nginx edge с HTTP/2 fallback через `443/tcp`;
 - `10000/udp` — медиатрафик Jitsi Videobridge.
 
 Backend, Keycloak, PostgreSQL, Redis, Vault и monitoring-интерфейсы напрямую наружу не публикуются. Это инвариант Compose, а не доказательство корректной настройки роутера и host firewall.
@@ -198,7 +199,7 @@ npm run prod:preflight
 npm run prod:up
 ```
 
-Эта команда сразу публикует host ports `80/tcp`, `443/tcp` и `10000/udp`. После запуска выполните внешние acceptance-проверки ниже; при их провале используйте подготовленный rollback.
+Эта команда сразу публикует host ports `80/tcp`, `443/tcp`, `443/udp` и `10000/udp`. После запуска выполните внешние acceptance-проверки ниже; при их провале используйте подготовленный rollback.
 
 Важные свойства production workflow:
 
@@ -212,7 +213,7 @@ npm run prod:up
 - `prod:down` сохраняет named volumes; удаление volumes не является способом rollback;
 - monitoring overlay включается через `npm run prod:up:monitoring`, но Alertmanager по умолчанию использует mock receiver для drill. До эксплуатационной приёмки настройте и проверьте реальный webhook.
 
-### DNS, NAT и JVB
+### DNS, NAT, HTTP/3 и JVB
 
 Production использует три канонических имени из `.env.production`:
 
@@ -220,13 +221,15 @@ Production использует три канонических имени из 
 - `AUTH_HOST` — Keycloak/OIDC;
 - `MEET_HOST` — Jitsi.
 
-Все записи должны указывать на внешний адрес роутера. На VM пробрасываются `80/tcp`, `443/tcp` и `10000/udp`. Для split-horizon JVB задайте оба кандидата без пробелов:
+Все public DNS-записи должны указывать на внешний адрес роутера. На VM отдельно пробрасываются `80/tcp`, `443/tcp`, `443/udp` и `10000/udp`: UDP `443` — HTTP/3 до Nginx, а UDP `10000` — WebRTC media до JVB. Для LAN предпочтителен split DNS на LAN-адрес VM; если клиенты используют public address, NAT hairpin должен работать и для UDP `443`. Для split-horizon JVB задайте оба кандидата без пробелов:
 
 ```dotenv
 JVB_ADVERTISE_IPS=LAN_IP,PUBLIC_IP
 ```
 
 Изменение переменной требует recreate контейнера JVB, обычный restart не обновляет environment. Проверка Compose и health доказывает только конфигурацию; реальный NAT подтверждается звонком минимум с тремя участниками, включая LAN и внешнего клиента, и выбранной ICE-парой на `10000/udp`.
+
+HTTP/3 вводится как canary с `Alt-Svc: h3=":443"; ma=300`, при этом `ssl_early_data off` и TCP-путь HTTP/2 fallback остаются обязательными. Для rollback сначала отдайте `Alt-Svc: clear` по TCP на всех трех hostname, выждите ранее объявленный `ma` и только затем закрывайте UDP `443`; JVB UDP `10000` при этом не меняется.
 
 ### Production acceptance
 
@@ -236,6 +239,7 @@ JVB_ADVERTISE_IPS=LAN_IP,PUBLIC_IP
 - валидный SAN-сертификат для всех трёх hostname;
 - healthy state всех long-lived сервисов и успешное завершение one-shot bootstrap jobs;
 - вход через OIDC, logout, создание встречи и гостевой invite flow;
+- HTTP/3 `h3` из внешней сети на portal, auth и meet, а также HTTP/2 fallback при client-side block UDP `443`;
 - LAN и внешний WebRTC media path через JVB;
 - реальный alert receiver, backup и проверяемый restore/unseal procedure;
 - отсутствие опубликованных management/data ports и dev-контейнеров.

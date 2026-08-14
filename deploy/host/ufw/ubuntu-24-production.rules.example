@@ -5,6 +5,7 @@
 # Preview rule syntax safely first.
 ufw --dry-run allow 80/tcp comment 'public http redirect'
 ufw --dry-run allow 443/tcp comment 'public https'
+ufw --dry-run allow 443/udp comment 'public http3 quic'
 ufw --dry-run allow 10000/udp comment 'jitsi media'
 ufw --dry-run allow from YOUR_OPERATOR_CIDR to any port 22 proto tcp comment 'operator ssh allowlist'
 
@@ -20,6 +21,7 @@ ufw default deny incoming
 ufw default allow outgoing
 ufw allow 80/tcp comment 'public http redirect'
 ufw allow 443/tcp comment 'public https'
+ufw allow 443/udp comment 'public http3 quic'
 ufw allow 10000/udp comment 'jitsi media'
 ufw allow from YOUR_OPERATOR_CIDR to any port 22 proto tcp comment 'operator ssh allowlist'
 ufw enable

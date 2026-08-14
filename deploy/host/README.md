@@ -21,7 +21,8 @@
 
 - SSH только по ключам; `PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `PermitRootLogin no`.
 - Предпочитаются `ed25519` ключи для новых operator credentials, но shared baseline не должен жестко отключать уже выданные strong keys до плановой ротации.
-- UFW работает как default deny inbound baseline с allow only для `80/tcp`, `443/tcp`, `10000/udp` и `22/tcp` от operator allowlist.
+- UFW работает как default deny inbound baseline с allow only для `80/tcp`, `443/tcp`, `443/udp`, `10000/udp` и `22/tcp` от operator allowlist.
+- `443/udp` переносит HTTP/3 QUIC до Nginx. Это отдельный edge path, его нельзя путать с Jitsi media на `10000/udp`.
 - AppArmor должен оставаться enabled/enforce posture. Не отключать его ради удобства контейнеров.
 - Time sync обязателен для TLS, OIDC и token validity.
 - Либо automatic security updates, либо документированный patch window для security fixes. Ad hoc patching не считается baseline.
@@ -35,6 +36,15 @@
 5. Убедиться, что `aa-status` показывает loaded profiles и нет baseline-практики полного disable AppArmor.
 6. Проверить `timedatectl status` и наличие synchronized system clock.
 7. Проверить, что journald retention baseline применен и не допускает disk exhaustion.
+
+## HTTP/3 perimeter and fallback
+
+- Держите TCP `443` открытым вместе с UDP `443`: HTTP/3 дополняет существующий HTTP/2 fallback и HTTP/1.1 path, а не заменяет его.
+- Роутер должен пробрасывать public UDP `443` на VM UDP `443`; Docker затем публикует его на rootless Nginx UDP listener на container port `8443`. Public `Alt-Svc` должен рекламировать `:443`, а не внутренний `:8443`.
+- Для LAN предпочтителен split DNS, который разрешает все три canonical hostname в LAN-адрес VM. Если внутренние клиенты разрешают public address, NAT hairpin/reflection должен поддерживать UDP `443` наряду с TCP `80/443`.
+- Держите `ssl_early_data off`: в портале есть authenticated и state-changing routes, поэтому replayable 0-RTT requests не входят в production contract.
+- Начинайте HTTP/3 canary с `Alt-Svc: h3=":443"; ma=300`. Проверьте portal, auth и meet hostname из внешней сети QUIC-capable client и отдельно проверьте HTTP/2 fallback с заблокированным на стороне клиента UDP `443`.
+- HTTP/3 rollback должен учитывать client cache: сначала отдайте `Alt-Svc: clear` через оставшийся рабочим TCP edge, подождите не меньше ранее объявленного `ma` и только затем удалите QUIC listener, UDP Docker publication, router DNAT и UFW rule. Не меняйте независимое JVB-правило UDP `10000` при HTTP/3 rollback.
 
 ## Container simulation
 

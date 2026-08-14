@@ -6,7 +6,8 @@ host. The canonical public names are `jitsi-mgorka.top`,
 
 The canonical public perimeter is intentionally small:
 
-- TCP 80 and 443 terminate on Nginx.
+- TCP 80 and 443 terminate on Nginx; TCP 443 remains the HTTP/2 and HTTP/1.1 fallback.
+- UDP 443 terminates HTTP/3 QUIC on the same Nginx edge.
 - UDP 10000 is forwarded directly to Jitsi Videobridge.
 - PostgreSQL, Redis, backend, frontend, Keycloak, Vault, Prometheus,
   Alertmanager, Grafana, and their management endpoints are not published.
@@ -23,6 +24,7 @@ Forward these ports to the application VM:
 | --- | --- | --- | --- |
 | 80 | TCP | `10.10.100.29:80` | ACME challenge and HTTPS redirect |
 | 443 | TCP | `10.10.100.29:443` | Portal, Keycloak, and Jitsi web traffic |
+| 443 | UDP | `10.10.100.29:443` | HTTP/3 QUIC to Nginx |
 | 10000 | UDP | `10.10.100.29:10000` | Jitsi media |
 
 Do not forward SSH globally. Restrict TCP 22 to an operator VPN or a known
@@ -33,10 +35,15 @@ can reach the VM directly on UDP 10000, while external clients use the public
 NAT address. Keep the public address in the list and allow UDP 10000 from every
 authorized LAN/VPN segment to the VM.
 
+UDP 443 and UDP 10000 are different production paths. A successful HTTP/3
+request proves only the Nginx edge path; only a real conference proves the JVB
+media path. Configure and troubleshoot their DNAT and firewall rules separately.
+
 Prefer split-horizon DNS for browser traffic: internal resolvers return
 `10.10.100.29` for the portal, auth and meet hostnames, while public DNS keeps
 returning `86.57.222.216`. If internal DNS cannot be changed, configure NAT
-reflection for TCP 80/443 and UDP 10000 instead.
+reflection for TCP 80/443, HTTP/3 UDP 443 and JVB UDP 10000 instead. Test the
+UDP 443 hairpin explicitly; working TCP hairpin does not prove QUIC reachability.
 
 ## Repository preparation
 
@@ -65,7 +72,7 @@ docker compose --project-name jitsi-prod --env-file .env.production \
   -f docker-compose.production.yml config >/tmp/jitsi-compose.yml
 ```
 
-The configuration render must show only `80/tcp`, `443/tcp`, and
+The configuration render must show only `80/tcp`, `443/tcp`, `443/udp`, and
 `10000/udp` as host-published ports. It must also contain a non-empty
 `JVB_ADVERTISE_IPS`.
 
@@ -109,6 +116,19 @@ trusted-TLS smoke checks before accepting the refreshed edge.
 docker compose --env-file .env.production -f docker-compose.production.yml \
   exec -T nginx nginx -t
 ```
+
+The rootless edge listens on container port `8443` for both transports. Docker
+publishes host TCP `443` and host UDP `443` separately to that port. The public
+advertisement must nevertheless use the client-visible authority:
+
+```text
+Alt-Svc: h3=":443"; ma=300
+```
+
+Keep `ssl_early_data off`: authenticated, invite and administrative mutations
+are not approved for replayable 0-RTT. Keep the TCP listener and HTTP/2 fallback
+throughout the HTTP/3 canary. Start with `ma=300`; raise it only after external
+portal, auth, meet, hairpin and fallback acceptance passes.
 
 The `deploy/nginx/portal-ip.conf.example` file is a bootstrap-only fallback. It
 does not provide the hostname-separated Keycloak and Jitsi production policy
@@ -227,7 +247,8 @@ following before routing production traffic:
 4. an issued JWT reaches the prejoin page and authenticates to the conference;
 5. `/xmpp-websocket` completes an HTTP 101 upgrade with the `xmpp`
    subprotocol;
-6. JVB listens on UDP 10000 and the host publishes only the approved UDP port;
+6. JVB listens on UDP 10000 and its media mapping remains distinct from the
+   approved Nginx HTTP/3 mapping on UDP 443;
 7. leaving a joined conference returns the browser to the portal;
 8. each running RepoDigest matches the four reviewed references in the Compose
    file.
@@ -277,7 +298,9 @@ npm run prod:host:baseline:validate
 The baseline requires named administrators, key-only SSH, UFW default-deny
 inbound policy, time synchronization, bounded journald retention, and an
 explicit break-glass path. Do not reload SSH or enable UFW until the dry-run
-and recovery checks in `deploy/host/README.md` pass.
+and recovery checks in `deploy/host/README.md` pass. The UFW allowlist contains
+both `443/udp` for HTTP/3 and `10000/udp` for Jitsi media as separately named
+rules; never substitute one for the other.
 
 ## Start and migration
 
@@ -384,11 +407,17 @@ tunnel or a separately reviewed private reverse-proxy path.
    generated invite.
 5. Two clients on different external networks can exchange audio and video.
 6. `docker compose ps` reports healthy application services.
-7. No host port other than TCP 80/443 and UDP 10000 is reachable externally.
+7. No host port other than TCP 80/443, UDP 443 and UDP 10000 is reachable externally.
 8. Prometheus evaluates the committed rules and Alertmanager sends both firing
    and resolved notifications during the controlled drill.
 9. `curl --http2 -fsS -o /dev/null -w '%{http_version}\n' https://jitsi-mgorka.top/healthz`
    prints `2` from an external client.
+10. A QUIC-capable external client runs
+    `curl --http3-only -fsS -o /dev/null -w '%{http_version}\n' https://jitsi-mgorka.top/healthz`
+    and receives `3`; repeat for auth and meet using a non-sensitive endpoint.
+11. With UDP 443 blocked on the test client only, ordinary browser navigation
+    still succeeds over the HTTP/2 fallback, while an external conference still
+    uses the independent JVB UDP 10000 media path.
 
 For rollback, preserve PostgreSQL, Keycloak, Vault and Jitsi configuration
 volumes, stop the new application containers, restore only a previously tested
@@ -397,3 +426,10 @@ guard, restore its matching configuration backup, and rerun the smoke
 checklist. A legacy backend rollback follows the signing-key rotation procedure
 above and requires a later fresh cutover boundary. Never remove persistent
 volumes as an application rollback step.
+
+For an HTTP/3-only rollback, do not roll back the application or Jitsi media
+stack. First serve `Alt-Svc: clear` over the working TCP edge for portal, auth
+and meet, retain HTTP/2 fallback, and wait at least the largest `ma` previously
+advertised. Then remove the QUIC listener and UDP `443:8443` publication and ask
+the network operator to remove UDP 443 DNAT/UFW rules. Leave JVB UDP 10000
+unchanged and rerun both web and media acceptance checks.

@@ -316,6 +316,7 @@ def main() -> None:
     assert_not_contains(nginx_block, "cap_add:", "Rootless production nginx must not add Linux capabilities.")
     assert_contains(nginx_block, "80:8080", "Rootless production nginx must receive public HTTP on its unprivileged internal port.")
     assert_contains(nginx_block, "443:8443", "Rootless production nginx must receive public HTTPS on its unprivileged internal port.")
+    assert_contains(nginx_block, "443:8443/udp", "Rootless production nginx must receive public HTTP/3 on its unprivileged QUIC port.")
 
     certificate_bootstrap_caps = get_list_section_items(
         get_service_block(base_text, "nginx-cert-bootstrap"),

@@ -28,6 +28,24 @@ into incident notes.
 4. If signaling works but media fails, inspect both router layers for UDP NAT
    forwarding and symmetric-NAT behavior.
 
+### HTTP/3 edge degradation
+
+1. Confirm that the public TCP `443` path is healthy and a QUIC-capable external
+   client can still complete HTTP/2 fallback. Do not treat an HTTP/3 failure as
+   a reason to restart JVB.
+2. Check the dedicated HTTP/3 path end to end: public UDP `443` DNAT to VM UDP
+   `443`, UFW `443/udp`, Docker UDP `443:8443`, and the Nginx QUIC listener.
+   A working JVB UDP `10000` media path does not prove any of these checks.
+3. Run `curl --http3-only` from a genuinely external client and verify the
+   browser Network protocol column reports `h3`. Test LAN separately when it
+   depends on split DNS or UDP `443` NAT hairpin.
+4. Keep `ssl_early_data off`. Do not enable 0-RTT as an incident workaround for
+   authentication, invite, or administrative requests.
+5. If QUIC cannot be restored safely, serve `Alt-Svc: clear` over TCP on portal,
+   auth and meet, keep the HTTP/2 fallback available, wait at least the largest
+   advertised `ma` (`ma=300` during canary), and then remove only the UDP `443`
+   listener/publication/NAT/firewall path. Leave JVB UDP `10000` unchanged.
+
 ### Refresh-token reuse
 
 Treat `JitsiAuthRefreshReuseSpike` as a security event. Preserve bounded audit

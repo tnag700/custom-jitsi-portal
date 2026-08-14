@@ -200,7 +200,7 @@ def main() -> None:
             )
 
     published_ports = {service_name: get_port_list(get_service_block(base_text, service_name)) for service_name in get_service_names(base_text)}
-    allowed_published_ports = {"80:8080", "443:8443", "10000:10000/udp"}
+    allowed_published_ports = {"80:8080", "443:8443", "443:8443/udp", "10000:10000/udp"}
     actual_published_ports = [port for ports in published_ports.values() for port in ports]
     for port in actual_published_ports:
         if port not in allowed_published_ports:
@@ -215,7 +215,7 @@ def main() -> None:
                 if __import__("re").search(rf"(^|:){forbidden}(/|$|:)", port):
                     fail(f"Forbidden public port '{forbidden}' found on service '{service_name}': {port}")
 
-    assert_port_set("nginx", get_port_list(nginx), ["80:8080", "443:8443"])
+    assert_port_set("nginx", get_port_list(nginx), ["80:8080", "443:8443", "443:8443/udp"])
     assert_port_set("jitsi-jvb", get_port_list(jitsi_jvb), ["10000:10000/udp"])
 
     for service_name in ["nginx-cert-bootstrap", "frontend", "backend", "osv-egress-proxy", "keycloak", "keycloak-db", "db", "redis", "jitsi-web", "jitsi-prosody", "jitsi-jicofo"]:
@@ -269,6 +269,21 @@ def main() -> None:
     assert_contains(nginx_config_text, "log_format edge_combined", "Production nginx config must define correlation-friendly edge access logging.")
     assert_contains(nginx_config_text, "access_log /var/log/nginx/access.log edge_combined;", "Production nginx config must enable correlation-friendly edge access logging.")
 
+    combined_log_match = __import__("re").search(
+        r"log_format\s+edge_combined\s+(.+?);",
+        nginx_config_text,
+        flags=__import__("re").DOTALL,
+    )
+    if combined_log_match is None:
+        fail("Production nginx must define the standard edge access-log format.")
+    combined_log_format = combined_log_match.group(1)
+    for required_variable in ["protocol=$server_protocol", "http3=$http3"]:
+        assert_contains(
+            combined_log_format,
+            required_variable,
+            f"Standard edge access logs must expose negotiated protocol state via '{required_variable}'.",
+        )
+
     invite_log_match = __import__("re").search(
         r"log_format\s+edge_invite_redacted\s+(.+?);",
         nginx_config_text,
@@ -277,6 +292,12 @@ def main() -> None:
     if invite_log_match is None:
         fail("Production nginx must define a redacted access-log format for bearer invite paths.")
     invite_log_format = invite_log_match.group(1)
+    for required_variable in ["protocol=$server_protocol", "http3=$http3"]:
+        assert_contains(
+            invite_log_format,
+            required_variable,
+            f"Redacted invite access logs must expose negotiated protocol state via '{required_variable}'.",
+        )
     regex = __import__("re")
     for forbidden_variable in ["$request", "$request_uri", "$uri", "$args", "$http_referer"]:
         if regex.search(rf"{regex.escape(forbidden_variable)}(?![A-Za-z0-9_])", invite_log_format):
@@ -304,6 +325,9 @@ def main() -> None:
             "Every production hostname must reject residual percent encoding before generic routing "
             "so nested invite encodings cannot reach URI-bearing logs."
         )
+    alt_svc_header = "add_header Alt-Svc 'h3=\":443\"; ma=300' always;"
+    if sum(alt_svc_header in location for location in residual_encoding_locations) != 3:
+        fail("Every HTTPS residual-encoding reject must continue advertising the HTTP/3 canary endpoint.")
     for residual_encoding_location in residual_encoding_locations:
         assert_contains(
             residual_encoding_location,
@@ -351,6 +375,8 @@ def main() -> None:
             "limit_conn per_ip_conn 10;",
             "Browser invite routes must bound concurrent SSR validation/exchange requests per source address.",
         )
+    if sum(alt_svc_header in location for location in invite_locations) != 3:
+        fail("Every HTTPS invite entry point must continue advertising the HTTP/3 canary endpoint.")
     if sum("return 302 https://${PORTAL_HOST}$request_uri;" in location for location in invite_locations) != 3:
         fail("HTTP, auth-host and meet-host invite paths must redirect to the canonical portal hostname.")
     if sum("proxy_pass http://frontend_upstream;" in location for location in invite_locations) != 1:
@@ -383,6 +409,8 @@ def main() -> None:
             "return 410;",
             "Retired token-bearing invite validation URLs must never reach an upstream service.",
         )
+    if sum(alt_svc_header in location for location in retired_invite_locations) != 3:
+        fail("Every HTTPS legacy invite rejection must continue advertising the HTTP/3 canary endpoint.")
     assert_contains(
         nginx_config_text,
         "limit_req_zone $binary_remote_addr zone=invite_sensitive:10m rate=10r/s;",
@@ -419,6 +447,11 @@ def main() -> None:
         )
         assert_contains(
             invite_api_location,
+            alt_svc_header,
+            "Invite API responses must continue advertising the HTTP/3 canary endpoint despite local response headers.",
+        )
+        assert_contains(
+            invite_api_location,
             'add_header Cache-Control "no-store" always;',
             "Invite API responses must be no-store.",
         )
@@ -452,6 +485,10 @@ def main() -> None:
         "listen 8080;",
         "listen 8443 ssl;",
         "http2 on;",
+        "http3 on;",
+        "ssl_early_data off;",
+        "quic_retry on;",
+        "add_header Alt-Svc 'h3=\":443\"; ma=300' always;",
     ]:
         assert_contains(
             nginx_config_text,
@@ -461,12 +498,66 @@ def main() -> None:
     regex = __import__("re")
     if nginx_config_text.count("http2 on;") != 3:
         fail("Production nginx must enable HTTP/2 exactly once in each public TLS vhost.")
+    if nginx_config_text.count("http3 on;") != 3:
+        fail("Production nginx must enable HTTP/3 exactly once in each public TLS vhost.")
+    if nginx_config_text.count("ssl_early_data off;") != 3:
+        fail("Production nginx must explicitly disable replayable TLS early data in every public TLS vhost.")
+    assert_not_contains(
+        nginx_config_text,
+        "ssl_early_data on;",
+        "Production nginx must never enable replayable TLS early data.",
+    )
+    if nginx_config_text.count("quic_retry on;") != 1:
+        fail("Production nginx must enable QUIC address validation once at HTTP scope.")
+    assert_regex(
+        nginx_config_text,
+        r"^quic_retry\s+on;\s*$",
+        "Production nginx must define QUIC address validation at shared HTTP scope.",
+    )
+    if nginx_config_text.count(alt_svc_header) != 14:
+        fail(
+            "Production nginx must advertise the public HTTP/3 endpoint in all three TLS vhosts "
+            "and every HTTPS location that overrides response-header inheritance."
+        )
     if len(regex.findall(r"(?m)^\s*listen\s+8443\s+ssl;\s*$", nginx_config_text)) != 3:
         fail("Production nginx must define exactly three IPv4 TLS listeners on 8443.")
     if len(regex.findall(r"(?m)^\s*listen\s+\[::\]:8443\s+ssl;\s*$", nginx_config_text)) != 3:
         fail("Production nginx must define exactly three IPv6 TLS listeners on 8443.")
+    if len(regex.findall(r"(?m)^\s*listen\s+8443\s+quic(?:\s+reuseport)?;\s*$", nginx_config_text)) != 3:
+        fail("Production nginx must define exactly three IPv4 QUIC listeners on 8443.")
+    if len(regex.findall(r"(?m)^\s*listen\s+\[::\]:8443\s+quic(?:\s+reuseport)?;\s*$", nginx_config_text)) != 3:
+        fail("Production nginx must define exactly three IPv6 QUIC listeners on 8443.")
+    if nginx_config_text.count("listen 8443 quic reuseport;") != 1:
+        fail("Production nginx must create exactly one IPv4 QUIC reuseport socket in the first TLS vhost.")
+    if nginx_config_text.count("listen [::]:8443 quic reuseport;") != 1:
+        fail("Production nginx must create exactly one IPv6 QUIC reuseport socket in the first TLS vhost.")
+    if len(regex.findall(r"(?m)^\s*listen\s+8443\s+quic;\s*$", nginx_config_text)) != 2:
+        fail("The remaining two TLS vhosts must reuse the existing IPv4 QUIC socket without repeating reuseport.")
+    if len(regex.findall(r"(?m)^\s*listen\s+\[::\]:8443\s+quic;\s*$", nginx_config_text)) != 2:
+        fail("The remaining two TLS vhosts must reuse the existing IPv6 QUIC socket without repeating reuseport.")
+    assert_regex(
+        nginx_config_text,
+        r"server\s*\{\s*listen\s+8443\s+ssl;\s*listen\s+\[::\]:8443\s+ssl;\s*"
+        r"listen\s+8443\s+quic\s+reuseport;\s*listen\s+\[::\]:8443\s+quic\s+reuseport;\s*"
+        r"http2\s+on;\s*http3\s+on;\s*server_name\s+\$\{PORTAL_HOST\};"
+        r"(?:(?!\n\s*location\b)[\s\S])*?ssl_early_data\s+off;"
+        r"(?:(?!\n\s*location\b)[\s\S])*?add_header\s+Alt-Svc\s+'h3=\":443\";\s+ma=300'\s+always;",
+        "The first portal TLS vhost must own the single IPv4 and IPv6 QUIC reuseport listeners.",
+    )
+    for hostname in ["AUTH_HOST", "MEET_HOST"]:
+        assert_regex(
+            nginx_config_text,
+            rf"server\s*\{{\s*listen\s+8443\s+ssl;\s*listen\s+\[::\]:8443\s+ssl;\s*"
+            rf"listen\s+8443\s+quic;\s*listen\s+\[::\]:8443\s+quic;\s*"
+            rf"http2\s+on;\s*http3\s+on;\s*server_name\s+\$\{{{hostname}\}};"
+            rf"(?:(?!\n\s*location\b)[\s\S])*?ssl_early_data\s+off;"
+            rf"(?:(?!\n\s*location\b)[\s\S])*?add_header\s+Alt-Svc\s+'h3=\":443\";\s+ma=300'\s+always;",
+            f"The {hostname} TLS vhost must share the existing QUIC sockets without repeating reuseport.",
+        )
     if regex.search(r"(?m)^\s*listen\b[^;]*\bhttp2\b[^;]*;", nginx_config_text):
         fail("Production nginx must use the current server-level HTTP/2 directive.")
+    if regex.search(r"(?m)^\s*listen\b[^;]*\bhttp3\b[^;]*;", nginx_config_text):
+        fail("Production nginx must use the current server-level HTTP/3 directive.")
     for forbidden_example_host in ["portal.example.com", "auth.example.com", "meet.example.com"]:
         assert_not_contains(
             nginx_config_text,
@@ -579,7 +670,7 @@ def main() -> None:
     assert_has_networks("grafana", grafana, ["ops_net"])
 
     print("validate-production-perimeter: OK")
-    print("validate-production-perimeter: verified public exposure is limited to 80/tcp, 443/tcp and 10000/udp")
+    print("validate-production-perimeter: verified public exposure is limited to 80/tcp, 443/tcp, 443/udp and 10000/udp")
     print("validate-production-perimeter: verified trust-zone networks and private-service membership")
     print("validate-production-perimeter: verified frontend SSR has no direct data_net/secret_net access, backend stays off the secret plane, and only backend-vault-bootstrap joins secret_net for auth bootstrap")
     print("validate-production-perimeter: verified strict forwarded-header overwrite, throttling controls and blocked debug/management surfaces")

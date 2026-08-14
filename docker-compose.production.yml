@@ -87,6 +87,7 @@ services:
     ports:
       - "80:8080"
       - "443:8443"
+      - "443:8443/udp"
     environment:
       - NGINX_ENVSUBST_FILTER=^(PORTAL_HOST|AUTH_HOST|MEET_HOST)$$
       - PORTAL_HOST=${PORTAL_HOST:?Set PORTAL_HOST}

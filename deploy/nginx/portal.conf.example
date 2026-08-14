@@ -12,8 +12,12 @@ map $uri $invite_api_referer {
     /api/v1/invites/exchange "";
 }
 
+# Validate client addresses before allocating state for QUIC connections.
+quic_retry on;
+
 log_format edge_combined 'request_id=$request_id remote_addr=$remote_addr host=$host '
     'request="$request" status=$status body_bytes_sent=$body_bytes_sent '
+    'protocol=$server_protocol http3=$http3 '
     'request_time=$request_time upstream_addr=$upstream_addr upstream_status=$upstream_status '
     'upstream_response_time=$upstream_response_time referer="$http_referer" user_agent="$http_user_agent"';
 
@@ -21,6 +25,7 @@ log_format edge_combined 'request_id=$request_id remote_addr=$remote_addr host=$
 # recording the path, query string or referrer that can contain the token.
 log_format edge_invite_redacted 'request_id=$request_id remote_addr=$remote_addr host=$host '
     'method=$request_method surface=invite_sensitive status=$status body_bytes_sent=$body_bytes_sent '
+    'protocol=$server_protocol http3=$http3 '
     'request_time=$request_time upstream_addr=$upstream_addr upstream_status=$upstream_status '
     'upstream_response_time=$upstream_response_time user_agent="$http_user_agent"';
 
@@ -89,7 +94,10 @@ server {
 server {
     listen 8443 ssl;
     listen [::]:8443 ssl;
+    listen 8443 quic reuseport;
+    listen [::]:8443 quic reuseport;
     http2 on;
+    http3 on;
     server_name ${PORTAL_HOST};
 
     ssl_certificate /etc/nginx/certs/fullchain.pem;
@@ -97,8 +105,10 @@ server {
     ssl_session_timeout 1d;
     ssl_session_cache shared:portal_ssl:10m;
     ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_early_data off;
     ssl_prefer_server_ciphers off;
 
+    add_header Alt-Svc 'h3=":443"; ma=300' always;
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy no-referrer always;
@@ -167,6 +177,7 @@ server {
         limit_req zone=invite_sensitive burst=20 nodelay;
         limit_conn per_ip_conn 10;
         proxy_hide_header Cache-Control;
+        add_header Alt-Svc 'h3=":443"; ma=300' always;
         add_header Cache-Control "no-store" always;
         proxy_pass http://backend_upstream;
         proxy_http_version 1.1;
@@ -177,6 +188,7 @@ server {
         limit_req zone=invite_sensitive burst=20 nodelay;
         limit_conn per_ip_conn 10;
         proxy_hide_header Cache-Control;
+        add_header Alt-Svc 'h3=":443"; ma=300' always;
         add_header Cache-Control "no-store" always;
         proxy_pass http://backend_upstream;
         proxy_http_version 1.1;
@@ -214,6 +226,7 @@ server {
     location ~* %[0-9a-f][0-9a-f] {
         access_log /var/log/nginx/access.log edge_invite_redacted;
         error_log /dev/null crit;
+        add_header Alt-Svc 'h3=":443"; ma=300' always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         add_header Cache-Control "no-store" always;
         add_header Referrer-Policy no-referrer always;
@@ -227,6 +240,7 @@ server {
         limit_req zone=invite_sensitive burst=20 nodelay;
         limit_conn per_ip_conn 10;
         proxy_hide_header Cache-Control;
+        add_header Alt-Svc 'h3=":443"; ma=300' always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         add_header X-Content-Type-Options nosniff always;
         add_header Referrer-Policy no-referrer always;
@@ -240,6 +254,7 @@ server {
     location ~* ^/api/v1/invites/[^/]+/validate/?$ {
         access_log /var/log/nginx/access.log edge_invite_redacted;
         error_log /dev/null crit;
+        add_header Alt-Svc 'h3=":443"; ma=300' always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         add_header Cache-Control "no-store" always;
         add_header Referrer-Policy no-referrer always;
@@ -256,7 +271,10 @@ server {
 server {
     listen 8443 ssl;
     listen [::]:8443 ssl;
+    listen 8443 quic;
+    listen [::]:8443 quic;
     http2 on;
+    http3 on;
     server_name ${AUTH_HOST};
 
     ssl_certificate /etc/nginx/certs/fullchain.pem;
@@ -264,8 +282,10 @@ server {
     ssl_session_timeout 1d;
     ssl_session_cache shared:auth_ssl:10m;
     ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_early_data off;
     ssl_prefer_server_ciphers off;
 
+    add_header Alt-Svc 'h3=":443"; ma=300' always;
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy no-referrer always;
@@ -315,6 +335,7 @@ server {
     location ~* %[0-9a-f][0-9a-f] {
         access_log /var/log/nginx/access.log edge_invite_redacted;
         error_log /dev/null crit;
+        add_header Alt-Svc 'h3=":443"; ma=300' always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         add_header Cache-Control "no-store" always;
         add_header Referrer-Policy no-referrer always;
@@ -327,6 +348,7 @@ server {
         error_log /dev/null crit;
         limit_req zone=invite_sensitive burst=20 nodelay;
         limit_conn per_ip_conn 10;
+        add_header Alt-Svc 'h3=":443"; ma=300' always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         add_header X-Content-Type-Options nosniff always;
         add_header Referrer-Policy no-referrer always;
@@ -338,6 +360,7 @@ server {
     location ~* ^/api/v1/invites/[^/]+/validate/?$ {
         access_log /var/log/nginx/access.log edge_invite_redacted;
         error_log /dev/null crit;
+        add_header Alt-Svc 'h3=":443"; ma=300' always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         add_header Cache-Control "no-store" always;
         add_header Referrer-Policy no-referrer always;
@@ -403,7 +426,10 @@ server {
 server {
     listen 8443 ssl;
     listen [::]:8443 ssl;
+    listen 8443 quic;
+    listen [::]:8443 quic;
     http2 on;
+    http3 on;
     server_name ${MEET_HOST};
 
     ssl_certificate /etc/nginx/certs/fullchain.pem;
@@ -411,8 +437,10 @@ server {
     ssl_session_timeout 1d;
     ssl_session_cache shared:meet_ssl:10m;
     ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_early_data off;
     ssl_prefer_server_ciphers off;
 
+    add_header Alt-Svc 'h3=":443"; ma=300' always;
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy no-referrer always;
@@ -464,6 +492,7 @@ server {
     location ~* %[0-9a-f][0-9a-f] {
         access_log /var/log/nginx/access.log edge_invite_redacted;
         error_log /dev/null crit;
+        add_header Alt-Svc 'h3=":443"; ma=300' always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         add_header Cache-Control "no-store" always;
         add_header Referrer-Policy no-referrer always;
@@ -476,6 +505,7 @@ server {
         error_log /dev/null crit;
         limit_req zone=invite_sensitive burst=20 nodelay;
         limit_conn per_ip_conn 10;
+        add_header Alt-Svc 'h3=":443"; ma=300' always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         add_header X-Content-Type-Options nosniff always;
         add_header Referrer-Policy no-referrer always;
@@ -487,6 +517,7 @@ server {
     location ~* ^/api/v1/invites/[^/]+/validate/?$ {
         access_log /var/log/nginx/access.log edge_invite_redacted;
         error_log /dev/null crit;
+        add_header Alt-Svc 'h3=":443"; ma=300' always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         add_header Cache-Control "no-store" always;
         add_header Referrer-Policy no-referrer always;
@@ -521,5 +552,5 @@ server {
 }
 
 # Production perimeter note:
-# - publish only 80/tcp and 443/tcp on nginx plus 10000/udp on jitsi-jvb
+# - publish only 80/tcp, 443/tcp and 443/udp on nginx plus 10000/udp on jitsi-jvb
 # - backend, Keycloak, PostgreSQL, Redis, Vault and monitoring surfaces stay on private trust zones
