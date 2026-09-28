@@ -39,7 +39,7 @@ dependencies {
   implementation 'org.springframework.boot:spring-boot-starter-actuator'
   implementation 'org.springframework.boot:spring-boot-starter-opentelemetry'
   runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
-  compileOnly 'org.springframework.modulith:spring-modulith-core'
+  implementation 'org.springframework.modulith:spring-modulith-core'
   implementation 'org.springframework.modulith:spring-modulith-events-api'
   implementation 'org.springframework.modulith:spring-modulith-events-jdbc'
   implementation 'org.springframework.modulith:spring-modulith-events-jackson'
@@ -55,7 +55,6 @@ dependencies {
   testImplementation 'org.springframework.boot:spring-boot-micrometer-tracing-test'
   testImplementation 'org.springframework.boot:spring-boot-starter-test'
   testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
-  testImplementation 'org.springframework.modulith:spring-modulith-core'
   testImplementation 'org.springframework.modulith:spring-modulith-starter-test'
   testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.1'
   testImplementation 'org.testcontainers:junit-jupiter:1.21.4'
@@ -269,5 +268,24 @@ tasks.register('validateQuality') {
 }
 
 tasks.named('check') {
-  dependsOn tasks.named('validateQuality')
+  dependsOn tasks.named('validateQuality'), tasks.named('verifyFrameworkVersionInventoryRuntime')
+}
+
+tasks.register('verifyFrameworkVersionInventoryRuntime') {
+  group = LifecycleBasePlugin.VERIFICATION_GROUP
+  description = 'Exercises the framework inventory using production runtime dependencies only.'
+  dependsOn tasks.named('classes')
+
+  doLast {
+    def urls = sourceSets.main.runtimeClasspath.files.collect { it.toURI().toURL() }
+    def loader = new java.net.URLClassLoader(
+        urls as java.net.URL[], ClassLoader.getPlatformClassLoader())
+    try {
+      def type = loader.loadClass('com.acme.jitsi.domains.admin.service.FrameworkVersionInventory')
+      def inventory = type.constructors[0].newInstance(*(['test'] * 9))
+      type.getMethod('list').invoke(inventory)
+    } finally {
+      loader.close()
+    }
+  }
 }
