@@ -537,7 +537,7 @@ class MeetingAccessTokenControllerTest {
     String joinUrl = JsonPath.parse(result.getResponse().getContentAsString()).read("$.joinUrl", String.class);
     String decodedJoinUrl = java.net.URLDecoder.decode(joinUrl, java.nio.charset.StandardCharsets.UTF_8);
 
-    assertThat(decodedJoinUrl).contains("маринингорская-црб");
+    assertThat(decodedJoinUrl).contains(meetingId.toLowerCase(java.util.Locale.ROOT));
     assertThat(decodedJoinUrl).contains("userInfo.displayName=\"Иванов Иван Иванович\"");
     assertThat(decodedJoinUrl).contains("config.defaultLocalDisplayName=\"Иванов Иван Иванович\"");
   }
@@ -578,4 +578,3 @@ class MeetingAccessTokenControllerTest {
     return null;
   }
 }
-

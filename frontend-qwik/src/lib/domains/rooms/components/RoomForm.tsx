@@ -117,6 +117,9 @@ export const RoomForm = component$<RoomFormProps>(
                   configSetIdValue.value = el.value;
                 }}
               >
+                {room?.configSetId && !configSets.includes(room.configSetId) && (
+                  <option value={room.configSetId}>{`${room.configSetId} (текущая)`}</option>
+                )}
                 {configSets.map((cs) => (
                   <option key={cs} value={cs}>
                     {cs}

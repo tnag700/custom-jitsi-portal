@@ -147,5 +147,10 @@ class InviteExchangeTracingTest {
         throw rollbackFailure;
       }
     }
+
+    @Override
+    public void complete(InviteReservation reservation) {
+      // Token issuance succeeded; the fake has no state to release.
+    }
   }
 }

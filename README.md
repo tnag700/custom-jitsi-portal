@@ -271,6 +271,8 @@ Runtime Vault собирается по committed definition `deploy/vault/Docke
 | [Threat model](docs/threat-model.md) | trust boundaries, угрозы и release evidence |
 | [Framework/CVE monitoring](docs/framework-version-monitoring.md) | OSV flow, severity policy и реакция оператора |
 | [Refactoring roadmap](docs/refactoring-roadmap.md) | архитектурный baseline и дальнейший backlog |
+| [Code review 2026-09-28](docs/review-2026-09-28.md) | замечания после повторной проверки, границы доказательств и метод измерения |
+| [Refactoring implementation plan](docs/superpowers/plans/2026-09-28-jitsi-refactoring.md) | приоритеты, конкретные шаги, проверки и release gates |
 | [Runtime policy matrix](deploy/runtime/production-runtime-policy-matrix.md) | capabilities, read-only и writable exceptions по сервисам |
 | [Ubuntu host baseline](deploy/host/README.md) | SSH, UFW, AppArmor, audit и host hardening |
 | [Vault baseline](deploy/vault/README.md) | secret topology, auth model и custody rules |

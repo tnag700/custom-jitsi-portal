@@ -111,13 +111,16 @@ export const AdminConfigSetsToolbar = component$(
             </label>
             <label class="flex flex-col gap-1 text-sm text-muted">
               Статус
-              <input
+              <select
                 class={CONTROL_CLASS}
-                type="text"
                 name="status"
                 value={filters.status}
-                placeholder="active"
-              />
+              >
+                <option value="">все</option>
+                <option value="draft">черновик</option>
+                <option value="active">активный</option>
+                <option value="inactive">неактивный</option>
+              </select>
             </label>
             <div class="flex items-end gap-2">
               <button

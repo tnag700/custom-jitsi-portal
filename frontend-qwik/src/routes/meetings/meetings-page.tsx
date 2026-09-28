@@ -5,13 +5,13 @@ import type { Invite, InviteErrorPayload } from "~/lib/domains/invites";
 import type { Meeting, MeetingErrorPayload } from "~/lib/domains/meetings";
 import { ParticipantPanel } from "~/lib/domains/meetings";
 import { AppToast, useAppToast } from "~/lib/shared";
+import { PageNavigation } from "~/lib/shared/components/PageNavigation";
 import { copyTextWithFallback } from "~/lib/shared/browser/copy-text";
 import { MeetingConfirmationDialogs } from "./components/MeetingConfirmationDialogs";
 import { MeetingInvitesWorkspace } from "./components/MeetingInvitesWorkspace";
 import { MeetingsOverview } from "./components/MeetingsOverview";
 import {
   buildMeetingsHref,
-  findMeetingById,
   getActionError,
   getActionValidationFeedback,
   getFirstActionError,
@@ -25,6 +25,8 @@ import {
   useAssignableUsers,
   useInvites,
   useMeetings,
+  useSelectedMeeting,
+  useSelectedInviteMeeting,
   useParticipants,
 } from "./loaders";
 import {
@@ -44,6 +46,8 @@ export default component$(() => {
   const location = useLocation();
   const roomsData = useActiveRooms();
   const meetingsData = useMeetings();
+  const selectedMeetingData = useSelectedMeeting();
+  const selectedInviteMeetingData = useSelectedInviteMeeting();
   const participantsData = useParticipants();
   const assignableUsersData = useAssignableUsers();
   const invitesData = useInvites();
@@ -65,14 +69,12 @@ export default component$(() => {
   const showRevokeInviteDialog = useSignal(false);
   const { toast, showToast$, clearToast$ } = useAppToast();
   const selectedRoomId = location.url.searchParams.get("roomId") ?? "";
-  const selectedMeeting = findMeetingById(
-    meetingsData.value.content,
-    location.url.searchParams.get("meetingId") ?? "",
-  );
-  const selectedInviteMeeting = findMeetingById(
-    meetingsData.value.content,
-    location.url.searchParams.get("invitesMeetingId") ?? "",
-  );
+  const roomsPage = roomsData.value.page;
+  const meetingsPage = meetingsData.value.page;
+  const selectedMeeting = selectedMeetingData.value?.roomId === selectedRoomId
+    ? selectedMeetingData.value : null;
+  const selectedInviteMeeting = selectedInviteMeetingData.value?.roomId === selectedRoomId
+    ? selectedInviteMeetingData.value : null;
   const createError = getActionError<MeetingErrorPayload>(createAction.value);
   const updateError = getActionError<MeetingErrorPayload>(updateAction.value);
   const createValidationFeedback = getActionValidationFeedback(
@@ -104,13 +106,15 @@ export default component$(() => {
   });
 
   const selectRoom$ = $((roomId: string) => {
-    void navigate(buildMeetingsHref(roomId));
+    void navigate(buildMeetingsHref(roomId, { roomsPage }));
   });
 
   const openParticipants$ = $((meeting: Meeting) => {
     void navigate(
       buildMeetingsHref(meeting.roomId, {
         meetingId: meeting.meetingId,
+        roomsPage,
+        meetingsPage,
       }),
     );
   });
@@ -119,12 +123,14 @@ export default component$(() => {
     void navigate(
       buildMeetingsHref(meeting.roomId, {
         invitesMeetingId: meeting.meetingId,
+        roomsPage,
+        meetingsPage,
       }),
     );
   });
 
   const closeDetail$ = $(() => {
-    void navigate(buildMeetingsHref(selectedRoomId));
+    void navigate(buildMeetingsHref(selectedRoomId, { roomsPage, meetingsPage }));
   });
 
   const openEdit$ = $((meeting: Meeting) => {
@@ -226,8 +232,10 @@ export default component$(() => {
     <div class="space-y-6">
       <MeetingsOverview
         rooms={roomsData.value.content}
+        totalRooms={roomsData.value.totalElements}
         meetings={meetingsData.value.content}
         totalMeetings={meetingsData.value.totalElements}
+        roomsPage={roomsPage}
         selectedRoomId={selectedRoomId}
         editingMeeting={editingMeeting}
         showCreateForm={showCreateForm}
@@ -247,6 +255,22 @@ export default component$(() => {
         onInvites$={openInvites$}
         onCreate$={openCreate$}
       />
+      <PageNavigation
+        currentUrl={location.url.href}
+        parameter="roomsPage"
+        page={roomsData.value.page}
+        totalPages={roomsData.value.totalPages}
+        label="Страницы комнат"
+      />
+      {selectedRoomId && (
+        <PageNavigation
+          currentUrl={location.url.href}
+          parameter="meetingsPage"
+          page={meetingsData.value.page}
+          totalPages={meetingsData.value.totalPages}
+          label="Страницы встреч"
+        />
+      )}
 
       {selectedMeeting && (
         <ParticipantPanel
@@ -266,20 +290,29 @@ export default component$(() => {
       )}
 
       {selectedInviteMeeting && (
-        <MeetingInvitesWorkspace
-          meeting={selectedInviteMeeting}
-          invites={invitesData.value.content}
-          totalInvites={invitesData.value.totalElements}
-          showCreateForm={showInviteForm.value}
-          createAction={createInviteAction}
-          createRunning={createInviteAction.isRunning}
-          error={inviteError}
-          onClose$={closeDetail$}
-          onCopyLink$={copyInviteLink$}
-          onRevoke$={openRevokeInvite$}
-          onCreate$={openInviteCreate$}
-          onCancelCreate$={closeInviteCreate$}
-        />
+        <>
+          <MeetingInvitesWorkspace
+            meeting={selectedInviteMeeting}
+            invites={invitesData.value.content}
+            totalInvites={invitesData.value.totalElements}
+            showCreateForm={showInviteForm.value}
+            createAction={createInviteAction}
+            createRunning={createInviteAction.isRunning}
+            error={inviteError}
+            onClose$={closeDetail$}
+            onCopyLink$={copyInviteLink$}
+            onRevoke$={openRevokeInvite$}
+            onCreate$={openInviteCreate$}
+            onCancelCreate$={closeInviteCreate$}
+          />
+          <PageNavigation
+            currentUrl={location.url.href}
+            parameter="invitesPage"
+            page={invitesData.value.page}
+            totalPages={invitesData.value.totalPages}
+            label="Страницы приглашений"
+          />
+        </>
       )}
 
       <MeetingConfirmationDialogs

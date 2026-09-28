@@ -135,6 +135,9 @@ describe("meetings page state", () => {
   it("builds encoded room, participant, and invite URLs", () => {
     expect(buildMeetingsHref()).toBe("/meetings");
     expect(buildMeetingsHref("room a/b")).toBe("/meetings?roomId=room%20a%2Fb");
+    expect(buildMeetingsHref("room-21", { roomsPage: 1, meetingsPage: 2 })).toBe(
+      "/meetings?roomId=room-21&roomsPage=1&meetingsPage=2",
+    );
     expect(buildMeetingsHref("room-1", { meetingId: "meeting a/b" })).toBe(
       "/meetings?roomId=room-1&meetingId=meeting%20a%2Fb",
     );

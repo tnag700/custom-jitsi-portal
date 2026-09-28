@@ -4,12 +4,14 @@ import { routeLoader$ } from "@qwik.dev/router";
 import type { SafeUserProfile } from "~/lib/domains/auth";
 import {
   fetchMeetings,
+  fetchMeeting,
   fetchParticipants,
   searchUsers,
 } from "~/lib/domains/meetings";
 import { fetchInvites } from "~/lib/domains/invites";
-import { fetchRooms } from "~/lib/domains/rooms";
+import { fetchRoom, fetchRooms } from "~/lib/domains/rooms";
 import { buildServerRequestContext } from "~/lib/shared/routes/server-handlers";
+import { readPage } from "~/lib/shared/routes/page-query";
 
 const emptyPage = {
   content: [],
@@ -26,14 +28,37 @@ function isUuidLike(value: string | null): value is string {
   return value !== null && UUID_LIKE_PATTERN.test(value);
 }
 
-export const useActiveRooms = routeLoader$(async ({ sharedMap, cookie }) => {
+async function selectedMeeting(
+  query: URLSearchParams,
+  parameter: string,
+  requestContext: ReturnType<typeof buildServerRequestContext>,
+) {
+  const id = query.get(parameter);
+  return isUuidLike(id) ? fetchMeeting(requestContext, id) : null;
+}
+
+export const useSelectedMeeting = routeLoader$(async ({ sharedMap, cookie, query }) =>
+  selectedMeeting(query, "meetingId", buildServerRequestContext({ sharedMap, cookie })),
+);
+
+export const useSelectedInviteMeeting = routeLoader$(async ({ sharedMap, cookie, query }) =>
+  selectedMeeting(query, "invitesMeetingId", buildServerRequestContext({ sharedMap, cookie })),
+);
+
+export const useActiveRooms = routeLoader$(async ({ sharedMap, cookie, query }) => {
   const user = sharedMap.get("user") as SafeUserProfile;
   const requestContext = buildServerRequestContext({ sharedMap, cookie });
 
-  const rooms = await fetchRooms(requestContext, user.tenant);
+  const rooms = await fetchRooms(requestContext, user.tenant, readPage(query, "roomsPage"));
+  const selectedRoomId = query?.get("roomId");
+  const activeRooms = rooms.content.filter((room) => room.status === "active");
+  if (isUuidLike(selectedRoomId) && !activeRooms.some((room) => room.roomId === selectedRoomId)) {
+    const selectedRoom = await fetchRoom(requestContext, selectedRoomId);
+    if (selectedRoom.status === "active") activeRooms.push(selectedRoom);
+  }
   return {
     ...rooms,
-    content: rooms.content.filter((room) => room.status === "active"),
+    content: activeRooms,
   };
 });
 
@@ -46,7 +71,7 @@ export const useMeetings = routeLoader$(
       return emptyPage;
     }
 
-    return fetchMeetings(requestContext, roomId);
+    return fetchMeetings(requestContext, roomId, readPage(query, "meetingsPage"));
   },
 );
 
@@ -94,5 +119,5 @@ export const useInvites = routeLoader$(async ({ sharedMap, cookie, query }) => {
     return emptyPage;
   }
 
-  return fetchInvites(requestContext, meetingId);
+  return fetchInvites(requestContext, meetingId, readPage(query, "invitesPage"));
 });

@@ -25,7 +25,7 @@ export const AdminConfigSetList = component$(
           </p>
           <h3 class="mt-1 text-lg font-semibold text-text">Наборы</h3>
         </div>
-        <p class="text-sm text-muted">{String(items.length)} найдено</p>
+        <p class="text-sm text-muted">{String(items.length)} на странице</p>
       </div>
 
       {items.length > 0 ? (

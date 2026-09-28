@@ -46,7 +46,7 @@ export const RoomList = component$<RoomListProps>(
         <div class="mb-4 grid gap-3 sm:grid-cols-2">
           <div class="grid gap-1.5">
             <label class="text-sm text-muted" for="status-filter">
-              Статус:
+              Статус на странице:
             </label>
             <select
               id="status-filter"
@@ -97,9 +97,9 @@ export const RoomList = component$<RoomListProps>(
               />
             </svg>
             <h2 class="mb-2 text-lg font-semibold text-text">
-              Нет созданных комнат
+              {totalElements > 0 ? "На этой странице нет комнат" : "Нет созданных комнат"}
             </h2>
-            <p class="mb-4 text-sm text-muted">Создайте первую комнату</p>
+            <p class="mb-4 text-sm text-muted">{totalElements > 0 ? "Откройте другую страницу списка" : "Создайте первую комнату"}</p>
             <button
               type="button"
               class="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -121,6 +121,9 @@ export const RoomList = component$<RoomListProps>(
                 />
               ))}
             </div>
+            {filteredRooms.value.length === 0 && (
+              <p class="mt-4 text-sm text-muted">На этой странице нет комнат по выбранному фильтру.</p>
+            )}
 
             {totalElements > rooms.length && (
               <p class="mt-4 text-center text-sm text-muted">

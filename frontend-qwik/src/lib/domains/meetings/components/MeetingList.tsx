@@ -107,7 +107,7 @@ export const MeetingList = component$<MeetingListProps>(
               +
             </div>
             <h2 class="mb-2 text-lg font-semibold text-text">
-              {hasSourceMeetings ? "Нет встреч по выбранному фильтру" : "Нет встреч в этой комнате"}
+              {hasSourceMeetings ? "Нет встреч по выбранному фильтру на этой странице" : totalElements > 0 ? "На этой странице нет встреч" : "Нет встреч в этой комнате"}
             </h2>
             <p class="mb-4 text-sm text-muted">
               {hasSourceMeetings ? "Сбросьте фильтр, чтобы увидеть все встречи" : "Создайте первую встречу"}

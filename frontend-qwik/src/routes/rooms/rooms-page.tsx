@@ -7,6 +7,8 @@ import {
   RoomList,
 } from "~/lib/domains/rooms";
 import { ApiErrorAlert, AppDialog, AppToast, useAppToast } from "~/lib/shared";
+import { useLocation } from "@qwik.dev/router";
+import { PageNavigation } from "~/lib/shared/components/PageNavigation";
 import {
   useCloseRoom,
   useCreateRoom,
@@ -18,6 +20,7 @@ import {
 
 export default component$(() => {
   const roomsData = useRooms();
+  const location = useLocation();
   const configSetsData = useRoomConfigSets();
   const createAction = useCreateRoom();
   const updateAction = useUpdateRoom();
@@ -155,6 +158,13 @@ export default component$(() => {
         onClose$={handleCloseClick$}
         onDelete$={handleDeleteClick$}
         onCreateClick$={handleCreateClick$}
+      />
+      <PageNavigation
+        currentUrl={location.url.href}
+        parameter="roomsPage"
+        page={roomsData.value.page}
+        totalPages={roomsData.value.totalPages}
+        label="Страницы комнат"
       />
 
       <RoomForm

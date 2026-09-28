@@ -93,6 +93,7 @@ class InviteExchangeServiceTest {
     assertThat(result.role()).isEqualTo("participant");
     assertThat(result.meetingId()).isEqualTo("meeting-a");
     assertThat(inviteReservationCapability.lastReservedToken).isEqualTo("invite-token");
+    assertThat(inviteReservationCapability.lastCompletedReservation).isEqualTo(reservation);
     assertThat(inviteReservationCapability.lastRolledBackReservation).isNull();
     verify(inviteJoinPort)
         .issueGuestJoin(eq("meeting-a"), startsWith("guest:guest-user:"), eq("Guest User"));
@@ -135,6 +136,7 @@ class InviteExchangeServiceTest {
     private InviteReservation reservation;
     private String lastReservedToken;
     private InviteReservation lastRolledBackReservation;
+    private InviteReservation lastCompletedReservation;
     private RuntimeException rollbackFailure;
 
     @Override
@@ -149,6 +151,11 @@ class InviteExchangeServiceTest {
       if (rollbackFailure != null) {
         throw rollbackFailure;
       }
+    }
+
+    @Override
+    public void complete(InviteReservation reservation) {
+      lastCompletedReservation = reservation;
     }
   }
 }

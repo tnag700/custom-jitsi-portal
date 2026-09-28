@@ -5,6 +5,7 @@ import com.acme.jitsi.domains.configsets.service.ConfigCompatibilityCheckResult;
 import com.acme.jitsi.domains.configsets.service.ConfigSetCompatibilityCheck;
 import com.acme.jitsi.domains.configsets.service.ConfigSetCompatibilityStateService;
 import com.acme.jitsi.domains.configsets.service.ConfigSetEnvironmentType;
+import com.acme.jitsi.domains.configsets.service.ConfigSetStatus;
 import com.acme.jitsi.domains.configsets.service.ConfigSetDryRunValidator;
 import com.acme.jitsi.domains.configsets.service.ConfigSetNotFoundException;
 import com.acme.jitsi.domains.configsets.service.ConfigSetRollout;
@@ -25,6 +26,9 @@ import com.acme.jitsi.domains.configsets.usecase.UpdateConfigSetUseCase;
 import com.acme.jitsi.infrastructure.idempotency.Idempotent;
 import com.acme.jitsi.security.ProblemResponseFacade;
 import com.acme.jitsi.security.TenantAccessGuard;
+import com.acme.jitsi.shared.validation.PageSize;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -191,15 +195,19 @@ class ConfigSetsController {
   PagedConfigSetResponse listByTenant(
       @RequestParam("tenantId") String tenantId,
       @RequestParam(name = "page", defaultValue = "0") int page,
+      @Parameter(schema = @Schema(type = "integer", format = "int32", defaultValue = "20", maximum = "100"))
       @RequestParam(name = "size", defaultValue = "20") int size,
+      @RequestParam(name = "environment", required = false) ConfigSetEnvironmentType environment,
+      @RequestParam(name = "status", required = false) ConfigSetStatus status,
       @AuthenticationPrincipal OAuth2User principal) {
-    int effectiveSize = size <= 0 ? 20 : size;
+    int effectiveSize = PageSize.resolve(size);
     tenantAccessGuard.assertAccess(tenantId, principal);
-    List<ConfigSetResponse> content = configSetService.listByTenant(tenantId, page, effectiveSize)
+    var result = configSetService.searchByTenant(tenantId, environment, status, page, effectiveSize);
+    List<ConfigSetResponse> content = result.content()
         .stream()
         .map(ConfigSetsController::toResponse)
         .toList();
-    long totalElements = configSetService.countByTenant(tenantId);
+    long totalElements = result.totalElements();
     int totalPages = (int) Math.ceil((double) totalElements / effectiveSize);
     return new PagedConfigSetResponse(content, page, effectiveSize, totalElements, totalPages);
   }

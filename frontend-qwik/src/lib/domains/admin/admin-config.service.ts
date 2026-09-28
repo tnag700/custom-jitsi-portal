@@ -34,6 +34,8 @@ export interface AdminConfigQuery {
   tenantId: string;
   page?: number;
   size?: number;
+  environment?: string;
+  status?: string;
 }
 
 export interface AdminConfigDetailQuery {
@@ -160,6 +162,8 @@ export async function fetchAdminConfigSets(
       tenantId: resolvedQuery.tenantId,
       page: String(resolvedQuery.page ?? 0),
       size: String(resolvedQuery.size ?? 20),
+      environment: resolvedQuery.environment,
+      status: resolvedQuery.status,
     }),
     {
       method: "GET",

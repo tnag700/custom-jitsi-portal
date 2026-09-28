@@ -64,7 +64,9 @@ groups:
           sli_window: "5m"
 
       - alert: JitsiBackendUnavailable
-        expr: jitsi_service_backend_available < 1
+        expr: |
+          up{job="jitsi-backend"} == 0
+          or absent(up{job="jitsi-backend"})
         for: 2m
         labels:
           severity: critical

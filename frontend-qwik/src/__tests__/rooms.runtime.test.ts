@@ -6,6 +6,7 @@ import {
   deleteRoom,
   fetchActiveRoomConfigSetId,
   fetchRooms,
+  fetchRoom,
   updateRoom,
 } from "../lib/domains/rooms/rooms.service";
 
@@ -23,6 +24,18 @@ afterEach(() => {
 });
 
 describe("rooms.service runtime: fetchRooms", () => {
+  it("loads a room by ID for a direct meeting link", async () => {
+    const room = {
+      roomId: "r-21", name: "Room 21", description: null, tenantId: "tenant-1",
+      configSetId: "cfg-1", status: "active",
+      createdAt: "2026-03-03T10:00:00Z", updatedAt: "2026-03-03T10:00:00Z",
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(room, 200));
+    expect(await fetchRoom("sess-1", "http://localhost:8080/api/v1", "r-21")).toEqual(room);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/rooms/r-21", expect.objectContaining({ method: "GET" }),
+    );
+  });
   it("loads the active config set used by the room form", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       jsonResponse(

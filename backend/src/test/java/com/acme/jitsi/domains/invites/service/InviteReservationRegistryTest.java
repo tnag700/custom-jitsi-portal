@@ -25,4 +25,14 @@ class InviteReservationRegistryTest {
 
     assertThat(registry.authorizeRollback(forgedReservation)).isFalse();
   }
+
+  @Test
+  void completedReservationCannotAuthorizeRollback() {
+    InviteReservationRegistry registry = new InviteReservationRegistry();
+    InviteReservation reservation = registry.issue("invite-a", "meeting-a");
+
+    registry.complete(reservation);
+
+    assertThat(registry.authorizeRollback(reservation)).isFalse();
+  }
 }

@@ -119,6 +119,7 @@ services:
     environment:
       - API_URL=http://backend:8080/api/v1
       - PUBLIC_API_URL=${APP_FRONTEND_ORIGIN:?Set APP_FRONTEND_ORIGIN}/api/v1
+      - PORTAL_CONFIG_ENVIRONMENT=PROD
       - AUTH_LOGOUT_ALLOWED_ORIGINS=${KC_HOSTNAME:?Set KC_HOSTNAME}
     cpus: 1.0
     mem_limit: 512m

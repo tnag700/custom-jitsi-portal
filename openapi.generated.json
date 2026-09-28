@@ -3061,7 +3061,24 @@
           "schema" : {
             "default" : 20,
             "format" : "int32",
+            "maximum" : 100,
             "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "environment",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "DEV", "TEST", "PROD" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "DRAFT", "ACTIVE", "INACTIVE" ],
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -3700,6 +3717,7 @@
           "schema" : {
             "default" : 20,
             "format" : "int32",
+            "maximum" : 100,
             "type" : "integer"
           }
         } ],
@@ -4046,6 +4064,7 @@
           "schema" : {
             "default" : 20,
             "format" : "int32",
+            "maximum" : 100,
             "type" : "integer"
           }
         }, {
@@ -4226,6 +4245,7 @@
           "schema" : {
             "default" : 20,
             "format" : "int32",
+            "maximum" : 100,
             "type" : "integer"
           }
         } ],

@@ -14,8 +14,10 @@ import {
 
 interface MeetingsOverviewProps {
   rooms: Room[];
+  totalRooms?: number;
   meetings: Meeting[];
   totalMeetings: number;
+  roomsPage: number;
   selectedRoomId: string;
   editingMeeting: Signal<Meeting | null>;
   showCreateForm: Signal<boolean>;
@@ -39,8 +41,10 @@ interface MeetingsOverviewProps {
 export const MeetingsOverview = component$<MeetingsOverviewProps>(
   ({
     rooms,
+    totalRooms,
     meetings,
     totalMeetings,
+    roomsPage,
     selectedRoomId,
     editingMeeting,
     showCreateForm,
@@ -92,11 +96,12 @@ export const MeetingsOverview = component$<MeetingsOverviewProps>(
               +
             </div>
             <h2 class="text-lg font-semibold text-text">
-              Пока нет активных комнат
+              {totalRooms ? "На этой странице нет активных комнат" : "Пока нет активных комнат"}
             </h2>
             <p class="mx-auto mt-2 max-w-md text-sm text-muted">
-              Создайте или активируйте комнату, после чего здесь появится
-              расписание встреч.
+              {totalRooms
+                ? "Откройте другую страницу или перейдите к списку комнат."
+                : "Создайте или активируйте комнату, после чего здесь появится расписание встреч."}
             </p>
             <Link
               href="/rooms"
@@ -123,7 +128,7 @@ export const MeetingsOverview = component$<MeetingsOverviewProps>(
                   </div>
                   {!selectedRoomId && (
                     <Link
-                      href={buildMeetingsHref(rooms[0].roomId)}
+                      href={buildMeetingsHref(rooms[0].roomId, { roomsPage })}
                       class="inline-flex w-fit rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     >
                       Открыть расписание

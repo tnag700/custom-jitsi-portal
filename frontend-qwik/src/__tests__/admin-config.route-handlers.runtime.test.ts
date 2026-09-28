@@ -213,6 +213,7 @@ describe("admin config route handlers runtime", () => {
         tenantId: "tenant-1",
         page: 0,
         size: 20,
+        environment: "DEV",
       },
     );
     expect(mockFetchAdminConfigSet).toHaveBeenCalledWith(expect.any(Object), {
@@ -226,6 +227,27 @@ describe("admin config route handlers runtime", () => {
     });
     expect(result.items[0].latestRollout?.status).toBe("SUCCEEDED");
     expect(result.selectedConfig).toEqual(detail);
+  });
+
+  it("requests a filtered second page from the backend", async () => {
+    const summary = { ...createSummary(), configSetId: "cfg-21", environmentType: "PROD" };
+    mockFetchAdminConfigSets.mockResolvedValue({
+      items: [summary], page: 1, pageSize: 20, totalElements: 21, totalPages: 2,
+    });
+    mockLoadAdminConfigLatestRollouts.mockResolvedValue(new Map());
+    mockFetchAdminConfigSet.mockResolvedValue({ ...summary, compatibility: null });
+    const mod = await import("~/routes/admin/config-sets/route-handlers");
+    // eslint-disable-next-line @typescript-eslint/await-thenable
+    const result = await mod.useAdminConfigSets(createLoaderCtx(
+      "http://localhost:3000/admin/config-sets?environment=prod&status=active&configSetsPage=1",
+    ) as never);
+
+    expect(mockFetchAdminConfigSets).toHaveBeenCalledWith(expect.anything(), {
+      tenantId: "tenant-1", page: 1, size: 20, environment: "PROD", status: "ACTIVE",
+    });
+    expect(result.items[0]?.configSetId).toBe("cfg-21");
+    expect(result.totalElements).toBe(21);
+    expect(result.totalPages).toBe(2);
   });
 
   it("redirects missing sessions and preserves typed loader failures", async () => {

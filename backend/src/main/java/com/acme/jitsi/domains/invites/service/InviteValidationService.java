@@ -46,4 +46,9 @@ public class InviteValidationService implements InviteValidationPort {
     }
     inviteUsageStoreRouter.rollback(reservation.inviteToken());
   }
+
+  @Override
+  public void complete(InviteReservation reservation) {
+    reservationRegistry.complete(reservation);
+  }
 }

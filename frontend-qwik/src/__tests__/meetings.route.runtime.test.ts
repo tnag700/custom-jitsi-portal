@@ -4,7 +4,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockFetchRooms = vi.fn();
+const mockFetchRoom = vi.fn();
 const mockFetchMeetings = vi.fn();
+const mockFetchMeeting = vi.fn();
 const mockFetchParticipants = vi.fn();
 const mockFetchInvites = vi.fn();
 const mockCreateInvite = vi.fn();
@@ -108,6 +110,7 @@ vi.mock("~/lib/shared", () => ({
 
 vi.mock("~/lib/domains/rooms", () => ({
   fetchRooms: mockFetchRooms,
+  fetchRoom: mockFetchRoom,
 }));
 
 vi.mock("~/lib/domains/meetings", () => ({
@@ -123,6 +126,7 @@ vi.mock("~/lib/domains/meetings", () => ({
   createMeeting: mockCreateMeeting,
   createMeetingSchema: { and: () => ({}) },
   fetchMeetings: mockFetchMeetings,
+  fetchMeeting: mockFetchMeeting,
   fetchParticipants: mockFetchParticipants,
   searchUsers: mockSearchUsers,
   unassignParticipant: mockUnassignParticipant,
@@ -208,6 +212,19 @@ describe("meetings route runtime", () => {
     ).rejects.toThrow("fail");
   });
 
+  it("keeps a selected room available beyond the current room page", async () => {
+    const roomId = "11111111-1111-4111-8111-111111111111";
+    mockFetchRooms.mockResolvedValue({ content: [], page: 0, pageSize: 20, totalElements: 21, totalPages: 2 });
+    mockFetchRoom.mockResolvedValue({ roomId, status: "active" });
+    const mod = await import("~/routes/meetings/index");
+    const result = await mod.useActiveRooms(createCtx({
+      query: new URLSearchParams(`roomId=${roomId}`),
+    }) as never);
+
+    expect(result.content[0].roomId).toBe(roomId);
+    expect(mockFetchRoom).toHaveBeenCalledWith(expect.anything(), roomId);
+  });
+
   it("useMeetings handles roomId missing and success", async () => {
     mockFetchMeetings.mockResolvedValue({
       content: [{ meetingId: "m1" }],
@@ -235,7 +252,38 @@ describe("meetings route runtime", () => {
         headers: { Cookie: "JSESSIONID=sess-1" },
       },
       "r1",
+      0,
     );
+  });
+
+  it("loaders request independent rooms, meetings and invites pages", async () => {
+    const page = { content: [], page: 1, pageSize: 20, totalElements: 21, totalPages: 2 };
+    mockFetchRooms.mockResolvedValue(page);
+    mockFetchMeetings.mockResolvedValue(page);
+    mockFetchInvites.mockResolvedValue(page);
+    const mod = await import("~/routes/meetings/index");
+    const ctx = createCtx({ query: new URLSearchParams(
+      "roomId=r1&invitesMeetingId=m1&roomsPage=1&meetingsPage=2&invitesPage=3",
+    ) });
+
+    await mod.useActiveRooms(ctx as never);
+    await mod.useMeetings(ctx as never);
+    await mod.useInvites(ctx as never);
+
+    expect(mockFetchRooms).toHaveBeenCalledWith(expect.anything(), "tenant-a", 1);
+    expect(mockFetchMeetings).toHaveBeenCalledWith(expect.anything(), "r1", 2);
+    expect(mockFetchInvites).toHaveBeenCalledWith(expect.anything(), "m1", 3);
+  });
+
+  it("loads selected meeting detail outside the current page", async () => {
+    mockFetchMeeting.mockResolvedValue({ meetingId: "11111111-1111-4111-8111-111111111111", roomId: "r1" });
+    const mod = await import("~/routes/meetings/index");
+    const result = await mod.useSelectedMeeting(createCtx({ query: new URLSearchParams(
+      "roomId=r1&meetingId=11111111-1111-4111-8111-111111111111",
+    ) }) as never);
+
+    expect(result?.meetingId).toBe("11111111-1111-4111-8111-111111111111");
+    expect(mockFetchMeeting).toHaveBeenCalledWith(expect.anything(), "11111111-1111-4111-8111-111111111111");
   });
 
   it("useMeetings preserves backend failures instead of rendering a false empty state", async () => {

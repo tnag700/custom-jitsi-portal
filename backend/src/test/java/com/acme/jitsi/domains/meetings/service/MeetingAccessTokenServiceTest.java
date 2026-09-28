@@ -196,7 +196,7 @@ class MeetingAccessTokenServiceTest {
   }
 
   @Test
-  void issueTokenBuildsJoinUrlFromMeetingTitleAndProfileDisplayName() throws Exception {
+  void issueTokenBuildsJoinUrlFromMeetingIdAndProfileDisplayName() throws Exception {
     MeetingTokenProperties properties = new MeetingTokenProperties();
     properties.setIssuer("https://portal.example.test");
     properties.setAudience("jitsi-meet");
@@ -240,11 +240,11 @@ class MeetingAccessTokenServiceTest {
 
   String decodedJoinUrl = URLDecoder.decode(result.joinUrl(), StandardCharsets.UTF_8);
 
-  assertThat(decodedJoinUrl).contains("/тестовая-комната#jwt=");
+  assertThat(decodedJoinUrl).contains("/meeting-a#jwt=");
   assertThat(decodedJoinUrl)
     .contains("userInfo.displayName=\"Иван Иванов\"")
     .contains("config.defaultLocalDisplayName=\"Иван Иванов\"");
-    assertThat(jwt.getJWTClaimsSet().getStringClaim("room")).isEqualTo("%d1%82%d0%b5%d1%81%d1%82%d0%be%d0%b2%d0%b0%d1%8f-%d0%ba%d0%be%d0%bc%d0%bd%d0%b0%d1%82%d0%b0");
+    assertThat(jwt.getJWTClaimsSet().getStringClaim("room")).isEqualTo("meeting-a");
   }
 
   @Test
@@ -410,7 +410,7 @@ class MeetingAccessTokenServiceTest {
     assertThat(result.accessToken()).isNotBlank();
     assertThat(result.role()).isEqualTo("host");
     verify(meetingProfilesPort, never()).findBySubjectId("u-host");
-    verify(meetingService).getMeeting("meeting-a");
+    verify(meetingService, never()).getMeeting("meeting-a");
   }
 
   private String extractToken(String joinUrl) {

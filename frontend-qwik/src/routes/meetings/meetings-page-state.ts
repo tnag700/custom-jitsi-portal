@@ -5,6 +5,8 @@ import type { CopyTextOutcome } from "~/lib/shared/browser/copy-text";
 interface MeetingsHrefOptions {
   meetingId?: string;
   invitesMeetingId?: string;
+  roomsPage?: number;
+  meetingsPage?: number;
 }
 
 interface ActionErrorValue<TError> {
@@ -143,6 +145,12 @@ export function buildMeetingsHref(
     params.push(
       `invitesMeetingId=${encodeURIComponent(options.invitesMeetingId)}`,
     );
+  }
+  if (options.roomsPage) {
+    params.push(`roomsPage=${options.roomsPage}`);
+  }
+  if (options.meetingsPage) {
+    params.push(`meetingsPage=${options.meetingsPage}`);
   }
 
   const query = params.join("&");

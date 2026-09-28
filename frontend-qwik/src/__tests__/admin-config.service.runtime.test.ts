@@ -115,6 +115,21 @@ describe("admin-config.service runtime", () => {
     );
   });
 
+  it("sends global filters with the selected page", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({
+      content: [], page: 1, pageSize: 20, totalElements: 21, totalPages: 2,
+    }, 200));
+
+    await fetchAdminConfigSets("sess-1", "http://localhost:8080/api/v1", {
+      tenantId: "tenant-1", page: 1, size: 20, environment: "PROD", status: "ACTIVE",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/config-sets?tenantId=tenant-1&page=1&size=20&environment=PROD&status=ACTIVE",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
   it("fetchAdminConfigSet composes detail, compatibility and latest rollout using existing config-sets endpoints", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

@@ -56,7 +56,7 @@ class AuthRefreshServiceTest {
     RefreshTokenStore refreshTokenStore = mock(RefreshTokenStore.class);
     ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     AuthRefreshProperties properties = new AuthRefreshProperties();
-    Instant cutover = Instant.parse("2026-08-13T12:00:00Z");
+    Instant cutover = Instant.now().minus(30, ChronoUnit.MINUTES).truncatedTo(ChronoUnit.SECONDS);
     properties.setAcceptIssuedAfter(cutover);
     RefreshSecurityEventPublisher securityEventPublisher =
         new RefreshSecurityEventPublisher(eventPublisher, java.time.Clock.systemUTC());
@@ -99,7 +99,7 @@ class AuthRefreshServiceTest {
     RefreshTokenStore refreshTokenStore = mock(RefreshTokenStore.class);
     ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     AuthRefreshProperties properties = new AuthRefreshProperties();
-    Instant cutover = Instant.parse("2026-08-13T12:00:00Z");
+    Instant cutover = Instant.now().minus(30, ChronoUnit.MINUTES).truncatedTo(ChronoUnit.SECONDS);
     properties.setAcceptIssuedAfter(cutover);
     RefreshSecurityEventPublisher securityEventPublisher =
         new RefreshSecurityEventPublisher(eventPublisher, java.time.Clock.systemUTC());

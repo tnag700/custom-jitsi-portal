@@ -1,5 +1,9 @@
 # Review and refactoring roadmap
 
+> Historical baseline (2026-07-30). The current code review and ordered
+> refactoring plan are in [the 2026-09-28 review](review-2026-09-28.md) and
+> [implementation plan](superpowers/plans/2026-09-28-jitsi-refactoring.md).
+
 Snapshot date: 2026-07-30.
 
 This roadmap records the evidence-driven path from the current development

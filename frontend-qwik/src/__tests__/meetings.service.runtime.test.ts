@@ -3,6 +3,7 @@ import {
   MeetingServiceError,
   cancelMeeting,
   createMeeting,
+  fetchMeeting,
   fetchMeetings,
   updateMeeting,
 } from "../lib/domains/meetings/meetings.service";
@@ -21,6 +22,22 @@ afterEach(() => {
 });
 
 describe("meetings.service runtime", () => {
+  it("fetchMeeting loads a selected meeting independently of the current page", async () => {
+    const meeting = {
+      meetingId: "m-21", roomId: "r-1", title: "Selected", description: null,
+      meetingType: "scheduled", configSetId: "config-1", status: "scheduled",
+      startsAt: "2026-03-10T10:00:00Z", endsAt: "2026-03-10T11:00:00Z",
+      allowGuests: true, recordingEnabled: false,
+      createdAt: "2026-03-03T10:00:00Z", updatedAt: "2026-03-03T10:00:00Z",
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(meeting, 200));
+
+    expect(await fetchMeeting("sess-1", "http://localhost:8080/api/v1", "m-21")).toEqual(meeting);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/v1/meetings/m-21",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
   it("fetchMeetings calls room meetings endpoint with encoded room id", async () => {
     const payload = {
       content: [],

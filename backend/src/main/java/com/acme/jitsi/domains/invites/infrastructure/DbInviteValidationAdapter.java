@@ -4,6 +4,7 @@ import com.acme.jitsi.domains.invites.service.DatabaseInviteModeCondition;
 import com.acme.jitsi.domains.invites.service.InviteExchangeException;
 import com.acme.jitsi.domains.invites.service.InviteMeetingStatePort;
 import com.acme.jitsi.domains.invites.service.InviteReservation;
+import com.acme.jitsi.domains.invites.service.InviteReservationRegistry;
 import com.acme.jitsi.domains.invites.service.InviteValidationPort;
 import com.acme.jitsi.domains.invites.service.InviteValidationResult;
 import com.acme.jitsi.domains.meetings.service.InviteExhaustedException;
@@ -17,9 +18,6 @@ import com.acme.jitsi.domains.meetings.usecase.ConsumeInviteCommand;
 import com.acme.jitsi.domains.meetings.usecase.ConsumeInviteUseCase;
 import com.acme.jitsi.shared.ErrorCode;
 import java.time.Clock;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Primary;
@@ -35,7 +33,7 @@ public class DbInviteValidationAdapter implements InviteValidationPort {
   private final ConsumeInviteUseCase consumeInviteUseCase;
   private final InviteMeetingStatePort inviteMeetingStatePort;
   private final Clock clock;
-  private final ReservationRegistry reservationRegistry = new ReservationRegistry();
+  private final InviteReservationRegistry reservationRegistry = new InviteReservationRegistry();
 
   @Autowired
   public DbInviteValidationAdapter(
@@ -104,6 +102,11 @@ public class DbInviteValidationAdapter implements InviteValidationPort {
     inviteService.rollbackConsume(reservation.inviteToken());
   }
 
+  @Override
+  public void complete(InviteReservation reservation) {
+    reservationRegistry.complete(reservation);
+  }
+
   private MeetingInvite consume(String inviteToken) {
     try {
       return consumeInviteUseCase.execute(new ConsumeInviteCommand(inviteToken));
@@ -120,22 +123,4 @@ public class DbInviteValidationAdapter implements InviteValidationPort {
     }
   }
 
-  private static final class ReservationRegistry {
-
-    private final Map<String, InviteReservation> activeReservations = new ConcurrentHashMap<>();
-
-    InviteReservation issue(String inviteToken, String meetingId) {
-      String reservationId = UUID.randomUUID().toString();
-      InviteReservation reservation = InviteReservation.issue(reservationId, inviteToken, meetingId);
-      activeReservations.put(reservationId, reservation);
-      return reservation;
-    }
-
-    boolean authorizeRollback(InviteReservation reservation) {
-      if (reservation == null) {
-        return false;
-      }
-      return activeReservations.remove(reservation.reservationId(), reservation);
-    }
-  }
 }

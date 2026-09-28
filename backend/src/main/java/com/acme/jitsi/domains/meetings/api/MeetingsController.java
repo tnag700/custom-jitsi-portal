@@ -13,6 +13,9 @@ import com.acme.jitsi.domains.meetings.usecase.UpdateMeetingUseCase;
 import com.acme.jitsi.infrastructure.idempotency.Idempotent;
 import com.acme.jitsi.security.ProblemResponseFacade;
 import com.acme.jitsi.security.TenantAccessGuard;
+import com.acme.jitsi.shared.validation.PageSize;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -106,12 +109,13 @@ class MeetingsController {
   PagedMeetingResponse listMeetings(
       @PathVariable("roomId") String roomId,
       @RequestParam(name = "page", defaultValue = "0") int page,
+      @Parameter(schema = @Schema(type = "integer", format = "int32", defaultValue = "20", maximum = "100"))
       @RequestParam(name = "size", defaultValue = "20") int size,
       @AuthenticationPrincipal OAuth2User principal) {
     MeetingRoomSnapshot room = meetingRoomsPort.getRequiredRoom(roomId);
     tenantAccessGuard.assertAccess(room.tenantId(), principal);
 
-    int resolvedSize = (size <= 0) ? 20 : size;
+    int resolvedSize = PageSize.resolve(size);
 
     List<MeetingResponse> items = meetingService.listMeetings(roomId, page, resolvedSize).stream()
         .map(MeetingsController::toResponse)

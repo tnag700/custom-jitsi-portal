@@ -1,6 +1,7 @@
 package com.acme.jitsi.security;
 
 import com.acme.jitsi.shared.ErrorCode;
+import com.acme.jitsi.shared.validation.PageSize;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
@@ -27,6 +29,26 @@ public class ApiValidationExceptionHandler {
       ProblemResponseFacade problemResponseFacade) {
     this.problemDetailsMappingPolicy = problemDetailsMappingPolicy;
     this.problemResponseFacade = problemResponseFacade;
+  }
+
+  @ExceptionHandler(PageSize.InvalidPageSizeException.class)
+  public ProblemDetail handleInvalidPageSize(PageSize.InvalidPageSizeException ex, HttpServletRequest request) {
+    return problemResponseFacade.buildProblemDetail(
+        request,
+        HttpStatus.BAD_REQUEST,
+        "Некорректный запрос",
+        ex.getMessage(),
+        problemDetailsMappingPolicy.resolveValidationErrorCode(request.getRequestURI()));
+  }
+
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+    return problemResponseFacade.buildProblemDetail(
+        request,
+        HttpStatus.BAD_REQUEST,
+        "Некорректный запрос",
+        "Проверьте параметры запроса.",
+        problemDetailsMappingPolicy.resolveValidationErrorCode(request.getRequestURI()));
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)

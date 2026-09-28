@@ -72,6 +72,7 @@ async function main() {
     assert(pageRes.ok, `Expected /auth to return 200, got ${pageRes.status}`);
 
     const html = await pageRes.text();
+    assert(/<html[^>]*lang=["']ru["']/.test(html), "SSR HTML must declare Russian as the default language");
     assert(
       html.includes("Вход в портал"),
       "SSR HTML does not include expected auth content",

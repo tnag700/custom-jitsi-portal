@@ -19,7 +19,15 @@ interface ConfigSetJpaRepository extends JpaRepository<ConfigSetEntity, String> 
 
   Page<ConfigSetEntity> findByTenantIdOrderByCreatedAtDesc(String tenantId, Pageable pageable);
 
-  long countByTenantId(String tenantId);
+  Page<ConfigSetEntity> findByTenantIdAndEnvironmentTypeOrderByCreatedAtDesc(
+      String tenantId, ConfigSetEnvironmentType environmentType, Pageable pageable);
+
+  Page<ConfigSetEntity> findByTenantIdAndStatusOrderByCreatedAtDesc(
+      String tenantId, ConfigSetStatus status, Pageable pageable);
+
+  Page<ConfigSetEntity> findByTenantIdAndEnvironmentTypeAndStatusOrderByCreatedAtDesc(
+      String tenantId, ConfigSetEnvironmentType environmentType, ConfigSetStatus status,
+      Pageable pageable);
 
   boolean existsByNameAndTenantId(String name, String tenantId);
 

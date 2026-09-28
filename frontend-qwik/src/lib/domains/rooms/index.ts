@@ -9,6 +9,7 @@ export type {
 export {
   fetchActiveRoomConfigSetId,
   fetchRooms,
+  fetchRoom,
   createRoom,
   updateRoom,
   closeRoom,

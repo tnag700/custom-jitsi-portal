@@ -1,0 +1,40 @@
+rule_files:
+  - alert-rules.yml
+evaluation_interval: 30s
+tests:
+  - name: backend scrape fails
+    interval: 30s
+    input_series:
+      - series: 'up{job="jitsi-backend",instance="backend:8080"}'
+        values: '0x8'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: JitsiBackendUnavailable
+        exp_alerts:
+          - exp_labels: {job: jitsi-backend, instance: 'backend:8080', severity: critical}
+            exp_annotations:
+              summary: 'Jitsi portal backend reports unavailable'
+              dashboard: '__MONITORING_GRAFANA_BASE_URL__/d/jitsi-portal-overview'
+              runbook: '__MONITORING_RUNBOOK_URL__'
+              sli_window: '2m'
+  - name: backend target missing
+    interval: 30s
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: JitsiBackendUnavailable
+        exp_alerts:
+          - exp_labels: {job: jitsi-backend, severity: critical}
+            exp_annotations:
+              summary: 'Jitsi portal backend reports unavailable'
+              dashboard: '__MONITORING_GRAFANA_BASE_URL__/d/jitsi-portal-overview'
+              runbook: '__MONITORING_RUNBOOK_URL__'
+              sli_window: '2m'
+  - name: healthy backend scrape
+    interval: 30s
+    input_series:
+      - series: 'up{job="jitsi-backend",instance="backend:8080"}'
+        values: '1x8'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: JitsiBackendUnavailable
+        exp_alerts: []

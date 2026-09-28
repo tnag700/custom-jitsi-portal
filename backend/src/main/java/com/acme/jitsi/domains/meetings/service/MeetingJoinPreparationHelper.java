@@ -56,7 +56,7 @@ final class MeetingJoinPreparationHelper {
   }
 
   String resolveRoomClaim(String meetingId) {
-    return resolveRoomPathSegment(meetingId).toLowerCase(Locale.ROOT);
+    return resolveRoomPathSegment(meetingId);
   }
 
   String resolveAuditRoomId(String meetingId) {
@@ -72,28 +72,7 @@ final class MeetingJoinPreparationHelper {
   }
 
   private String resolveRoomPathSegment(String meetingId) {
-    return encodePathSegment(resolveRawRoomName(meetingId));
-  }
-
-  private String resolveRawRoomName(String meetingId) {
-    try {
-      Meeting meeting = meetingService.getMeeting(meetingId);
-      if (meeting == null || meeting.title() == null || meeting.title().isBlank()) {
-        return meetingId;
-      }
-
-      String normalized =
-          meeting.title().trim()
-              .toLowerCase(Locale.ROOT)
-              .replaceAll("\\s+", "-")
-              .replaceAll("[^\\p{L}\\p{N}_-]", "-")
-              .replaceAll("-+", "-")
-              .replaceAll("^-|-$", "");
-
-      return normalized.isBlank() ? meetingId : normalized;
-    } catch (RuntimeException ignored) {
-      return meetingId;
-    }
+    return encodePathSegment(meetingId.toLowerCase(Locale.ROOT));
   }
 
   private String encodeFragmentValue(String value) {

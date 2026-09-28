@@ -77,7 +77,6 @@ public class InviteExchangeService {
         tokenResult =
             inviteJoinPort.issueGuestJoin(
                 reservation.meetingId(), guestSubject, normalizedDisplayName);
-        observation.outcome("success");
       } catch (RuntimeException ex) {
         observation.outcome("partial_failure").stage("issue_token");
         try {
@@ -89,6 +88,9 @@ public class InviteExchangeService {
         }
         throw ex;
       }
+
+      inviteReservationCapability.complete(reservation);
+      observation.outcome("success");
 
       return new ExchangeResult(
           tokenResult.joinUrl(),

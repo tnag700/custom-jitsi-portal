@@ -18,22 +18,27 @@ import {
   buildServerRequestContext,
   mapRouteActionError,
 } from "~/lib/shared/routes/server-handlers";
+import { readPage } from "~/lib/shared/routes/page-query";
 
-export const useRoomConfigSets = routeLoader$(async ({ sharedMap, cookie }) => {
+export const useRoomConfigSets = routeLoader$(async ({ sharedMap, cookie, env }) => {
   const user = sharedMap.get("user") as SafeUserProfile;
   const requestContext = buildServerRequestContext({ sharedMap, cookie });
+  const environment = env?.get("PORTAL_CONFIG_ENVIRONMENT") || "DEV";
+  if (environment !== "DEV" && environment !== "TEST" && environment !== "PROD") {
+    throw new Error("Invalid PORTAL_CONFIG_ENVIRONMENT");
+  }
   const activeConfigSetId = await fetchActiveRoomConfigSetId(
     requestContext,
     user.tenant,
-    "DEV",
+    environment,
   );
   return [activeConfigSetId];
 });
 
-export const useRooms = routeLoader$(async ({ sharedMap, cookie }) => {
+export const useRooms = routeLoader$(async ({ sharedMap, cookie, query }) => {
   const user = sharedMap.get("user") as SafeUserProfile;
   const requestContext = buildServerRequestContext({ sharedMap, cookie });
-  return fetchRooms(requestContext, user.tenant);
+  return fetchRooms(requestContext, user.tenant, readPage(query, "roomsPage"));
 });
 
 export const useCreateRoom = routeAction$(

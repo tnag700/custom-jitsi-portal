@@ -2041,6 +2041,8 @@ export interface operations {
                 tenantId: string;
                 page?: number;
                 size?: number;
+                environment?: "DEV" | "TEST" | "PROD";
+                status?: "DRAFT" | "ACTIVE" | "INACTIVE";
             };
             header?: never;
             path?: never;

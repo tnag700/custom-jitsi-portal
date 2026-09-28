@@ -4,5 +4,7 @@ public interface InviteReservationCapability {
 
   InviteReservation reserve(String inviteToken);
 
+  void complete(InviteReservation reservation);
+
   void rollback(InviteReservation reservation);
 }

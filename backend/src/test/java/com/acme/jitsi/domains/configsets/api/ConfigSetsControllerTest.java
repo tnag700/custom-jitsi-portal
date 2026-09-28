@@ -252,4 +252,65 @@ class ConfigSetsControllerTest {
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.CONFIG_SET_NOT_FOUND.code()));
   }
+
+  @Test
+  void listFiltersBeforePaginationAndRejectsOversizedPages() throws Exception {
+    String tenantId = "tenant-filter-test";
+    createConfigForListTest(tenantId, "DEV", "dev");
+    createConfigForListTest(tenantId, "PROD", "prod");
+
+    mockMvc.perform(get("/api/v1/config-sets")
+            .with(oauth2Login().attributes(attrs -> attrs.put("tenantId", tenantId))
+                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .param("tenantId", tenantId)
+            .param("environment", "PROD")
+            .param("status", "DRAFT")
+            .param("size", "1"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements").value(1))
+        .andExpect(jsonPath("$.content[0].environmentType").value("prod"));
+
+    mockMvc.perform(get("/api/v1/config-sets")
+            .with(oauth2Login().attributes(attrs -> attrs.put("tenantId", tenantId))
+                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .param("tenantId", tenantId)
+            .param("page", "1")
+            .param("size", "1"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements").value(2))
+        .andExpect(jsonPath("$.content.length()").value(1));
+
+    mockMvc.perform(get("/api/v1/config-sets")
+            .with(oauth2Login().attributes(attrs -> attrs.put("tenantId", tenantId))
+                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .param("tenantId", tenantId)
+            .param("size", "101"))
+        .andExpect(status().isBadRequest());
+
+    mockMvc.perform(get("/api/v1/config-sets")
+            .with(oauth2Login().attributes(attrs -> attrs.put("tenantId", tenantId))
+                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .param("tenantId", tenantId)
+            .param("status", "unknown"))
+        .andExpect(status().isBadRequest());
+  }
+
+  private void createConfigForListTest(String tenantId, String environment, String suffix) throws Exception {
+    mockMvc.perform(post("/api/v1/config-sets")
+            .with(csrf())
+            .with(oauth2Login()
+                .attributes(attrs -> attrs.put("tenantId", tenantId))
+                .authorities(new SimpleGrantedAuthority("ROLE_admin")))
+            .header("Idempotency-Key", "config-list-" + suffix)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "name": "Config %s", "tenantId": "%s", "environmentType": "%s",
+                  "issuer": "issuer", "audience": "audience", "algorithm": "HS256",
+                  "signingSecret": "secret-a", "accessTtlMinutes": 20,
+                  "refreshTtlMinutes": 120, "meetingsServiceUrl": "https://meet.example.test"
+                }
+                """.formatted(suffix, tenantId, environment)))
+        .andExpect(status().isCreated());
+  }
 }

@@ -109,6 +109,21 @@ class DbInviteValidationAdapterTest {
   }
 
   @Test
+  void completedReservationKeepsInviteConsumed() {
+    MeetingInvite invite = new MeetingInvite(
+        "invite-complete", "meeting-1", "token-complete", MeetingRole.PARTICIPANT,
+        1, 1, Instant.now().plusSeconds(3600), null, Instant.now(), "admin-1");
+    when(consumeInviteUseCase.execute(new ConsumeInviteCommand("token-complete")))
+        .thenReturn(invite);
+    InviteReservation reservation = adapter.reserve("token-complete");
+
+    adapter.complete(reservation);
+    adapter.rollback(reservation);
+
+    verify(inviteService, org.mockito.Mockito.never()).rollbackConsume("token-complete");
+  }
+
+  @Test
   void rollbackIgnoresForgedReservation() {
     adapter.rollback(InviteReservation.issue("forged", "token-rollback", "meeting-1"));
 

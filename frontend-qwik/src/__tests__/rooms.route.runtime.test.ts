@@ -156,8 +156,21 @@ describe("rooms route runtime", () => {
         }),
       }),
       "tenant-a",
+      0,
     );
     expect(result).toEqual(payload);
+  });
+
+  it("useRooms loads the requested page and rejects malformed page numbers", async () => {
+    mockFetchRooms.mockResolvedValue({ content: [], page: 1, pageSize: 20, totalElements: 21, totalPages: 2 });
+    const mod = await import("~/routes/rooms/index");
+    const ctx = createCtx();
+
+    await mod.useRooms({ ...ctx, query: new URLSearchParams("roomsPage=1") } as never);
+    await mod.useRooms({ ...ctx, query: new URLSearchParams("roomsPage=-2") } as never);
+
+    expect(mockFetchRooms).toHaveBeenNthCalledWith(1, expect.anything(), "tenant-a", 1);
+    expect(mockFetchRooms).toHaveBeenNthCalledWith(2, expect.anything(), "tenant-a", 0);
   });
 
   it("useRoomConfigSets exposes the active DEV config set", async () => {
@@ -178,6 +191,23 @@ describe("rooms route runtime", () => {
       "DEV",
     );
     expect(result).toEqual(["cfg-active"]);
+  });
+
+  it("useRoomConfigSets selects the configured PROD environment", async () => {
+    mockFetchActiveRoomConfigSetId.mockResolvedValue("cfg-prod");
+    const mod = await import("~/routes/rooms/index");
+    const ctx = createCtx();
+
+    const result = await mod.useRoomConfigSets({
+      sharedMap: ctx.sharedMap,
+      cookie: ctx.cookie,
+      env: { get: (name: string) => name === "PORTAL_CONFIG_ENVIRONMENT" ? "PROD" : undefined },
+    } as never);
+
+    expect(mockFetchActiveRoomConfigSetId).toHaveBeenCalledWith(
+      expect.anything(), "tenant-a", "PROD",
+    );
+    expect(result).toEqual(["cfg-prod"]);
   });
 
   it("useCreateRoom returns success payload", async () => {

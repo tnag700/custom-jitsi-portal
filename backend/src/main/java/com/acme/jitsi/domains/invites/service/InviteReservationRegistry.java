@@ -4,18 +4,26 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-final class InviteReservationRegistry {
+public final class InviteReservationRegistry {
 
   private final Map<String, InviteReservation> activeReservations = new ConcurrentHashMap<>();
 
-  InviteReservation issue(String inviteToken, String meetingId) {
+  public InviteReservation issue(String inviteToken, String meetingId) {
     String reservationId = UUID.randomUUID().toString();
     InviteReservation reservation = InviteReservation.issue(reservationId, inviteToken, meetingId);
     activeReservations.put(reservationId, reservation);
     return reservation;
   }
 
-  boolean authorizeRollback(InviteReservation reservation) {
+  public boolean authorizeRollback(InviteReservation reservation) {
+    return remove(reservation);
+  }
+
+  public void complete(InviteReservation reservation) {
+    remove(reservation);
+  }
+
+  private boolean remove(InviteReservation reservation) {
     if (reservation == null) {
       return false;
     }

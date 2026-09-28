@@ -12,6 +12,9 @@ import com.acme.jitsi.domains.rooms.usecase.UpdateRoomCommand;
 import com.acme.jitsi.domains.rooms.usecase.UpdateRoomUseCase;
 import com.acme.jitsi.security.ProblemResponseFacade;
 import com.acme.jitsi.security.TenantAccessGuard;
+import com.acme.jitsi.shared.validation.PageSize;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -108,6 +111,7 @@ class RoomsController {
   @GetMapping
   PagedRoomResponse listRooms(
       @RequestParam(name = "page", defaultValue = "0") int page,
+      @Parameter(schema = @Schema(type = "integer", format = "int32", defaultValue = "20", maximum = "100"))
       @RequestParam(name = "size", defaultValue = "20") int size,
       @RequestParam(name = "tenantId") String tenantId,
       @AuthenticationPrincipal OAuth2User principal,
@@ -117,7 +121,7 @@ class RoomsController {
 
     String traceId = problemResponseFacade.resolveTraceId(httpRequest);
 
-    int resolvedSize = (size <= 0) ? 20 : size;
+    int resolvedSize = PageSize.resolve(size);
 
     if (log.isInfoEnabled()) {
       log.info(

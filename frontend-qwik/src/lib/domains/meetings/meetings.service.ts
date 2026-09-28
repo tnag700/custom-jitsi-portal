@@ -57,6 +57,32 @@ export async function adaptMeetingProblemDetails(response: Response): Promise<Me
   );
 }
 
+export function fetchMeeting(context: ServerRequestContext, meetingId: string): Promise<Meeting>;
+export function fetchMeeting(sessionCookie: string, apiUrl: string, meetingId: string): Promise<Meeting>;
+export async function fetchMeeting(
+  contextOrSessionCookie: ServerRequestContext | string,
+  apiUrlOrMeetingId: string,
+  meetingId?: string,
+): Promise<Meeting> {
+  const context = asServerRequestContext(
+    contextOrSessionCookie,
+    typeof contextOrSessionCookie === "string" ? apiUrlOrMeetingId : undefined,
+  );
+  const resolvedMeetingId = typeof contextOrSessionCookie === "string" ? meetingId! : apiUrlOrMeetingId;
+  const client = createApiClient(context.apiUrl);
+  const { data, error, response } = await client.GET("/api/v1/meetings/{meetingId}", {
+    headers: context.headers,
+    params: { path: { meetingId: resolvedMeetingId } },
+  });
+  if (!response.ok || error) {
+    throw new MeetingServiceError(await adaptProblemDetails(
+      error ?? response, response.status, fallbackErrorCode,
+      "Ошибка загрузки встречи", "Не удалось загрузить встречу.",
+    ));
+  }
+  return parseOrThrow((value) => meetingResponseSchema.parse(value), data, "GET /api/v1/meetings/{meetingId}");
+}
+
 export function fetchMeetings(
   context: ServerRequestContext,
   roomId: string,

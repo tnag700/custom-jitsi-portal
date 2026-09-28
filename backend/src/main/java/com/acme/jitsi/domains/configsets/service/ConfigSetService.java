@@ -1,6 +1,5 @@
 package com.acme.jitsi.domains.configsets.service;
 
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -17,7 +16,9 @@ public class ConfigSetService {
         .orElseThrow(() -> new ConfigSetNotFoundException(configSetId));
   }
 
-  public List<ConfigSet> listByTenant(String tenantId, int page, int size) {
+  public ConfigSetRepository.ConfigSetPage searchByTenant(
+      String tenantId, ConfigSetEnvironmentType environmentType, ConfigSetStatus status,
+      int page, int size) {
     if (tenantId == null || tenantId.isBlank()) {
       throw new ConfigSetInvalidDataException("Tenant ID is required");
     }
@@ -27,14 +28,7 @@ public class ConfigSetService {
     if (size <= 0) {
       throw new ConfigSetInvalidDataException("Size must be greater than 0");
     }
-    return configSetRepository.findByTenantId(tenantId, page, size);
-  }
-
-  public long countByTenant(String tenantId) {
-    if (tenantId == null || tenantId.isBlank()) {
-      throw new ConfigSetInvalidDataException("Tenant ID is required");
-    }
-    return configSetRepository.countByTenantId(tenantId);
+    return configSetRepository.searchByTenantId(tenantId, environmentType, status, page, size);
   }
 
   public ConfigSet getActiveForEnvironment(String tenantId, ConfigSetEnvironmentType environmentType) {

@@ -11,7 +11,6 @@ import {
   createAdminConfigSet,
   fetchAdminConfigSet,
   fetchAdminConfigSets,
-  filterAdminConfigSummaries,
   loadAdminConfigLatestRollouts,
   normalizeAdminConfigEnvironment,
   resolveAdminConfigCapability,
@@ -30,12 +29,16 @@ import {
   buildMutationRequestContext,
   buildServerRequestContext,
 } from "~/lib/shared/routes/server-handlers";
+import { readPage } from "~/lib/shared/routes/page-query";
 
 interface ConfigSetsLoaderData {
   items: AdminConfigSetSummary[];
   selectedConfig: AdminConfigSetDetail | null;
   capability: AdminConfigSetCapability;
   loadError: ProblemDetail | null;
+  page: number;
+  totalPages: number;
+  totalElements: number;
   filters: {
     environment: string;
     status: string;
@@ -61,25 +64,24 @@ export const useAdminConfigSets = routeLoader$(
     try {
       const page = await fetchAdminConfigSets(requestContext, {
         tenantId: user.tenant,
-        page: 0,
+        page: readPage(query, "configSetsPage"),
         size: 20,
+        ...(filters.environment ? { environment: filters.environment } : {}),
+        ...(filters.status ? { status: filters.status.toUpperCase() } : {}),
       });
       const rolloutByEnvironment = await loadAdminConfigLatestRollouts(
         requestContext,
         user.tenant,
         page.items,
       );
-      const items = filterAdminConfigSummaries(
-        page.items.map((item) => ({
+      const items = page.items.map((item) => ({
           ...item,
           latestRollout:
             rolloutByEnvironment.get(
               normalizeAdminConfigEnvironment(item.environmentType),
             ) ?? null,
           capability,
-        })),
-        filters,
-      );
+        }));
 
       const selectedConfigId = resolveAdminConfigSelectedId(filters, items);
       const selectedConfig = shouldLoadAdminConfigDetail(
@@ -97,6 +99,9 @@ export const useAdminConfigSets = routeLoader$(
         selectedConfig,
         capability,
         loadError: null,
+        page: page.page,
+        totalPages: page.totalPages,
+        totalElements: page.totalElements,
         filters: {
           ...filters,
           configSetId: selectedConfigId,
@@ -115,6 +120,9 @@ export const useAdminConfigSets = routeLoader$(
           selectedConfig: null,
           capability,
           loadError: error.payload,
+          page: 0,
+          totalPages: 0,
+          totalElements: 0,
           filters,
         } satisfies ConfigSetsLoaderData;
       }
@@ -128,6 +136,9 @@ export const useAdminConfigSets = routeLoader$(
           detail: "Не удалось загрузить раздел управления конфигурацией.",
           errorCode: "ADMIN_CONFIG_UI_UNAVAILABLE",
         },
+        page: 0,
+        totalPages: 0,
+        totalElements: 0,
         filters,
       } satisfies ConfigSetsLoaderData;
     }

@@ -13,6 +13,7 @@ export type {
 
 export {
   fetchMeetings,
+  fetchMeeting,
   createMeeting,
   updateMeeting,
   cancelMeeting,

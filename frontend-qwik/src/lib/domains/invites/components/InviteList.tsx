@@ -61,20 +61,20 @@ export const InviteList = component$<InviteListProps>(
           </div>
 
           <span class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-            Удалено: {summary.value.deletedCount}
+            Удалено на странице: {summary.value.deletedCount}
           </span>
         </div>
 
         <p class="text-xs text-muted">
           {summary.value.lastDeletedAt
-            ? ["Последнее удаление: ", <span key="last-deleted-at" class="font-medium text-text">{formatDateTime(summary.value.lastDeletedAt)}</span>]
+            ? ["Последнее удаление на странице: ", <span key="last-deleted-at" class="font-medium text-text">{formatDateTime(summary.value.lastDeletedAt)}</span>]
             : "Удалённых ссылок пока нет"}
         </p>
       </div>
 
       {!hasSourceInvites ? (
         <div class="rounded border border-dashed border-border p-8 text-center">
-          <h3 class="mb-2 text-lg font-semibold text-text">Нет инвайтов</h3>
+          <h3 class="mb-2 text-lg font-semibold text-text">{totalElements > 0 ? "На этой странице нет инвайтов" : "Нет инвайтов"}</h3>
           <p class="text-sm text-muted">Создайте первый инвайт для приглашения участников</p>
         </div>
       ) : !hasFilteredInvites ? (

@@ -93,6 +93,32 @@ export async function fetchActiveRoomConfigSetId(
   );
 }
 
+export function fetchRoom(context: ServerRequestContext, roomId: string): Promise<Room>;
+export function fetchRoom(sessionCookie: string, apiUrl: string, roomId: string): Promise<Room>;
+export async function fetchRoom(
+  contextOrSessionCookie: ServerRequestContext | string,
+  apiUrlOrRoomId: string,
+  roomId?: string,
+): Promise<Room> {
+  const context = asServerRequestContext(
+    contextOrSessionCookie,
+    typeof contextOrSessionCookie === "string" ? apiUrlOrRoomId : undefined,
+  );
+  const resolvedRoomId = typeof contextOrSessionCookie === "string" ? roomId! : apiUrlOrRoomId;
+  const client = createApiClient(context.apiUrl);
+  const { data, error, response } = await client.GET("/api/v1/rooms/{roomId}", {
+    headers: context.headers,
+    params: { path: { roomId: resolvedRoomId } },
+  });
+  if (!response.ok || error) {
+    throw new RoomServiceError(await adaptProblemDetails(
+      error ?? response, response.status, fallbackErrorCode,
+      "Ошибка загрузки комнаты", "Не удалось загрузить комнату.",
+    ));
+  }
+  return parseOrThrow((value) => roomResponseSchema.parse(value), data, "GET /api/v1/rooms/{roomId}");
+}
+
 export function fetchRooms(
   context: ServerRequestContext,
   tenantId: string,

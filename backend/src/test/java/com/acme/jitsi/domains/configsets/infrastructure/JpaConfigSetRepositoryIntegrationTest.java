@@ -174,7 +174,10 @@ class JpaConfigSetRepositoryIntegrationTest {
         .isEmpty();
     assertThat(repository.findByStatus(ConfigSetStatus.ACTIVE)).containsExactly(visible);
     assertThat(repository.findByTenantId("tenant-soft-delete", 0, 10)).containsExactly(visible);
-    assertThat(repository.countByTenantId("tenant-soft-delete")).isEqualTo(1);
+    assertThat(repository.searchByTenantId("tenant-soft-delete", null, null, 0, 20).totalElements()).isEqualTo(1);
+    assertThat(repository.searchByTenantId("tenant-soft-delete", ConfigSetEnvironmentType.PROD, null, 0, 20).totalElements()).isZero();
+    assertThat(repository.searchByTenantId("tenant-soft-delete", ConfigSetEnvironmentType.TEST, ConfigSetStatus.ACTIVE, 0, 20).content())
+        .containsExactly(visible);
     assertThat(repository.existsByNameAndTenantId("Deleted Config", "tenant-soft-delete")).isFalse();
   }
 

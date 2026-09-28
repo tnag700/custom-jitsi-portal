@@ -8,13 +8,21 @@ name, environment, service, first firing time, and current deployment version.
 Do not copy tokens, user identifiers, meeting identifiers, or request payloads
 into incident notes.
 
+`JitsiBackendUnavailable` now checks Prometheus `up{job="jitsi-backend"}` and
+the absence of that target. It detects scrape failures and missing target
+series after two minutes, while Prometheus itself must be monitored separately.
+The backend's `jitsi_service_backend_available` gauge follows configuration
+compatibility in `DefaultHealthService`; it is not an aggregate
+PostgreSQL/Redis/Keycloak availability check.
+
 ### Backend or readiness alerts
 
 1. Check `docker compose ps` and the backend health endpoint from inside
    `app_net`.
 2. Inspect bounded logs using the alert window and the edge request ID.
-3. For `JitsiBackendUnavailable`, verify PostgreSQL, Redis, and Keycloak health
-   before restarting the backend.
+3. For `JitsiBackendUnavailable`, inspect Prometheus target health, Compose
+   status and bounded backend logs. Check PostgreSQL, Redis and Keycloak
+   independently before restarting the backend.
 4. For `JitsiConfigCompatibilityBroken` or readiness alerts, inspect the active
    config set and correct configuration drift before resuming joins.
 

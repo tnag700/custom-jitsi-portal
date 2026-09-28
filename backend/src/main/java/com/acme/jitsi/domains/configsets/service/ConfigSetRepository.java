@@ -17,7 +17,11 @@ public interface ConfigSetRepository {
 
   List<ConfigSet> findByTenantId(String tenantId, int page, int size);
 
-  long countByTenantId(String tenantId);
+  ConfigSetPage searchByTenantId(
+      String tenantId, ConfigSetEnvironmentType environmentType, ConfigSetStatus status,
+      int page, int size);
+
+  record ConfigSetPage(List<ConfigSet> content, long totalElements) {}
 
   boolean existsByNameAndTenantId(String name, String tenantId);
 

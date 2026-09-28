@@ -7,6 +7,7 @@ import com.acme.jitsi.domains.configsets.service.ConfigSetStatus;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -62,8 +63,23 @@ class JpaConfigSetRepository implements ConfigSetRepository {
   }
 
   @Override
-  public long countByTenantId(String tenantId) {
-    return jpaRepository.countByTenantId(tenantId);
+  public ConfigSetPage searchByTenantId(
+      String tenantId, ConfigSetEnvironmentType environmentType, ConfigSetStatus status,
+      int page, int size) {
+    PageRequest request = PageRequest.of(page, size);
+    Page<ConfigSetEntity> result;
+    if (environmentType != null && status != null) {
+      result = jpaRepository.findByTenantIdAndEnvironmentTypeAndStatusOrderByCreatedAtDesc(
+          tenantId, environmentType, status, request);
+    } else if (environmentType != null) {
+      result = jpaRepository.findByTenantIdAndEnvironmentTypeOrderByCreatedAtDesc(
+          tenantId, environmentType, request);
+    } else if (status != null) {
+      result = jpaRepository.findByTenantIdAndStatusOrderByCreatedAtDesc(tenantId, status, request);
+    } else {
+      result = jpaRepository.findByTenantIdOrderByCreatedAtDesc(tenantId, request);
+    }
+    return new ConfigSetPage(result.stream().map(translator::toDomain).toList(), result.getTotalElements());
   }
 
   @Override
