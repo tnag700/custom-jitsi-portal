@@ -46,9 +46,9 @@ REQUIRED_SECRET_FILES = (
 )
 
 SERVICE_ENV_REQUIREMENTS = {
-    "POSTGRES_VAULT_ENV_FILE_PATH": ("POSTGRES_PASSWORD",),
+    "POSTGRES_VAULT_ENV_FILE_PATH": ("POSTGRES_PASSWORD", "APP_DB_PASSWORD"),
     "REDIS_VAULT_ENV_FILE_PATH": ("REDIS_PASSWORD",),
-    "KEYCLOAK_POSTGRES_VAULT_ENV_FILE_PATH": ("POSTGRES_PASSWORD",),
+    "KEYCLOAK_POSTGRES_VAULT_ENV_FILE_PATH": ("POSTGRES_PASSWORD", "APP_DB_PASSWORD"),
     "KEYCLOAK_VAULT_ENV_FILE_PATH": (
         "KC_BOOTSTRAP_ADMIN_PASSWORD",
         "KC_DB_PASSWORD",
@@ -435,6 +435,14 @@ def _validate_certificate(path: Path, required_dns_names: set[str], label: str) 
 
 
 def _validate_service_secret_contracts(env: Mapping[str, str], base_dir: Path) -> None:
+    for runtime_key, runtime_default, bootstrap_key, bootstrap_default in (
+        ("SPRING_DATASOURCE_USERNAME", "jitsi_app", "POSTGRES_USER", "jitsi_admin"),
+        ("KC_DB_USERNAME", "keycloak_app", "KEYCLOAK_POSTGRES_USER", "keycloak_admin"),
+    ):
+        runtime_user = env.get(runtime_key, runtime_default)
+        bootstrap_user = env.get(bootstrap_key, bootstrap_default)
+        if not runtime_user or runtime_user == bootstrap_user:
+            raise DeploymentValidationError(f"{runtime_key} must differ from its bootstrap database user.")
     parsed_files: dict[str, dict[str, str]] = {}
     for path_variable, required_variables in SERVICE_ENV_REQUIREMENTS.items():
         secret_path = _resolve_operator_path(base_dir, _required(env, path_variable))
@@ -448,8 +456,12 @@ def _validate_service_secret_contracts(env: Mapping[str, str], base_dir: Path) -
                 )
         parsed_files[path_variable] = values
 
+    for key in ("POSTGRES_VAULT_ENV_FILE_PATH", "KEYCLOAK_POSTGRES_VAULT_ENV_FILE_PATH"):
+        if parsed_files[key]["POSTGRES_PASSWORD"] == parsed_files[key]["APP_DB_PASSWORD"]:
+            raise DeploymentValidationError("Bootstrap and runtime database passwords must differ.")
+
     keycloak_password = parsed_files["KEYCLOAK_VAULT_ENV_FILE_PATH"]["KC_DB_PASSWORD"]
-    database_password = parsed_files["KEYCLOAK_POSTGRES_VAULT_ENV_FILE_PATH"]["POSTGRES_PASSWORD"]
+    database_password = parsed_files["KEYCLOAK_POSTGRES_VAULT_ENV_FILE_PATH"]["APP_DB_PASSWORD"]
     if keycloak_password != database_password:
         raise DeploymentValidationError(
             "Keycloak and its PostgreSQL service do not share the same database credential."
@@ -513,6 +525,8 @@ def _validate_realm_import(
     attributes = backend_client.get("attributes")
     if not isinstance(attributes, dict) or attributes.get("post.logout.redirect.uris") != "${APP_FRONTEND_ORIGIN}/auth":
         raise DeploymentValidationError("Private Keycloak realm import has an unexpected post-logout redirect policy.")
+    if attributes.get("backchannel.logout.url") != "${OIDC_BACKCHANNEL_LOGOUT_URI}" or attributes.get("backchannel.logout.session.required") != "true":
+        raise DeploymentValidationError("Private Keycloak realm import must enable session-aware backchannel logout.")
 
     users = realm.get("users")
     if not isinstance(users, list) or not users:

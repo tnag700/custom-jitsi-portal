@@ -48,7 +48,7 @@ class CreateMeetingUseCaseTest {
 
   @Test
   void executeCreatesMeetingAndPublishesEvent() {
-    when(meetingRoomsPort.getRequiredRoom("room-1")).thenReturn(activeRoom("room-1", "config-1"));
+    when(meetingRoomsPort.getRequiredRoomForUpdate("room-1")).thenReturn(activeRoom("room-1", "config-1"));
     when(meetingRepository.save(any(Meeting.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     Meeting meeting = useCase.execute(new CreateMeetingCommand(
@@ -70,7 +70,7 @@ class CreateMeetingUseCaseTest {
 
   @Test
   void executeThrowsWhenRoomIsInactive() {
-    when(meetingRoomsPort.getRequiredRoom("room-1")).thenReturn(inactiveRoom("room-1", "config-1"));
+    when(meetingRoomsPort.getRequiredRoomForUpdate("room-1")).thenReturn(inactiveRoom("room-1", "config-1"));
 
     assertThatThrownBy(() -> useCase.execute(new CreateMeetingCommand(
         "room-1", "Title", "Desc", "scheduled",
@@ -81,7 +81,7 @@ class CreateMeetingUseCaseTest {
 
   @Test
   void executeThrowsWhenConfigSetIsInvalid() {
-    when(meetingRoomsPort.getRequiredRoom("room-1")).thenReturn(invalidConfigRoom("room-1", "config-1"));
+    when(meetingRoomsPort.getRequiredRoomForUpdate("room-1")).thenReturn(invalidConfigRoom("room-1", "config-1"));
 
     assertThatThrownBy(() -> useCase.execute(new CreateMeetingCommand(
         "room-1", "Title", "Desc", "scheduled",
@@ -92,7 +92,7 @@ class CreateMeetingUseCaseTest {
 
   @Test
   void executeThrowsWhenScheduleIsInvalid() {
-    when(meetingRoomsPort.getRequiredRoom("room-1")).thenReturn(activeRoom("room-1", "config-1"));
+    when(meetingRoomsPort.getRequiredRoomForUpdate("room-1")).thenReturn(activeRoom("room-1", "config-1"));
 
     assertThatThrownBy(() -> useCase.execute(new CreateMeetingCommand(
         "room-1", "Title", "Desc", "scheduled",

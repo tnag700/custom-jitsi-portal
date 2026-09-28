@@ -162,7 +162,7 @@ services:
       - SPRING_DATA_REDIS_PORT=${SPRING_DATA_REDIS_PORT:-6379}
       - APP_FEATURES_CONFIG_SETS_FROM_DB=true
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://db:5432/jitsi}
-      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-jitsi}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-jitsi_app}
       - APP_OPENAPI_SERVER_URL=${APP_OPENAPI_SERVER_URL:?Set APP_OPENAPI_SERVER_URL}
       - APP_MEETINGS_TOKEN_ISSUER=${APP_MEETINGS_TOKEN_ISSUER:?Set APP_MEETINGS_TOKEN_ISSUER}
       - APP_MEETINGS_TOKEN_JOIN_URL_TEMPLATE=${APP_MEETINGS_TOKEN_JOIN_URL_TEMPLATE:?Set APP_MEETINGS_TOKEN_JOIN_URL_TEMPLATE}
@@ -271,7 +271,6 @@ services:
       - BACKEND_OIDC_SECRET_PATH=kv/identity/backend/oidc
       - BACKEND_REDIS_SECRET_PATH=kv/app/redis/runtime
       - BACKEND_DB_STATIC_CREDENTIAL_PATH=database/static-creds/backend-app
-      - BACKEND_DB_DYNAMIC_CREDENTIAL_PATH=database/creds/backend-app
       - OUTPUT_UID=10001
       - OUTPUT_GID=10001
     depends_on:
@@ -307,13 +306,15 @@ services:
       - ${POSTGRES_VAULT_ENV_FILE_PATH:?Set POSTGRES_VAULT_ENV_FILE_PATH to a private Vault-rendered env file}
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-jitsi}
-      - POSTGRES_USER=${POSTGRES_USER:-jitsi}
+      - POSTGRES_USER=${POSTGRES_USER:-jitsi_admin}
+      - APP_DB_USER=${SPRING_DATASOURCE_USERNAME:-jitsi_app}
     expose:
       - "5432"
     volumes:
       - pgdata:/var/lib/postgresql
+      - ./deploy/postgres/init-runtime-role.sh:/docker-entrypoint-initdb.d/10-runtime-role.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jitsi}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jitsi_admin} -d ${POSTGRES_DB:-jitsi}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -352,7 +353,6 @@ services:
       args:
         VAULT_VERSION: 1.21.4
         VAULT_ZIP_URL: https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_linux_amd64.zip
-        VAULT_SHA256SUMS_URL: https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_SHA256SUMS
     image: jitsi-vault:1.21.4
     cap_drop:
       - ALL
@@ -411,13 +411,15 @@ services:
       - ${KEYCLOAK_POSTGRES_VAULT_ENV_FILE_PATH:?Set KEYCLOAK_POSTGRES_VAULT_ENV_FILE_PATH to a private Vault-rendered env file}
     environment:
       - POSTGRES_DB=${KEYCLOAK_POSTGRES_DB:-keycloak}
-      - POSTGRES_USER=${KEYCLOAK_POSTGRES_USER:-keycloak}
+      - POSTGRES_USER=${KEYCLOAK_POSTGRES_USER:-keycloak_admin}
+      - APP_DB_USER=${KC_DB_USERNAME:-keycloak_app}
     expose:
       - "5432"
     volumes:
       - keycloak-pgdata:/var/lib/postgresql
+      - ./deploy/postgres/init-runtime-role.sh:/docker-entrypoint-initdb.d/10-runtime-role.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_POSTGRES_USER:-keycloak} -d ${KEYCLOAK_POSTGRES_DB:-keycloak}"]
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_POSTGRES_USER:-keycloak_admin} -d ${KEYCLOAK_POSTGRES_DB:-keycloak}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -476,10 +478,11 @@ services:
       - KC_BOOTSTRAP_ADMIN_USERNAME=${KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME:?Set KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME}
       - KC_DB=postgres
       - KC_DB_URL=jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_POSTGRES_DB:-keycloak}
-      - KC_DB_USERNAME=${KEYCLOAK_POSTGRES_USER:-keycloak}
+      - KC_DB_USERNAME=${KC_DB_USERNAME:-keycloak_app}
       - KC_HEALTH_ENABLED=true
       - KC_METRICS_ENABLED=true
       - KC_HTTP_ENABLED=true
+      - OIDC_BACKCHANNEL_LOGOUT_URI=http://backend:8080/logout/connect/back-channel/keycloak
       - OIDC_REDIRECT_BASE_URI=${APP_FRONTEND_ORIGIN:?Set APP_FRONTEND_ORIGIN}
       - APP_FRONTEND_ORIGIN=${APP_FRONTEND_ORIGIN:?Set APP_FRONTEND_ORIGIN}
       - KC_HOSTNAME=${KC_HOSTNAME:?Set KC_HOSTNAME}

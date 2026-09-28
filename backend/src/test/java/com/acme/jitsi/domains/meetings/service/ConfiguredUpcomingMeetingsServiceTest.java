@@ -1,6 +1,7 @@
 package com.acme.jitsi.domains.meetings.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -11,6 +12,18 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class ConfiguredUpcomingMeetingsServiceTest {
+
+  @Test
+  void storageFailureIsNotSilentlyReportedAsNoMeetings() {
+    Instant now = Instant.parse("2026-02-16T10:00:00Z");
+    MeetingRepository meetings = mock(MeetingRepository.class);
+    RuntimeException failure = new org.springframework.dao.DataAccessResourceFailureException("Database unavailable");
+    when(meetings.findUpcomingBySubjectId("u-1", now)).thenThrow(failure);
+    UpcomingMeetingsReader reader = new ConfiguredUpcomingMeetingsService(new MeetingTokenProperties(),
+        meetings, mock(MeetingRoomsPort.class), Clock.fixed(now, ZoneOffset.UTC));
+
+    assertThatThrownBy(() -> reader.listForSubject("u-1")).isSameAs(failure);
+  }
 
   @Test
   void returnsOnlyUpcomingAssignedMeetingsSortedByStartTime() {
@@ -61,19 +74,10 @@ class ConfiguredUpcomingMeetingsServiceTest {
 
     properties.setUpcomingMeetings(List.of(meetingA, meetingB, meetingPast, meetingOther));
 
-    MeetingParticipantAssignmentRepository assignmentRepository =
-      mock(MeetingParticipantAssignmentRepository.class);
-    when(assignmentRepository.findBySubjectId("u-1")).thenReturn(List.of());
-
-    MeetingService meetingService = mock(MeetingService.class);
-    MeetingRoomsPort meetingRoomsPort = mock(MeetingRoomsPort.class);
-
+    MeetingRepository meetings = mock(MeetingRepository.class);
+    when(meetings.findUpcomingBySubjectId("u-1", now)).thenReturn(List.of());
     UpcomingMeetingsReader reader = new ConfiguredUpcomingMeetingsService(
-        properties,
-      assignmentRepository,
-      meetingService,
-      meetingRoomsPort,
-        Clock.fixed(now, ZoneOffset.UTC));
+        properties, meetings, mock(MeetingRoomsPort.class), Clock.fixed(now, ZoneOffset.UTC));
 
     List<UpcomingMeetingCard> cards = reader.listForSubject("u-1");
 

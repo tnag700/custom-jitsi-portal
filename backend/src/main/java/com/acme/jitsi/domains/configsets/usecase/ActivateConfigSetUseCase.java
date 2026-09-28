@@ -33,7 +33,8 @@ public class ActivateConfigSetUseCase implements UseCase<ActivateConfigSetComman
   @Override
   @Transactional
   public ConfigSet execute(ActivateConfigSetCommand command) {
-    ConfigSet target = configSetRepository.findById(command.configSetId())
+    configSetRepository.lockMutations();
+    ConfigSet target = configSetRepository.findByIdForUpdate(command.configSetId())
         .orElseThrow(() -> new ConfigSetNotFoundException(command.configSetId()));
 
     if (command.tenantId() == null
@@ -69,6 +70,7 @@ public class ActivateConfigSetUseCase implements UseCase<ActivateConfigSetComman
               active.createdAt(),
               now);
           configSetRepository.save(deactivated);
+          configSetRepository.flush();
           eventPublisher.publishEvent(new ConfigSetDeactivatedEvent(
               deactivated.configSetId(),
               command.actorId(),

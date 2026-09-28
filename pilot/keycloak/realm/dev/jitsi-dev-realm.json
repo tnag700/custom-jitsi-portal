@@ -61,6 +61,10 @@
       "webOrigins": [
         "${APP_FRONTEND_ORIGIN}"
       ],
+      "attributes": {
+        "backchannel.logout.url": "${OIDC_BACKCHANNEL_LOGOUT_URI}",
+        "backchannel.logout.session.required": "true"
+      },
       "protocolMappers": [
         {
           "name": "tenant-id",

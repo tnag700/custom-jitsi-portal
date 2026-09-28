@@ -6,6 +6,13 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.ApplicationListener;
+import org.springframework.boot.web.server.context.WebServerInitializedEvent;
+import org.springframework.security.config.annotation.web.configurers.oauth2.client.OidcBackChannelLogoutHandler;
+import org.springframework.security.oauth2.client.oidc.session.InMemoryOidcSessionRegistry;
+import org.springframework.security.oauth2.client.oidc.session.OidcSessionRegistry;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -85,6 +92,32 @@ public class SecurityConfig {
   };
 
   @Bean
+  OidcSessionRegistry oidcSessionRegistry() {
+    return new InMemoryOidcSessionRegistry();
+  }
+
+  @Bean
+  OidcBackChannelLogoutHandler oidcBackChannelLogoutHandler(OidcSessionRegistry sessions) {
+    return new OidcBackChannelLogoutHandler(sessions);
+  }
+
+  @Bean
+  ApplicationListener<WebServerInitializedEvent> localOidcLogoutEndpoint(OidcBackChannelLogoutHandler handler) {
+    return event -> {
+      if (event.getApplicationContext().getServerNamespace() == null) {
+        // Never send session cookies to a host derived from forwarded request headers.
+        handler.setLogoutUri("http://127.0.0.1:" + event.getWebServer().getPort()
+            + "/logout/connect/back-channel/{registrationId}");
+      }
+    };
+  }
+
+  @Bean
+  HttpSessionEventPublisher httpSessionEventPublisher() {
+    return new HttpSessionEventPublisher();
+  }
+
+  @Bean
   CorsConfigurationSource corsConfigurationSource(
       @Value("${app.frontend.origin:http://localhost:3000}") String frontendOrigin) {
     CorsConfiguration cors = new CorsConfiguration();
@@ -113,6 +146,7 @@ public class SecurityConfig {
       OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService,
       OidcLoginFailureHandler oidcLoginFailureHandler,
       OidcLoginSuccessHandler oidcLoginSuccessHandler,
+      @Value("${app.security.sso.expected-issuer:http://localhost:8081/realms/jitsi-dev}") String expectedIssuer,
       @Value("${app.features.advanced-monitoring:false}") boolean advancedMonitoring) throws Exception {
     http.cors(Customizer.withDefaults());
     http.csrf(csrf -> csrf
@@ -164,10 +198,21 @@ public class SecurityConfig {
     HttpSecurity configured = http;
 
     if (clientRegistrationRepositoryProvider.getIfAvailable() != null) {
+      ClientRegistrationRepository registrations = clientRegistrationRepositoryProvider.getObject();
       configured.oauth2Login(oauth -> oauth
           .userInfoEndpoint(userInfo -> userInfo.oidcUserService(oidcUserService))
           .successHandler(oidcLoginSuccessHandler)
           .failureHandler(oidcLoginFailureHandler));
+      configured.oidcLogout(oidc -> oidc
+          .clientRegistrationRepository(registrationId -> {
+            ClientRegistration registration = registrations.findByRegistrationId(registrationId);
+            if (registration == null || !"keycloak".equals(registrationId)) {
+              return registration;
+            }
+            // Explicit internal token/JWKS endpoints intentionally avoid discovery via the public issuer URL.
+            return ClientRegistration.withClientRegistration(registration).issuerUri(expectedIssuer).build();
+          })
+          .backChannel(Customizer.withDefaults()));
     }
 
     return buildFilterChain(configured);

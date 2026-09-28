@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from "../../shared/api";
 import type { ApiErrorPayload } from "../../shared/api";
 import { adaptProblemDetails } from "../../shared/api";
 import type { InviteErrorPayload, InviteExchangeResponse, InviteValidationResponse } from "./types";
@@ -59,7 +60,7 @@ export async function exchangeInvite(
   inviteToken: string,
   displayName: string,
 ): Promise<InviteExchangeResponse> {
-  const response = await fetch(`${apiUrl}/invites/exchange`, {
+  const response = await fetchWithTimeout(`${apiUrl}/invites/exchange`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -88,7 +89,7 @@ export async function validateInviteToken(
   apiUrl: string,
   inviteToken: string,
 ): Promise<InviteValidationResponse> {
-  const response = await fetch(`${apiUrl}/invites/validate`, {
+  const response = await fetchWithTimeout(`${apiUrl}/invites/validate`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

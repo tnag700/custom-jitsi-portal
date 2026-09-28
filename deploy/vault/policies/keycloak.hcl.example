@@ -6,10 +6,6 @@ path "kv/metadata/identity/keycloak/*" {
   capabilities = ["list"]
 }
 
-path "database/creds/keycloak-app" {
-  capabilities = ["read"]
-}
-
 path "database/static-creds/keycloak-app" {
   capabilities = ["read"]
 }

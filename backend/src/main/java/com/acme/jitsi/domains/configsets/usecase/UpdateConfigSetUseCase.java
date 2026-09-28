@@ -35,7 +35,8 @@ public class UpdateConfigSetUseCase implements UseCase<UpdateConfigSetCommand, C
   @Override
   @Transactional
   public ConfigSet execute(UpdateConfigSetCommand command) {
-    ConfigSet existing = configSetRepository.findById(command.configSetId())
+    configSetRepository.lockMutations();
+    ConfigSet existing = configSetRepository.findByIdForUpdate(command.configSetId())
         .orElseThrow(() -> new ConfigSetNotFoundException(command.configSetId()));
 
     if (command.tenantId() == null

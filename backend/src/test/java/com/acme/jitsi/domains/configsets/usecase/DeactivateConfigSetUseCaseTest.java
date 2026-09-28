@@ -60,7 +60,7 @@ class DeactivateConfigSetUseCaseTest {
         ConfigSetStatus.ACTIVE,
         Instant.parse("2026-01-01T00:00:00Z"),
         Instant.parse("2026-01-01T00:00:00Z"));
-    when(repository.findById("cs-1")).thenReturn(Optional.of(existing));
+    when(repository.findByIdForUpdate("cs-1")).thenReturn(Optional.of(existing));
     when(repository.save(any(ConfigSet.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     ConfigSet updated = useCase.execute(new DeactivateConfigSetCommand("cs-1", "tenant-1", "actor-1", "trace-1"));
@@ -88,7 +88,7 @@ class DeactivateConfigSetUseCaseTest {
         ConfigSetStatus.ACTIVE,
         Instant.parse("2026-01-01T00:00:00Z"),
         Instant.parse("2026-01-01T00:00:00Z"));
-    when(repository.findById("cs-1")).thenReturn(Optional.of(existing));
+    when(repository.findByIdForUpdate("cs-1")).thenReturn(Optional.of(existing));
 
     assertThatThrownBy(() -> useCase.execute(
         new DeactivateConfigSetCommand("cs-1", "tenant-2", "actor-1", "trace-1")))

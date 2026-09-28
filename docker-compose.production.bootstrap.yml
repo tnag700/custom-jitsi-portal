@@ -2,6 +2,9 @@ services:
   vault:
     # Temporary only: return generated recovery/AppRole files to the host
     # operator who owns the bind-mounted handoff directories.
+    environment:
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-jitsi_app}
+      - KC_DB_USERNAME=${KC_DB_USERNAME:-keycloak_app}
     cap_add:
       - CHOWN
     volumes:

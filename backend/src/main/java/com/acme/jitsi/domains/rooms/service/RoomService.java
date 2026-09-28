@@ -1,6 +1,9 @@
 package com.acme.jitsi.domains.rooms.service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class RoomService {
 
@@ -14,6 +17,18 @@ public class RoomService {
   public Room getRoom(String roomId) {
     return roomRepository.findById(roomId)
         .orElseThrow(() -> new RoomNotFoundException(roomId));
+  }
+
+  public Room getRoomForUpdate(String roomId) {
+    return roomRepository.findByIdForUpdate(roomId)
+        .orElseThrow(() -> new RoomNotFoundException(roomId));
+  }
+
+  public Map<String, String> getRoomNames(Set<String> roomIds) {
+    if (roomIds.isEmpty()) {
+      return Map.of();
+    }
+    return roomRepository.findByIds(roomIds).stream().collect(Collectors.toMap(Room::roomId, Room::name));
   }
 
   public List<Room> listRooms(String tenantId, int page, int size) {

@@ -67,13 +67,13 @@ describe("frontend toolchain version contract", () => {
   it("keeps audited transitive build tools on the reviewed patched versions", () => {
     expect(
       lock.packages["node_modules/@redocly/openapi-core"]?.version,
-    ).toBe("1.34.19");
-    expect(lock.packages["node_modules/js-yaml"]?.version).toBe("4.3.1");
+    ).toBe("1.34.20");
+    expect(lock.packages["node_modules/js-yaml"]?.version).toBe("4.3.2");
     expect(lock.packages["node_modules/nanoid"]?.version).toBe("3.3.18");
     expect(lock.packages["node_modules/postcss"]?.version).toBe("8.5.24");
     expect(lock.packages["node_modules/minimatch"]?.version).toBe("10.2.6");
     expect(lock.packages["node_modules/uuid"]?.version).toBe("11.1.1");
-    expect(lock.packages["node_modules/sharp"]?.version).toBe("0.35.0");
+    expect(lock.packages["node_modules/sharp"]?.version).toBe("0.35.4");
   });
 
   it("keeps the lint and Node type toolchain on the audited compatible set", () => {

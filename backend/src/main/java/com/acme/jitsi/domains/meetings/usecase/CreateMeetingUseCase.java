@@ -44,7 +44,7 @@ public class CreateMeetingUseCase implements UseCase<CreateMeetingCommand, Meeti
   @Override
   @Transactional
   public Meeting execute(CreateMeetingCommand command) {
-    MeetingRoomSnapshot room = meetingRoomsPort.getRequiredRoom(command.roomId());
+    MeetingRoomSnapshot room = meetingRoomsPort.getRequiredRoomForUpdate(command.roomId());
     validateRoomIsActive(room);
     validateRoomConfigSet(room);
     validateSchedule(command.startsAt(), command.endsAt());

@@ -4,6 +4,9 @@ import com.acme.jitsi.domains.rooms.service.Room;
 import com.acme.jitsi.domains.rooms.service.RoomRepository;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
@@ -12,6 +15,9 @@ import org.springframework.stereotype.Repository;
 class JpaRoomRepository implements RoomRepository {
 
   private final RoomJpaRepository jpaRepository;
+
+  @PersistenceContext
+  private EntityManager entityManager;
 
   JpaRoomRepository(RoomJpaRepository jpaRepository) {
     this.jpaRepository = jpaRepository;
@@ -27,6 +33,19 @@ class JpaRoomRepository implements RoomRepository {
   public Optional<Room> findById(String roomId) {
     return jpaRepository.findById(roomId)
         .map(RoomEntity::toDomain);
+  }
+
+  @Override
+  public Optional<Room> findByIdForUpdate(String roomId) {
+    return jpaRepository.findByIdForUpdate(roomId).map(entity -> {
+      entityManager.refresh(entity);
+      return entity.toDomain();
+    });
+  }
+
+  @Override
+  public List<Room> findByIds(Set<String> roomIds) {
+    return jpaRepository.findAllById(roomIds).stream().map(RoomEntity::toDomain).toList();
   }
 
   @Override

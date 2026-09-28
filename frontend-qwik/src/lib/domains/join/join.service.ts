@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from "../../shared/api";
 import type {
   JoinReadinessPayload,
   JoinErrorPayload,
@@ -93,7 +94,7 @@ export async function fetchJoinReadiness(
   const context = typeof contextOrApiUrl === "string"
     ? { apiUrl: contextOrApiUrl, headers: {} }
     : contextOrApiUrl;
-  const response = await fetch(`${context.apiUrl}/health/join-readiness`, {
+  const response = await fetchWithTimeout(`${context.apiUrl}/health/join-readiness`, {
     method: "GET",
     headers: context.headers,
   });

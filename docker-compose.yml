@@ -33,7 +33,7 @@ services:
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/jitsi
-      - SPRING_DATASOURCE_USERNAME=${DEV_VAULT_POSTGRES_USERNAME:-jitsi}
+      - SPRING_DATASOURCE_USERNAME=${DEV_VAULT_POSTGRES_USERNAME:-jitsi_app}
       - APP_MEETINGS_TOKEN_ISSUER=${DEV_PORTAL_ORIGIN:-http://localhost:3000}
       - APP_MEETINGS_TOKEN_JOIN_URL_TEMPLATE=${DEV_JITSI_ORIGIN:-https://localhost:8443}/%s#jwt=%s
       - APP_MEETINGS_TOKEN_AUDIENCE=jitsi-meet
@@ -89,7 +89,6 @@ services:
       args:
         VAULT_VERSION: 1.21.4
         VAULT_ZIP_URL: https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_linux_amd64.zip
-        VAULT_SHA256SUMS_URL: https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_SHA256SUMS
     image: jitsi-vault:1.21.4
     command: ["server", "-config=/vault/config/vault.hcl"]
     environment:
@@ -110,7 +109,7 @@ services:
     environment:
       - VAULT_ADDR=http://vault:8200
       - DEV_VAULT_LOCAL_DIR=/vault/local/dev
-      - DEV_VAULT_POSTGRES_USERNAME=${DEV_VAULT_POSTGRES_USERNAME:-jitsi}
+      - DEV_VAULT_POSTGRES_USERNAME=${DEV_VAULT_POSTGRES_USERNAME:-jitsi_app}
       - DEV_VAULT_POSTGRES_PASSWORD=${DEV_VAULT_POSTGRES_PASSWORD:-dev-postgres-password}
       - DEV_VAULT_REDIS_PASSWORD=${DEV_VAULT_REDIS_PASSWORD:-dev-redis-password}
       - DEV_VAULT_KEYCLOAK_ADMIN_PASSWORD=${DEV_VAULT_KEYCLOAK_ADMIN_PASSWORD:-dev-keycloak-admin-password}
@@ -141,7 +140,6 @@ services:
       - BACKEND_OIDC_SECRET_PATH=kv/identity/backend/oidc
       - BACKEND_REDIS_SECRET_PATH=kv/app/redis/runtime
       - BACKEND_DB_STATIC_CREDENTIAL_PATH=database/static-creds/backend-app
-      - BACKEND_DB_DYNAMIC_CREDENTIAL_PATH=database/creds/backend-app
       - OUTPUT_UID=10001
       - OUTPUT_GID=10001
     depends_on:
@@ -159,11 +157,13 @@ services:
       - ${POSTGRES_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/postgres.env}
     environment:
       - POSTGRES_DB=jitsi
-      - POSTGRES_USER=${DEV_VAULT_POSTGRES_USERNAME:-jitsi}
+      - POSTGRES_USER=jitsi_admin
+      - APP_DB_USER=${DEV_VAULT_POSTGRES_USERNAME:-jitsi_app}
     volumes:
       - pgdata:/var/lib/postgresql
+      - ./deploy/postgres/init-runtime-role.sh:/docker-entrypoint-initdb.d/10-runtime-role.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DEV_VAULT_POSTGRES_USERNAME:-jitsi}"]
+      test: ["CMD-SHELL", "pg_isready -U jitsi_admin -d jitsi"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -186,6 +186,7 @@ services:
       - ${KEYCLOAK_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/keycloak.env}
     environment:
       - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-jitsi-admin}
+      - OIDC_BACKCHANNEL_LOGOUT_URI=http://backend:8080/logout/connect/back-channel/keycloak
       - OIDC_REDIRECT_BASE_URI=${DEV_BACKEND_ORIGIN:-http://localhost:8080}
       - APP_FRONTEND_ORIGIN=${DEV_PORTAL_ORIGIN:-http://localhost:3000}
       - KC_HOSTNAME=${DEV_KEYCLOAK_ORIGIN:-http://localhost:8081}

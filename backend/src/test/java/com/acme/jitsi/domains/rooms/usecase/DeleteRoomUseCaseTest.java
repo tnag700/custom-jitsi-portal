@@ -36,6 +36,7 @@ class DeleteRoomUseCaseTest {
   @Test
   void executeDeletesRoomAndPublishesEvent() {
     Room existing = TestFixtures.room();
+    when(roomRepository.findByIdForUpdate(existing.roomId())).thenReturn(java.util.Optional.of(existing));
     when(activeMeetingsChecker.hasActiveOrFutureMeetings("room-1")).thenReturn(false);
 
     useCase.execute(new DeleteRoomCommand(existing, "actor-1", "trace-1"));

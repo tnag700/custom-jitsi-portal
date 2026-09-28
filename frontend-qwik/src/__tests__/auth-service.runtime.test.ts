@@ -109,12 +109,12 @@ describe("auth.service runtime: fetchAuthMe", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/auth/me",
-      {
+      expect.objectContaining({
         method: "GET",
         headers: {
           Cookie: "JSESSIONID=session-123",
         },
-      },
+      }),
     );
 
     expect(profile).toEqual({

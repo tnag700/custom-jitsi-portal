@@ -68,7 +68,9 @@
         "${APP_FRONTEND_ORIGIN}"
       ],
       "attributes": {
-        "post.logout.redirect.uris": "${APP_FRONTEND_ORIGIN}/auth"
+        "post.logout.redirect.uris": "${APP_FRONTEND_ORIGIN}/auth",
+        "backchannel.logout.url": "${OIDC_BACKCHANNEL_LOGOUT_URI}",
+        "backchannel.logout.session.required": "true"
       },
       "protocolMappers": [
         {

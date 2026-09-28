@@ -9,6 +9,12 @@ public interface ConfigSetRepository {
 
   Optional<ConfigSet> findById(String configSetId);
 
+  Optional<ConfigSet> findByIdForUpdate(String configSetId);
+
+  void lockMutations();
+
+  void flush();
+
   Optional<ConfigSet> findActiveByTenantIdAndEnvironmentType(
       String tenantId,
       ConfigSetEnvironmentType environmentType);

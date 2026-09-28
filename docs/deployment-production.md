@@ -188,7 +188,7 @@ placeholder with a committed secret.
 cutover, stop Keycloak and run
 `scripts/migrate-keycloak-post-logout-policy.sql` against its private database;
 the guarded migration explicitly allows only
-`https://jitsi-mgorka.top/auth` as the post-logout redirect.
+`https://jitsi-mgorka.top/auth` as the post-logout redirect and the signed OIDC backchannel callback at `http://backend:8080/logout/connect/back-channel/keycloak`, with session ID required. Existing realms require the updated SQL policy migration; editing an import JSON alone does not update a persisted realm.
 
 The backend's public redirect URI is:
 
@@ -270,7 +270,7 @@ following before routing production traffic:
 Vault is an internal-only secret zone attached only to `secret_net` and
 `ops_net`; it has no host-published port. The committed
 `deploy/vault/Dockerfile` uses an exact stable artifact path from the approved
-mirror and verifies it against the matching checksum source.
+mirror and verifies it against the repository-pinned SHA-256, independently checked against the official HashiCorp checksum source (see `deploy/vault/README.md`).
 
 Validate the secret plane:
 
@@ -282,8 +282,7 @@ npm run prod:secret:delivery:validate
 
 The canonical backend flow is a response-wrapped AppRole handoff to
 `backend-vault-bootstrap`. Workload roles enforce `secret_id_num_uses=1`.
-Database credentials use the Vault database secrets engine, with a documented
-static-role transition for the current long-lived JVM runtime.
+Database credentials are static KV v1 values under the legacy `database/` mount, not the Vault database secrets engine. The only supported contract is manual rotation with controlled restart. Follow [Database runtime roles and rotation](database-runtime-roles.md) before upgrading an existing installation: fresh init scripts do not run on an existing volume.
 
 Operator access to Vault is allowed only through a private path, bastion или VPN.
 Enable the file audit device using
@@ -386,6 +385,28 @@ The first production start stores this boundary in
 to move it backward; a deliberately later boundary is persisted atomically and
 invalidates all earlier refresh sessions. Include this singleton metadata row
 in the same database backup and restore drill as `refresh_token_states`.
+
+V24 adds refresh-family linkage and revokes existing custom refresh states,
+because their historical parents cannot be reconstructed. It also raises the
+persisted cutoff to the migration time, including on a fresh database: an empty
+state table cannot prove that no previously signed refresh JWT exists. Use a
+two-phase V24 cutover with public traffic closed. Let the reviewed Flyway
+migration complete (the backend's startup guard may then refuse the old
+configured cutoff), stop the backend, and read through the private DB path:
+
+```sql
+SELECT accept_issued_after
+FROM refresh_token_store_metadata
+WHERE singleton_id = 1;
+```
+
+Set `APP_AUTH_REFRESH_ACCEPT_ISSUED_AFTER` to an RFC 3339 UTC instant at or later
+than that value, preferably rounded **up** to the next whole second. Wait until
+the clock passes the chosen boundary, then restart and verify one old-token
+rejection plus a new refresh flow. Keep the value on subsequent restarts. Old
+custom refresh tokens require a fresh SSO login; ordinary OIDC sessions are not
+invalidated by this migration. Do not reopen traffic after merely seeing a
+successful Flyway migration: the cutoff guard and runtime health must pass.
 
 After this cutover, do not roll the backend back to a release that lacks both
 the PostgreSQL refresh store and the cutover-epoch guard. Such a binary ignores

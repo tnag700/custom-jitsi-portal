@@ -50,7 +50,8 @@ public class RollbackConfigSetUseCase implements UseCase<RollbackConfigSetComman
   @Override
   @Transactional
   public ConfigSetRollout execute(RollbackConfigSetCommand command) {
-    ConfigSet target = configSetRepository.findById(command.configSetId())
+    configSetRepository.lockMutations();
+    ConfigSet target = configSetRepository.findByIdForUpdate(command.configSetId())
         .orElseThrow(() -> new ConfigSetNotFoundException(command.configSetId()));
 
     validateTenantOwnership(command, target);
@@ -152,7 +153,7 @@ public class RollbackConfigSetUseCase implements UseCase<RollbackConfigSetComman
       throw new ConfigSetRollbackNotAllowedException("No previous config set to rollback to");
     }
 
-    return configSetRepository.findById(sourceRollout.previousConfigSetId())
+    return configSetRepository.findByIdForUpdate(sourceRollout.previousConfigSetId())
         .orElseThrow(() -> new ConfigSetRollbackNotAllowedException("Previous config set not found or deleted"));
   }
 

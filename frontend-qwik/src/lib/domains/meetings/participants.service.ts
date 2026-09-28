@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from "../../shared/api";
 import {
   adaptMeetingProblemDetails,
   MeetingServiceError,
@@ -35,7 +36,7 @@ export async function fetchParticipants(
   );
   const resolvedMeetingId = typeof contextOrSessionCookie === "string" ? meetingId! : apiUrlOrMeetingId;
 
-  const response = await fetch(`${context.apiUrl}/meetings/${encodeURIComponent(resolvedMeetingId)}/participants`, {
+  const response = await fetchWithTimeout(`${context.apiUrl}/meetings/${encodeURIComponent(resolvedMeetingId)}/participants`, {
     method: "GET",
     headers: context.headers,
   });
@@ -77,7 +78,7 @@ export async function assignParticipant(
   const resolvedMeetingId = typeof contextOrSessionCookie === "string" ? meetingId! : apiUrlOrMeetingId;
   const resolvedRequest = typeof contextOrSessionCookie === "string" ? request! : (csrfTokenOrRequest as AssignParticipantRequest);
 
-  const response = await fetch(`${context.apiUrl}/meetings/${encodeURIComponent(resolvedMeetingId)}/participants`, {
+  const response = await fetchWithTimeout(`${context.apiUrl}/meetings/${encodeURIComponent(resolvedMeetingId)}/participants`, {
     method: "POST",
     headers: context.headers,
     body: JSON.stringify(resolvedRequest),
@@ -123,7 +124,7 @@ export async function bulkAssignParticipants(
       ? request!
       : (csrfTokenOrRequest as BulkAssignParticipantsRequest);
 
-  const response = await fetch(`${context.apiUrl}/meetings/${encodeURIComponent(resolvedMeetingId)}/participants/bulk`, {
+  const response = await fetchWithTimeout(`${context.apiUrl}/meetings/${encodeURIComponent(resolvedMeetingId)}/participants/bulk`, {
     method: "POST",
     headers: context.headers,
     body: JSON.stringify(resolvedRequest),
@@ -173,7 +174,7 @@ export async function searchUsers(
     params.set("organization", resolvedOrganization.trim());
   }
 
-  const response = await fetch(`${context.apiUrl}/users/search?${params.toString()}`, {
+  const response = await fetchWithTimeout(`${context.apiUrl}/users/search?${params.toString()}`, {
     method: "GET",
     headers: context.headers,
   });
@@ -216,7 +217,7 @@ export async function updateParticipantRole(
   const resolvedSubjectId = typeof contextOrSessionCookie === "string" ? subjectId! : (csrfTokenOrSubjectId as string);
   const resolvedRequest = typeof contextOrSessionCookie === "string" ? request! : (meetingIdOrRequest as UpdateParticipantRoleRequest);
 
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${context.apiUrl}/meetings/${encodeURIComponent(resolvedMeetingId)}/participants/${encodeURIComponent(resolvedSubjectId)}`,
     {
       method: "PUT",
@@ -259,7 +260,7 @@ export async function unassignParticipant(
   const resolvedMeetingId = typeof contextOrSessionCookie === "string" ? meetingId! : apiUrlOrMeetingId;
   const resolvedSubjectId = typeof contextOrSessionCookie === "string" ? subjectId! : (csrfTokenOrSubjectId as string);
 
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${context.apiUrl}/meetings/${encodeURIComponent(resolvedMeetingId)}/participants/${encodeURIComponent(resolvedSubjectId)}`,
     {
       method: "DELETE",

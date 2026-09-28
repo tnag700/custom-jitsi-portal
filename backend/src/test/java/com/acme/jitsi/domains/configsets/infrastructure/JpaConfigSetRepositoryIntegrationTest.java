@@ -1,10 +1,19 @@
 package com.acme.jitsi.domains.configsets.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.acme.jitsi.domains.configsets.service.ConfigSet;
 import com.acme.jitsi.domains.configsets.service.ConfigSetEnvironmentType;
 import com.acme.jitsi.domains.configsets.service.ConfigSetStatus;
+import com.acme.jitsi.domains.configsets.usecase.ActivateConfigSetCommand;
+import com.acme.jitsi.domains.configsets.usecase.ActivateConfigSetUseCase;
+import com.acme.jitsi.domains.configsets.usecase.RolloutConfigSetCommand;
+import com.acme.jitsi.domains.configsets.usecase.RolloutConfigSetUseCase;
+import com.acme.jitsi.domains.configsets.usecase.RollbackConfigSetCommand;
+import com.acme.jitsi.domains.configsets.usecase.RollbackConfigSetUseCase;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import com.acme.jitsi.shared.JwtTestProperties;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +65,64 @@ class JpaConfigSetRepositoryIntegrationTest {
 
   @Autowired
   private JdbcTemplate jdbcTemplate;
+
+  @Autowired
+  private ActivateConfigSetUseCase activate;
+
+  @Autowired
+  private RolloutConfigSetUseCase rollout;
+
+  @Autowired
+  private RollbackConfigSetUseCase rollback;
+
+  @Test
+  void concurrentRolloutsRecordTheActualPredecessorAndRollbackRestoresIt() throws Exception {
+    Instant now = Instant.now();
+    for (String id : java.util.List.of("a", "b", "c")) {
+      repository.save(new ConfigSet(id, id, "tenant-cycle", ConfigSetEnvironmentType.TEST,
+          "https://portal.example.test", "jitsi-meet", "HS256", "role", "secret", null, 20, 60,
+          "https://meet.example.test/v1", id.equals("a") ? ConfigSetStatus.ACTIVE : ConfigSetStatus.DRAFT,
+          now, now));
+    }
+    var b = CompletableFuture.supplyAsync(() -> rollout.execute(
+        new RolloutConfigSetCommand("b", "tenant-cycle", "actor", "trace-b")));
+    var c = CompletableFuture.supplyAsync(() -> rollout.execute(
+        new RolloutConfigSetCommand("c", "tenant-cycle", "actor", "trace-c")));
+    var resultB = b.get(10, TimeUnit.SECONDS);
+    var resultC = c.get(10, TimeUnit.SECONDS);
+    String activeId = repository.findActiveByTenantIdAndEnvironmentType("tenant-cycle", ConfigSetEnvironmentType.TEST)
+        .orElseThrow().configSetId();
+    var latest = activeId.equals("b") ? resultB : resultC;
+    var first = activeId.equals("b") ? resultC : resultB;
+    assertThat(first.previousConfigSetId()).isEqualTo("a");
+    assertThat(latest.previousConfigSetId()).isEqualTo(first.configSetId());
+
+    var rolledBack = rollback.execute(new RollbackConfigSetCommand(activeId, "tenant-cycle",
+        ConfigSetEnvironmentType.TEST, "actor", "trace-rollback"));
+    assertThat(rolledBack.configSetId()).isEqualTo(first.configSetId());
+    assertThat(repository.findActiveByTenantIdAndEnvironmentType("tenant-cycle", ConfigSetEnvironmentType.TEST)
+        .orElseThrow().configSetId()).isEqualTo(first.configSetId());
+  }
+
+  @Test
+  void multipleDraftsCanReplaceActiveConfigurationAndSwitchBack() {
+    Instant now = Instant.parse("2026-03-10T10:15:30Z");
+    repository.save(configSet("a", "A", "tenant-cycle", ConfigSetEnvironmentType.TEST,
+        ConfigSetStatus.ACTIVE, "secret", now, now));
+    repository.save(configSet("b", "B", "tenant-cycle", ConfigSetEnvironmentType.TEST,
+        ConfigSetStatus.DRAFT, "secret", now, now));
+    repository.save(configSet("c", "C", "tenant-cycle", ConfigSetEnvironmentType.TEST,
+        ConfigSetStatus.DRAFT, "secret", now, now));
+
+    activate.execute(new ActivateConfigSetCommand("b", "tenant-cycle", "actor", "trace"));
+    assertThat(repository.findById("a").orElseThrow().status()).isEqualTo(ConfigSetStatus.DRAFT);
+    activate.execute(new ActivateConfigSetCommand("a", "tenant-cycle", "actor", "trace"));
+    assertThat(repository.findActiveByTenantIdAndEnvironmentType("tenant-cycle", ConfigSetEnvironmentType.TEST)
+        .orElseThrow().configSetId()).isEqualTo("a");
+    assertThatThrownBy(() -> repository.save(configSet("d", "D", "tenant-cycle", ConfigSetEnvironmentType.TEST,
+        ConfigSetStatus.ACTIVE, "secret", now, now)))
+        .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+  }
 
   @BeforeEach
   void setUp() {
@@ -265,8 +332,8 @@ class JpaConfigSetRepositoryIntegrationTest {
         120,
         "https://meet.example.test/" + configSetId,
         status.name(),
-        createdAt,
-        updatedAt,
+        createdAt.atOffset(java.time.ZoneOffset.UTC),
+        updatedAt.atOffset(java.time.ZoneOffset.UTC),
         false);
   }
 

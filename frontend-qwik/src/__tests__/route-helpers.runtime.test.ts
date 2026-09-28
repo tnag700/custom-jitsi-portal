@@ -169,6 +169,7 @@ describe("shared route server helpers", () => {
       "http://localhost:8080/api/v1/auth/csrf",
       {
         method: "GET",
+        signal: expect.any(AbortSignal),
         headers: {
           Cookie: "JSESSIONID=sess-2",
         },

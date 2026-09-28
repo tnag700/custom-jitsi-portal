@@ -310,7 +310,11 @@ async function runEnumerateDevicesCheck(): Promise<JoinReadinessCheck> {
 async function runGetUserMediaCheck(): Promise<JoinReadinessCheck> {
   try {
     const stream = await withTimeout(
-      navigator.mediaDevices.getUserMedia({ audio: true, video: true }),
+      navigator.mediaDevices.getUserMedia({ audio: true, video: true }).then((stream) => {
+        // getUserMedia cannot be cancelled; release even a stream arriving after timeout.
+        stream.getTracks().forEach((track) => track.stop());
+        return stream;
+      }),
       CHECK_TIMEOUT_MS,
       () => null,
     );
@@ -327,7 +331,6 @@ async function runGetUserMediaCheck(): Promise<JoinReadinessCheck> {
       };
     }
 
-    stream.getTracks().forEach((track) => track.stop());
     return {
       key: "media-smoke-check",
       status: "ok",
@@ -419,16 +422,16 @@ async function withTimeout<T>(
   timeoutMs: number,
   onTimeout: () => T,
 ): Promise<T> {
-  return await new Promise<T>((resolve) => {
+  return await new Promise<T>((resolve, reject) => {
     const timeoutId = window.setTimeout(() => resolve(onTimeout()), timeoutMs);
     promise
       .then((result) => {
         window.clearTimeout(timeoutId);
         resolve(result);
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         window.clearTimeout(timeoutId);
-        resolve(onTimeout());
+        reject(error);
       });
   });
 }

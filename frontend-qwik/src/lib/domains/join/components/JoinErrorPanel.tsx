@@ -9,10 +9,11 @@ interface JoinErrorPanelProps {
   onRetry$: QRL<() => void>;
   onCopyReport$: QRL<() => void>;
   reportCopied?: boolean;
+  retryDisabled?: boolean;
 }
 
 export const JoinErrorPanel = component$<JoinErrorPanelProps>(
-  ({ error, retryCount, maxRetries, onRetry$, onCopyReport$, reportCopied }) => {
+  ({ error, retryCount, maxRetries, onRetry$, onCopyReport$, reportCopied, retryDisabled }) => {
     const canRetry = retryCount < maxRetries;
 
     return (
@@ -25,6 +26,7 @@ export const JoinErrorPanel = component$<JoinErrorPanelProps>(
 
         <RetryEscalationActions
           canRetry={canRetry}
+          retryDisabled={retryDisabled}
           copied={reportCopied}
           onRetry$={onRetry$}
           onCopy$={onCopyReport$}

@@ -55,6 +55,7 @@ class CancelMeetingUseCaseTest {
         false,
         Instant.parse("2026-01-01T00:00:00Z"),
         Instant.parse("2026-01-01T00:00:00Z"));
+    when(meetingRepository.findByIdForUpdate(existing.meetingId())).thenReturn(java.util.Optional.of(existing));
     when(meetingRepository.save(any(Meeting.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     Meeting canceled = useCase.execute(new CancelMeetingCommand(existing, "actor-1", "trace-1"));
@@ -71,6 +72,7 @@ class CancelMeetingUseCaseTest {
         Instant.parse("2026-02-17T10:00:00Z"), Instant.parse("2026-02-17T11:00:00Z"),
         true, false,
         Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"));
+    when(meetingRepository.findByIdForUpdate(alreadyCanceled.meetingId())).thenReturn(java.util.Optional.of(alreadyCanceled));
 
     assertThatThrownBy(() -> useCase.execute(new CancelMeetingCommand(alreadyCanceled, "actor-1", "trace-1")))
         .isInstanceOf(MeetingFinalizedException.class);

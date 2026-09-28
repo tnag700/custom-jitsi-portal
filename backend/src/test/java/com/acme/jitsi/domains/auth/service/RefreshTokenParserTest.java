@@ -84,6 +84,19 @@ class RefreshTokenParserTest {
   }
 
   @Test
+  void unexpectedDecoderFailureIsInvalidRatherThanExpired() {
+    JwtDecoder decoder = token -> {
+      throw new org.springframework.security.oauth2.jwt.JwtException("Unexpected signing key");
+    };
+    RefreshTokenParser parser = new RefreshTokenParser(decoder, "https://portal.example.test", "jitsi-meet");
+
+    assertThatThrownBy(() -> parser.parse("token"))
+        .isInstanceOf(AuthTokenException.class)
+        .extracting(error -> ((AuthTokenException) error).errorCode())
+        .isEqualTo(ErrorCode.TOKEN_INVALID.code());
+  }
+
+  @Test
   void rejectsTokenWithWrongIssuer() throws Exception {
     RefreshTokenParser parser = new RefreshTokenParser(meetingJwtDecoder(), "https://portal.example.test", "jitsi-meet");
     String token = buildRefreshToken(

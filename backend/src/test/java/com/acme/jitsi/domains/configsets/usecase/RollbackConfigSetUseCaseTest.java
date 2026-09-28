@@ -87,11 +87,11 @@ class RollbackConfigSetUseCaseTest {
         "actor-1",
         "trace-1");
 
-    when(configSetRepository.findById("cs-current")).thenReturn(Optional.of(current));
+    when(configSetRepository.findByIdForUpdate("cs-current")).thenReturn(Optional.of(current));
     when(rolloutRepository.save(any(ConfigSetRollout.class))).thenAnswer(invocation -> invocation.getArgument(0));
     when(rolloutRepository.findLatestSucceededByTenantIdAndEnvironmentType("tenant-1", ConfigSetEnvironmentType.DEV))
         .thenReturn(Optional.of(latest));
-    when(configSetRepository.findById("cs-prev")).thenReturn(Optional.of(previous));
+    when(configSetRepository.findByIdForUpdate("cs-prev")).thenReturn(Optional.of(previous));
     when(configSetRepository.findActiveByTenantIdAndEnvironmentType("tenant-1", ConfigSetEnvironmentType.DEV))
         .thenReturn(Optional.of(current));
     // Override default mock for this specific test
@@ -125,7 +125,7 @@ class RollbackConfigSetUseCaseTest {
         "actor-1",
         "trace-1");
 
-    when(configSetRepository.findById("cs-current")).thenReturn(Optional.of(current));
+    when(configSetRepository.findByIdForUpdate("cs-current")).thenReturn(Optional.of(current));
     when(rolloutRepository.findLatestSucceededByTenantIdAndEnvironmentType("tenant-1", ConfigSetEnvironmentType.DEV))
         .thenReturn(Optional.of(latest));
     // Default compatible mock for tests where validateCompatibility is reached
@@ -143,7 +143,7 @@ class RollbackConfigSetUseCaseTest {
 
   @Test
   void executeThrowsNotFoundWhenConfigSetMissing() {
-    when(configSetRepository.findById("missing")).thenReturn(Optional.empty());
+    when(configSetRepository.findByIdForUpdate("missing")).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> useCase.execute(new RollbackConfigSetCommand(
         "missing", "tenant-1", ConfigSetEnvironmentType.DEV, "actor-1", "trace-1")))
@@ -152,7 +152,7 @@ class RollbackConfigSetUseCaseTest {
 
   @Test
   void executeThrowsNotFoundWhenTenantIdNull() {
-    when(configSetRepository.findById("cs-current")).thenReturn(Optional.of(config("cs-current")));
+    when(configSetRepository.findByIdForUpdate("cs-current")).thenReturn(Optional.of(config("cs-current")));
 
     assertThatThrownBy(() -> useCase.execute(new RollbackConfigSetCommand(
         "cs-current", null, ConfigSetEnvironmentType.DEV, "actor-1", "trace-1")))
@@ -161,7 +161,7 @@ class RollbackConfigSetUseCaseTest {
 
   @Test
   void executeThrowsNotFoundWhenTenantIdBlank() {
-    when(configSetRepository.findById("cs-current")).thenReturn(Optional.of(config("cs-current")));
+    when(configSetRepository.findByIdForUpdate("cs-current")).thenReturn(Optional.of(config("cs-current")));
 
     assertThatThrownBy(() -> useCase.execute(new RollbackConfigSetCommand(
         "cs-current", "  ", ConfigSetEnvironmentType.DEV, "actor-1", "trace-1")))
@@ -170,7 +170,7 @@ class RollbackConfigSetUseCaseTest {
 
   @Test
   void executeThrowsNotFoundWhenTenantIdMismatch() {
-    when(configSetRepository.findById("cs-current")).thenReturn(Optional.of(config("cs-current")));
+    when(configSetRepository.findByIdForUpdate("cs-current")).thenReturn(Optional.of(config("cs-current")));
 
     assertThatThrownBy(() -> useCase.execute(new RollbackConfigSetCommand(
         "cs-current", "other-tenant", ConfigSetEnvironmentType.DEV, "actor-1", "trace-1")))
@@ -179,7 +179,7 @@ class RollbackConfigSetUseCaseTest {
 
   @Test
   void executeThrowsNotFoundWhenNoSucceededRolloutExists() {
-    when(configSetRepository.findById("cs-current")).thenReturn(Optional.of(config("cs-current")));
+    when(configSetRepository.findByIdForUpdate("cs-current")).thenReturn(Optional.of(config("cs-current")));
     when(rolloutRepository.findLatestSucceededByTenantIdAndEnvironmentType("tenant-1", ConfigSetEnvironmentType.DEV))
         .thenReturn(Optional.empty());
 
@@ -196,7 +196,7 @@ class RollbackConfigSetUseCaseTest {
         Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:01:00Z"),
         "actor-1", "trace-1");
 
-    when(configSetRepository.findById("cs-current")).thenReturn(Optional.of(config("cs-current")));
+    when(configSetRepository.findByIdForUpdate("cs-current")).thenReturn(Optional.of(config("cs-current")));
     when(rolloutRepository.findLatestSucceededByTenantIdAndEnvironmentType("tenant-1", ConfigSetEnvironmentType.DEV))
         .thenReturn(Optional.of(latest));
 
@@ -213,10 +213,10 @@ class RollbackConfigSetUseCaseTest {
         Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:01:00Z"),
         "actor-1", "trace-1");
 
-    when(configSetRepository.findById("cs-current")).thenReturn(Optional.of(config("cs-current")));
+    when(configSetRepository.findByIdForUpdate("cs-current")).thenReturn(Optional.of(config("cs-current")));
     when(rolloutRepository.findLatestSucceededByTenantIdAndEnvironmentType("tenant-1", ConfigSetEnvironmentType.DEV))
         .thenReturn(Optional.of(latest));
-    when(configSetRepository.findById("cs-deleted")).thenReturn(Optional.empty());
+    when(configSetRepository.findByIdForUpdate("cs-deleted")).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> useCase.execute(new RollbackConfigSetCommand(
         "cs-current", "tenant-1", ConfigSetEnvironmentType.DEV, "actor-1", "trace-1")))
@@ -240,10 +240,10 @@ class RollbackConfigSetUseCaseTest {
         "actor-1",
         "trace-1");
 
-    when(configSetRepository.findById("cs-current")).thenReturn(Optional.of(current));
+    when(configSetRepository.findByIdForUpdate("cs-current")).thenReturn(Optional.of(current));
     when(rolloutRepository.findLatestSucceededByTenantIdAndEnvironmentType("tenant-1", ConfigSetEnvironmentType.DEV))
         .thenReturn(Optional.of(latest));
-    when(configSetRepository.findById("cs-prev")).thenReturn(Optional.of(previous));
+    when(configSetRepository.findByIdForUpdate("cs-prev")).thenReturn(Optional.of(previous));
     // Mock compatibility check - previous config is NOT compatible
     var mismatchList = java.util.List.of(
         new com.acme.jitsi.domains.configsets.service.ConfigCompatibilityMismatch(

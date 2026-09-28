@@ -119,7 +119,7 @@ class MeetingInvitesController {
     return ResponseEntity.ok(new PagedInviteResponse(items, page, resolvedSize, totalElements, totalPages));
   }
 
-  @Idempotent
+  @Idempotent(noRollbackFor = BulkInviteValidationException.class)
   @PostMapping("/meetings/{meetingId}/invites/bulk")
   ResponseEntity<BulkInviteResponse> createBulkInvites(
       @PathVariable("meetingId") String meetingId,

@@ -30,10 +30,6 @@ path "kv/metadata/backup/backend/*" {
   capabilities = ["list"]
 }
 
-path "database/creds/backend-app" {
-  capabilities = ["read"]
-}
-
 path "database/static-creds/backend-app" {
   capabilities = ["read"]
 }

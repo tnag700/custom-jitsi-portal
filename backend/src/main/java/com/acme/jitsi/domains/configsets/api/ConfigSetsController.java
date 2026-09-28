@@ -221,7 +221,7 @@ class ConfigSetsController {
     return toResponse(configSetService.getActiveForEnvironment(tenantId, environmentType));
   }
 
-  @Idempotent
+  @Idempotent(noRollbackFor = com.acme.jitsi.domains.configsets.service.ConfigSetRolloutValidationFailedException.class)
   @PostMapping("/{configSetId}/rollout")
   ConfigSetRolloutResponse rollout(
       @PathVariable("configSetId") String configSetId,

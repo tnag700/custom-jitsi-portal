@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from "../../shared/api";
 import type { AuthErrorPayload, SafeUserProfile } from "./types";
 import {
   createApiClient,
@@ -144,7 +145,7 @@ export async function fetchAuthMe(
 export async function logoutFromAuthSession(context: MutationRequestContext): Promise<string> {
   const requestContext = asMutationRequestContext(context);
 
-  const response = await fetch(`${requestContext.apiUrl}/auth/logout`, {
+  const response = await fetchWithTimeout(`${requestContext.apiUrl}/auth/logout`, {
     method: "POST",
     headers: requestContext.headers,
     redirect: "manual",

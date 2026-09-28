@@ -4,6 +4,7 @@ import com.acme.jitsi.domains.meetings.event.MeetingCanceledEvent;
 import com.acme.jitsi.domains.meetings.service.Meeting;
 import com.acme.jitsi.domains.meetings.service.MeetingFinalizedException;
 import com.acme.jitsi.domains.meetings.service.MeetingRepository;
+import com.acme.jitsi.domains.meetings.service.MeetingNotFoundException;
 import com.acme.jitsi.domains.meetings.service.MeetingStatus;
 import com.acme.jitsi.infrastructure.usecase.UseCase;
 import java.time.Clock;
@@ -33,7 +34,8 @@ public class CancelMeetingUseCase implements UseCase<CancelMeetingCommand, Meeti
   @Override
   @Transactional
   public Meeting execute(CancelMeetingCommand command) {
-    Meeting existing = command.existing();
+    Meeting existing = meetingRepository.findByIdForUpdate(command.existing().meetingId())
+        .orElseThrow(() -> new MeetingNotFoundException(command.existing().meetingId()));
     assertEditable(existing);
 
     Meeting saved = meetingRepository.save(existing.withStatus(MeetingStatus.CANCELED, Instant.now(clock)));

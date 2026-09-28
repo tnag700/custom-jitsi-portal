@@ -56,6 +56,7 @@ test -n "$VAULT_TOKEN"
 if ! vault secrets list | grep -q '^kv/'; then
   vault secrets enable -path=kv -version=2 kv >/dev/null
 fi
+# Legacy path name: this is static KV v1, NOT the database secrets engine.
 if ! vault secrets list | grep -q '^database/'; then
   vault secrets enable -path=database -version=1 kv >/dev/null
 fi
@@ -100,10 +101,10 @@ vault kv put kv/realtime/jitsi/jicofo \
 vault kv put kv/realtime/jitsi/jvb JVB_AUTH_PASSWORD="$JVB_AUTH_PASSWORD" >/dev/null
 vault kv put kv/ops/grafana GF_SECURITY_ADMIN_PASSWORD="$GRAFANA_ADMIN_PASSWORD" >/dev/null
 vault write database/static-creds/backend-app \
-  username="${POSTGRES_USER:-jitsi}" \
+  username="${SPRING_DATASOURCE_USERNAME:-jitsi_app}" \
   password="$APP_POSTGRES_PASSWORD" >/dev/null
 vault write database/static-creds/keycloak-app \
-  username="${KEYCLOAK_POSTGRES_USER:-keycloak}" \
+  username="${KC_DB_USERNAME:-keycloak_app}" \
   password="$KEYCLOAK_DB_PASSWORD" >/dev/null
 
 if ! vault audit list | grep -q '^file/'; then

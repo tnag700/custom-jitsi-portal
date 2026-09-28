@@ -13,6 +13,11 @@ async function startServer() {
     response.status(200).json({ status: "ok" });
   });
 
+  // Old build URLs must not reach static files or the authentication redirect.
+  app.use("/server", (_request, response) => {
+    response.sendStatus(404);
+  });
+
   // Serve static assets from client build
   app.use(
     "/build",
@@ -30,7 +35,7 @@ async function startServer() {
 
   // Qwik SSR middleware
   const serverEntryUrl = pathToFileURL(
-    join(__dirname, "..", "dist", "server", "entry.express.js"),
+    join(__dirname, "build", "entry.express.js"),
   ).href;
 
   const { default: qwikRouter } = await import(serverEntryUrl);

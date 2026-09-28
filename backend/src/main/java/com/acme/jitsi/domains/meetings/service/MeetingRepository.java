@@ -9,6 +9,10 @@ public interface MeetingRepository {
 
   Optional<Meeting> findById(String meetingId);
 
+  Optional<Meeting> findByIdForUpdate(String meetingId);
+
+  List<Meeting> findUpcomingBySubjectId(String subjectId, Instant now);
+
   boolean existsById(String meetingId);
 
   List<Meeting> findByRoomId(String roomId, int page, int size);

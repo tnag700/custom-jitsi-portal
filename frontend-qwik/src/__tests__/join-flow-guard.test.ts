@@ -95,13 +95,13 @@ describe("Join Flow Guard: route integration (AC: 1, 2, 3, 4, 5, 6)", () => {
   it("join page should bind loading state to joinAction.isRunning", () => {
     const tsx = readSrc("routes/join-page.tsx");
     expect(tsx).toContain(
-      "joinAction.isRunning ? joiningMeetingId.value : null",
+      "joinRunning.value || joinAction.isRunning ? joiningMeetingId.value : null",
     );
   });
 
   it("join page should guard against double submit before submit call", () => {
     const tsx = readSrc("routes/join-page.tsx");
-    expect(tsx).toContain("if (!canStartJoin(joinAction.isRunning))");
+    expect(tsx).toContain("if (!canStartJoin(joinRunning.value || preflightRunning.value || joinAction.isRunning))");
   });
 
   it("join redirect helper should reject unsafe joinUrl before navigation", () => {
@@ -127,7 +127,7 @@ describe("Join Flow Guard: concurrency protection (M3 fix)", () => {
 
   it("join page should disable all cards while any join is in flight", () => {
     const tsx = readSrc("routes/join-page.tsx");
-    expect(tsx).toContain("disabled={joinAction.isRunning}");
+    expect(tsx).toContain("disabled={joinRunning.value || preflightRunning.value || joinAction.isRunning}");
   });
 });
 

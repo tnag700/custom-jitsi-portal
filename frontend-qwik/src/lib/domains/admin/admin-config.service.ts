@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from "../../shared/api";
 import {
   adaptProblemDetails,
   configSetResponseSchema,
@@ -157,7 +158,7 @@ export async function fetchAdminConfigSets(
     typeof contextOrSessionCookie === "string" ? query : (apiUrlOrQuery as AdminConfigQuery | undefined),
     "AdminConfigQuery",
   );
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(context.apiUrl, "/config-sets", {
       tenantId: resolvedQuery.tenantId,
       page: String(resolvedQuery.page ?? 0),
@@ -193,7 +194,7 @@ export async function fetchLatestAdminConfigSetRollout(
     typeof contextOrSessionCookie === "string" ? query : (apiUrlOrQuery as AdminConfigRolloutQuery | undefined),
     "AdminConfigRolloutQuery",
   );
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(context.apiUrl, "/config-sets/rollouts/latest", {
       tenantId: resolvedQuery.tenantId,
       environmentType: resolvedQuery.environmentType,
@@ -230,7 +231,7 @@ export async function checkAdminConfigSetCompatibility(
     typeof contextOrSessionCookie === "string" ? query : (apiUrlOrQuery as AdminConfigDetailQuery | undefined),
     "AdminConfigDetailQuery",
   );
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(context.apiUrl, `/config-sets/${resolvedQuery.configSetId}/compatibility`, {
       tenantId: resolvedQuery.tenantId,
     }),
@@ -266,7 +267,7 @@ export async function fetchAdminConfigSet(
     typeof contextOrSessionCookie === "string" ? query : (apiUrlOrQuery as AdminConfigDetailQuery | undefined),
     "AdminConfigDetailQuery",
   );
-  const detailResponse = await fetch(`${context.apiUrl}/config-sets/${resolvedQuery.configSetId}`, {
+  const detailResponse = await fetchWithTimeout(`${context.apiUrl}/config-sets/${resolvedQuery.configSetId}`, {
     method: "GET",
     headers: context.headers,
   });
@@ -290,7 +291,7 @@ export async function fetchAdminConfigSet(
 
 export async function createAdminConfigSet(context: MutationRequestContext, data: AdminConfigSetForm & { tenantId: string }): Promise<ConfigSetResponse> {
   const resolvedContext = asMutationRequestContext(context);
-  const response = await fetch(`${resolvedContext.apiUrl}/config-sets`, {
+  const response = await fetchWithTimeout(`${resolvedContext.apiUrl}/config-sets`, {
     method: "POST",
     headers: resolvedContext.headers,
     body: JSON.stringify(data),
@@ -309,7 +310,7 @@ export async function createAdminConfigSet(context: MutationRequestContext, data
 
 export async function updateAdminConfigSet(context: MutationRequestContext, configSetId: string, data: AdminConfigSetForm & { tenantId: string }): Promise<ConfigSetResponse> {
   const resolvedContext = asMutationRequestContext(context);
-  const response = await fetch(`${resolvedContext.apiUrl}/config-sets/${configSetId}`, {
+  const response = await fetchWithTimeout(`${resolvedContext.apiUrl}/config-sets/${configSetId}`, {
     method: "PUT",
     headers: resolvedContext.headers,
     body: JSON.stringify(data),
@@ -328,7 +329,7 @@ export async function updateAdminConfigSet(context: MutationRequestContext, conf
 
 export async function rolloutAdminConfigSet(context: MutationRequestContext, target: AdminConfigMutationTarget): Promise<AdminConfigSetRolloutSummary> {
   const resolvedContext = asMutationRequestContext(context);
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(resolvedContext.apiUrl, `/config-sets/${target.configSetId}/rollout`, {
       tenantId: target.tenantId,
     }),
@@ -351,7 +352,7 @@ export async function rolloutAdminConfigSet(context: MutationRequestContext, tar
 
 export async function rollbackAdminConfigSet(context: MutationRequestContext, target: AdminConfigRollbackTarget): Promise<AdminConfigSetRolloutSummary> {
   const resolvedContext = asMutationRequestContext(context);
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(resolvedContext.apiUrl, `/config-sets/${target.configSetId}/rollback`, {
       tenantId: target.tenantId,
       environmentType: target.environmentType,

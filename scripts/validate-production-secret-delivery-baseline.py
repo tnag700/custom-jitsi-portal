@@ -85,13 +85,15 @@ def main() -> None:
         ('runtime_bridge_is_complete', "Backend startup fetch must be idempotent after the one-use AppRole handoff is consumed."),
         ('grep -q "^export ${key}=\'\'$"', "Backend runtime bridge completeness must reject empty required exports."),
         ('Refusing to render an empty required backend secret', "Backend secret rendering must fail closed on an empty Vault field."),
-        ("database/static-creds/backend-app", "Backend fetch path must prefer static-role DB credentials for the current long-lived runtime."),
-        ("database/creds/backend-app", "Backend fetch path must keep an explicit dynamic-credentials fallback contract."),
+        ("database/static-creds/backend-app", "Backend fetch path must use static KV DB credentials for the current long-lived runtime."),
+        ("manual-static-kv-controlled-restart", "Backend fetch path must declare manual static KV rotation."),
         ('rm -f "$TOKEN_SINK_FILE"', "Backend fetch path must clean the temporary token sink after handoff."),
         ('chmod 0600 "$BACKEND_ENV_OUTPUT_FILE"', "Backend fetch path must lock runtime bridge permissions explicitly."),
         ('chown "$OUTPUT_UID:$OUTPUT_GID" "$BACKEND_ENV_OUTPUT_FILE"', "Backend fetch path must align runtime bridge ownership with the target consumer."),
     ]:
         assert_contains(backend_fetch, needle, message)
+    assert_not_contains(backend_fetch, "BACKEND_DB_DYNAMIC_CREDENTIAL_PATH", "Unsupported dynamic credential fallback must not exist.")
+    assert_not_contains(backend_fetch, "database/creds/", "Backend startup must not request dynamic leases.")
     assert_not_contains(backend_run_bridge, 'rm -f "$SECRETS_FILE"', "Backend runtime bridge must keep the rendered env file in the bounded runtime volume so ordinary backend restarts stay restart-safe.")
 
     for needle, message in [
@@ -122,6 +124,8 @@ def main() -> None:
     ]:
         example_text = read_repo_text(example_file)
         assert_contains(example_text, "SET_IN_VAULT_RENDERED_FILE_ONLY", f"{example_file} must stay a non-secret placeholder file only.")
+        if example_file.endswith(("/postgres.env.example", "/keycloak-postgres.env.example")):
+            assert_regex(example_text, r"^APP_DB_PASSWORD=SET_IN_VAULT_RENDERED_FILE_ONLY$", "Database env examples must provide a separate runtime password field.")
 
     print("validate-production-secret-delivery-baseline: OK")
     print("validate-production-secret-delivery-baseline: verified service-specific Vault delivery files and backend bounded runtime bridge")

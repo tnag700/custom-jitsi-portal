@@ -5,6 +5,7 @@ import com.acme.jitsi.domains.rooms.service.ActiveMeetingsChecker;
 import com.acme.jitsi.domains.rooms.service.Room;
 import com.acme.jitsi.domains.rooms.service.RoomHasActiveMeetingsException;
 import com.acme.jitsi.domains.rooms.service.RoomRepository;
+import com.acme.jitsi.domains.rooms.service.RoomNotFoundException;
 import com.acme.jitsi.infrastructure.usecase.UseCase;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -29,7 +30,8 @@ public class DeleteRoomUseCase implements UseCase<DeleteRoomCommand, Void> {
   @Override
   @Transactional
   public Void execute(DeleteRoomCommand command) {
-    Room existing = command.existing();
+    Room existing = roomRepository.findByIdForUpdate(command.existing().roomId())
+        .orElseThrow(() -> new RoomNotFoundException(command.existing().roomId()));
     assertNoActiveOrFutureMeetings(existing.roomId());
     roomRepository.deleteById(existing.roomId());
 

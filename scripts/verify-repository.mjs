@@ -69,6 +69,7 @@ runNpm("Production configuration guardrails", [
   "run",
   "prod:baseline:validate",
 ]);
+runNpm("Deployment and egress regression tests", ["run", "test:operations"]);
 
 const generatedArtifacts = [
   path.join(repoRoot, ".playwright-cli"),

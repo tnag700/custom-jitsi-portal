@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from "./client";
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -39,7 +41,7 @@ export async function fetchCsrfTokenPair(
     return emptyCsrfTokenPair();
   }
 
-  const response = await fetch(`${apiUrl}/auth/csrf`, {
+  const response = await fetchWithTimeout(`${apiUrl}/auth/csrf`, {
     method: "GET",
     headers: {
       Cookie: `JSESSIONID=${sessionCookie}`,

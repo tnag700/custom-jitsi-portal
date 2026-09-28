@@ -1,13 +1,30 @@
 package com.acme.jitsi.domains.meetings.infrastructure;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
 
 interface MeetingJpaRepository extends JpaRepository<MeetingEntity, String> {
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT m FROM MeetingEntity m WHERE m.meetingId = :meetingId")
+  Optional<MeetingEntity> findByIdForUpdate(@Param("meetingId") String meetingId);
+
+  @Query("""
+      SELECT m FROM MeetingEntity m
+      WHERE m.status = 'SCHEDULED' AND m.endsAt >= :now
+        AND EXISTS (SELECT a FROM MeetingParticipantAssignmentEntity a
+                    WHERE a.meetingId = m.meetingId AND a.subjectId = :subjectId)
+      ORDER BY m.startsAt, m.meetingId
+      """)
+  List<MeetingEntity> findUpcomingBySubjectId(@Param("subjectId") String subjectId, @Param("now") Instant now);
+
   Page<MeetingEntity> findByRoomIdOrderByCreatedAtDesc(String roomId, Pageable pageable);
 
   @Query("""

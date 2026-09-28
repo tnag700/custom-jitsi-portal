@@ -117,8 +117,8 @@ class AuthController {
   }
 
   @PostMapping("/refresh/revoke")
-  ResponseEntity<Void> revokeRefresh(@Valid @RequestBody AuthRefreshRevokeRequest request) {
-    authRefreshService.revoke(request.tokenId());
+  ResponseEntity<Void> revokeRefresh(@Valid @RequestBody AuthRefreshRevokeRequest request, Authentication authentication) {
+    authRefreshService.revoke(request.tokenId(), authentication.getName());
     return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
   }
 

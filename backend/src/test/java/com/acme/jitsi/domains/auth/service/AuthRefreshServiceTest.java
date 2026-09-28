@@ -45,6 +45,42 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
 class AuthRefreshServiceTest {
 
+  @Test
+  void persistedCutoverRejectsPreviouslySignedUnknownTokenBeforeRegistration() {
+    Instant now = Instant.now();
+    RefreshTokenStore store = mock(RefreshTokenStore.class);
+    RefreshTokenParser parser = mock(RefreshTokenParser.class);
+    when(store.acceptIssuedAfter()).thenReturn(now);
+    when(parser.parse("signed-token")).thenReturn(new RefreshTokenPayload(
+        "unknown", "owner", "meeting", now.minusSeconds(60), now.plusSeconds(3600)));
+    var service = new AuthRefreshService(mock(AuthAccessTokenIssuer.class), store, new AuthRefreshProperties(), parser,
+        mock(RefreshSessionValidatorChain.class), mock(RefreshRotationService.class), mock(RefreshSecurityEventPublisher.class));
+    assertThatThrownBy(() -> service.refresh("signed-token")).isInstanceOf(AuthTokenException.class)
+        .extracting(error -> ((AuthTokenException) error).errorCode()).isEqualTo(ErrorCode.TOKEN_REVOKED.code());
+    verify(store, never()).createIfAbsent(any());
+  }
+
+  @Test
+  void replayOfUsedTokenRevokesFamilyEvenAfterItsIdleDeadline() {
+    Instant now = Instant.now();
+    RefreshTokenStore store = mock(RefreshTokenStore.class);
+    RefreshTokenParser parser = mock(RefreshTokenParser.class);
+    var state = new RefreshTokenStore.RefreshTokenState("used-root", "owner", "meeting", now.plusSeconds(3600),
+        now.minusSeconds(60), RefreshTokenStore.TokenStatus.USED);
+    when(parser.parse("signed-token")).thenReturn(new RefreshTokenPayload(
+        "used-root", "owner", "meeting", now.minusSeconds(7200), now.plusSeconds(3600)));
+    when(store.createIfAbsent(any())).thenReturn(state);
+    when(store.consume("used-root")).thenReturn(new RefreshTokenStore.ConsumeResult(RefreshTokenStore.ConsumeStatus.USED, state));
+    var events = mock(RefreshSecurityEventPublisher.class);
+    var issuer = mock(AuthAccessTokenIssuer.class);
+    var service = new AuthRefreshService(issuer, store, new AuthRefreshProperties(), parser,
+        new RefreshSessionValidatorChain(events), mock(RefreshRotationService.class), events);
+    assertThatThrownBy(() -> service.refresh("signed-token")).isInstanceOf(AuthTokenException.class)
+        .extracting(error -> ((AuthTokenException) error).errorCode()).isEqualTo(ErrorCode.REFRESH_REUSE_DETECTED.code());
+    verify(store).consume("used-root");
+    verify(issuer, never()).issueAccessToken(any(), any());
+  }
+
     private static final String SECRET = "01234567890123456789012345678901";
     private static final DefaultJwtAlgorithmPolicy DEFAULT_JWT_ALGORITHM_POLICY = new DefaultJwtAlgorithmPolicy();
 
@@ -335,7 +371,7 @@ class AuthRefreshServiceTest {
         .extracting(error -> ((AuthTokenException) error).status())
         .isEqualTo(HttpStatus.FORBIDDEN);
 
-    verify(refreshTokenStore, atLeastOnce()).revoke("revoked-jti-1");
+    verify(refreshTokenStore, never()).revoke(any(), any());
     verify(eventPublisher).publishEvent(any(AuthRefreshSecurityEvent.class));
     verify(accessTokenService, never()).issueAccessToken(any(), any());
   }

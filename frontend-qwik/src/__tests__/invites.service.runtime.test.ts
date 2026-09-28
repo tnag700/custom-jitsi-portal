@@ -43,12 +43,12 @@ describe("invites.service runtime", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/meetings/meeting%20a%2Fb/invites?page=1&size=5",
-      {
+      expect.objectContaining({
         method: "GET",
         headers: {
           Cookie: "JSESSIONID=sess-1",
         },
-      },
+      }),
     );
     expect(result).toEqual(payload);
   });

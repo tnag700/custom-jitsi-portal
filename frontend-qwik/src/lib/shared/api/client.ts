@@ -1,6 +1,15 @@
 import createClient from "openapi-fetch";
 import type { paths } from "./generated/api-types";
 
+export function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const callerSignal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+  const deadline = AbortSignal.timeout(10_000);
+  return fetch(input, {
+    ...init,
+    signal: callerSignal ? AbortSignal.any([callerSignal, deadline]) : deadline,
+  });
+}
+
 function toHeaderMap(headers: Headers): Record<string, string> {
   const map: Record<string, string> = {};
 
@@ -36,8 +45,10 @@ function toHeaderMap(headers: Headers): Record<string, string> {
 // Cookie / X-XSRF-TOKEN headers survive the round-trip to the backend.
 async function fetchCompat(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   if (!(input instanceof Request)) {
-    return fetch(input, init);
+    return fetchWithTimeout(input, init);
   }
+
+  input = init ? new Request(input, init) : input;
 
   const method = input.method.toUpperCase();
   const headers = toHeaderMap(input.headers);
@@ -47,14 +58,22 @@ async function fetchCompat(input: RequestInfo | URL, init?: RequestInit): Promis
   const options: RequestInit = {
     method,
     headers,
+    signal: input.signal,
+    credentials: input.credentials,
+    mode: input.mode,
+    cache: input.cache,
+    redirect: input.redirect,
+    referrer: input.referrer,
+    referrerPolicy: input.referrerPolicy,
+    integrity: input.integrity,
+    keepalive: input.keepalive,
   };
 
   if (body && body.length > 0) {
     options.body = body;
   }
 
-  const response = await fetch(input.url, options);
-  return response.clone();
+  return fetchWithTimeout(input.url, options);
 }
 
 // openapi-fetch baseUrl must NOT end with /api/v1 because path params like

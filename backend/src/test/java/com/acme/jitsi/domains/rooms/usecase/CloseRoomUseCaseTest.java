@@ -45,6 +45,7 @@ class CloseRoomUseCaseTest {
   @Test
   void executeClosesRoomAndPublishesEvent() {
     Room existing = TestFixtures.room();
+    when(roomRepository.findByIdForUpdate(existing.roomId())).thenReturn(java.util.Optional.of(existing));
     when(activeMeetingsChecker.hasActiveOrFutureMeetings("room-1")).thenReturn(false);
     when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

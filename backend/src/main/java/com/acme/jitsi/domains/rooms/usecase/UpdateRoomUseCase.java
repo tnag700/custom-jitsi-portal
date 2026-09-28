@@ -7,6 +7,7 @@ import com.acme.jitsi.domains.rooms.service.InvalidRoomDataException;
 import com.acme.jitsi.domains.rooms.service.Room;
 import com.acme.jitsi.domains.rooms.service.RoomNameConflictException;
 import com.acme.jitsi.domains.rooms.service.RoomRepository;
+import com.acme.jitsi.domains.rooms.service.RoomNotFoundException;
 import com.acme.jitsi.infrastructure.usecase.UseCase;
 import com.acme.jitsi.shared.validation.TextInputNormalizer;
 import java.time.Clock;
@@ -37,7 +38,8 @@ public class UpdateRoomUseCase implements UseCase<UpdateRoomCommand, Room> {
   @Override
   @Transactional
   public Room execute(UpdateRoomCommand command) {
-    Room existing = command.existing();
+    Room existing = roomRepository.findByIdForUpdate(command.existing().roomId())
+        .orElseThrow(() -> new RoomNotFoundException(command.existing().roomId()));
 
     String normalizedName = normalizeName(command.name(), existing.name());
     String normalizedDescription = normalizeDescription(command.description(), existing.description());

@@ -66,7 +66,7 @@ class RolloutConfigSetUseCaseTest {
   @Test
   void executeSucceedsAndPublishesEvent() {
     ConfigSet target = draft("cs-1");
-    when(configSetRepository.findById("cs-1")).thenReturn(Optional.of(target));
+    when(configSetRepository.findByIdForUpdate("cs-1")).thenReturn(Optional.of(target));
     when(configSetRepository.findActiveByTenantIdAndEnvironmentType("tenant-1", ConfigSetEnvironmentType.DEV))
         .thenReturn(Optional.empty());
     when(dryRunValidator.validateCompatibility(any(), any())).thenReturn(new ConfigCompatibilityCheckResult(
@@ -84,7 +84,7 @@ class RolloutConfigSetUseCaseTest {
   @Test
   void executeFailsWhenDryRunValidationFails() {
     ConfigSet target = draft("cs-1");
-    when(configSetRepository.findById("cs-1")).thenReturn(Optional.of(target));
+    when(configSetRepository.findByIdForUpdate("cs-1")).thenReturn(Optional.of(target));
     when(dryRunValidator.validateCompatibility(any(), any())).thenReturn(new ConfigCompatibilityCheckResult(
       false,
       java.util.List.of(),
@@ -97,7 +97,7 @@ class RolloutConfigSetUseCaseTest {
 
   @Test
   void executeThrowsNotFoundWhenConfigSetMissing() {
-    when(configSetRepository.findById("missing")).thenReturn(Optional.empty());
+    when(configSetRepository.findByIdForUpdate("missing")).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> useCase.execute(new RolloutConfigSetCommand("missing", "tenant-1", "actor-1", "trace-1")))
         .isInstanceOf(ConfigSetNotFoundException.class);
@@ -105,7 +105,7 @@ class RolloutConfigSetUseCaseTest {
 
   @Test
   void executeThrowsNotFoundWhenTenantIdNull() {
-    when(configSetRepository.findById("cs-1")).thenReturn(Optional.of(draft("cs-1")));
+    when(configSetRepository.findByIdForUpdate("cs-1")).thenReturn(Optional.of(draft("cs-1")));
 
     assertThatThrownBy(() -> useCase.execute(new RolloutConfigSetCommand("cs-1", null, "actor-1", "trace-1")))
         .isInstanceOf(ConfigSetNotFoundException.class);
@@ -113,7 +113,7 @@ class RolloutConfigSetUseCaseTest {
 
   @Test
   void executeThrowsNotFoundWhenTenantIdBlank() {
-    when(configSetRepository.findById("cs-1")).thenReturn(Optional.of(draft("cs-1")));
+    when(configSetRepository.findByIdForUpdate("cs-1")).thenReturn(Optional.of(draft("cs-1")));
 
     assertThatThrownBy(() -> useCase.execute(new RolloutConfigSetCommand("cs-1", "  ", "actor-1", "trace-1")))
         .isInstanceOf(ConfigSetNotFoundException.class);
@@ -121,7 +121,7 @@ class RolloutConfigSetUseCaseTest {
 
   @Test
   void executeThrowsNotFoundWhenTenantIdMismatch() {
-    when(configSetRepository.findById("cs-1")).thenReturn(Optional.of(draft("cs-1")));
+    when(configSetRepository.findByIdForUpdate("cs-1")).thenReturn(Optional.of(draft("cs-1")));
 
     assertThatThrownBy(() -> useCase.execute(new RolloutConfigSetCommand("cs-1", "other-tenant", "actor-1", "trace-1")))
         .isInstanceOf(ConfigSetNotFoundException.class);
@@ -135,7 +135,7 @@ class RolloutConfigSetUseCaseTest {
         "secret", null, 20, 120, "https://meet.example.test",
         ConfigSetStatus.ACTIVE,
         Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"));
-    when(configSetRepository.findById("cs-1")).thenReturn(Optional.of(active));
+    when(configSetRepository.findByIdForUpdate("cs-1")).thenReturn(Optional.of(active));
 
     assertThatThrownBy(() -> useCase.execute(new RolloutConfigSetCommand("cs-1", "tenant-1", "actor-1", "trace-1")))
         .isInstanceOf(ConfigSetRolloutNotAllowedException.class);
@@ -150,7 +150,7 @@ class RolloutConfigSetUseCaseTest {
         "secret", null, 20, 120, "https://meet.example.test",
         ConfigSetStatus.ACTIVE,
         Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"));
-    when(configSetRepository.findById("cs-new")).thenReturn(Optional.of(target));
+    when(configSetRepository.findByIdForUpdate("cs-new")).thenReturn(Optional.of(target));
     when(configSetRepository.findActiveByTenantIdAndEnvironmentType("tenant-1", ConfigSetEnvironmentType.DEV))
         .thenReturn(Optional.of(active));
     when(dryRunValidator.validateCompatibility(any(), any())).thenReturn(new ConfigCompatibilityCheckResult(

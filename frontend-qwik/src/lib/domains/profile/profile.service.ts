@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from "../../shared/api";
 import type { ProfileErrorPayload, UserProfileResponse, UpsertProfileRequest } from "./types";
 import {
   createApiClient,
@@ -130,7 +131,7 @@ export async function fetchAdminUserProfiles(
     params.set("q", query.trim());
   }
   const suffix = params.size > 0 ? `?${params.toString()}` : "";
-  const response = await fetch(`${context.apiUrl}/admin/users${suffix}`, {
+  const response = await fetchWithTimeout(`${context.apiUrl}/admin/users${suffix}`, {
     headers: context.headers,
   });
   if (!response.ok) {
@@ -149,7 +150,7 @@ export async function updateAdminUserProfile(
   subjectId: string,
   data: UpsertProfileRequest,
 ): Promise<UserProfileResponse> {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${context.apiUrl}/admin/users/${encodeURIComponent(subjectId)}`,
     {
       method: "PUT",

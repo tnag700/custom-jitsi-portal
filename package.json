@@ -54,6 +54,8 @@
     "contracts:check": "node scripts/check-contracts.mjs",
     "openapi:check": "node scripts/check-contracts.mjs",
     "frontend:api-types:check": "node scripts/check-contracts.mjs",
+    "test:operations": "python -m unittest discover -s scripts/tests -p test_*.py && node --test deploy/egress/osv-proxy.test.mjs",
+    "test:database-roles": "sh scripts/test-database-runtime-roles.sh",
     "verify": "node scripts/verify-repository.mjs"
   }
 }

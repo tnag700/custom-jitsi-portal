@@ -59,15 +59,15 @@
 - KV prefixes разделены по сервисным контурам: `app`, `identity`, `realtime`, `backup`.
 - Backend OIDC-related material живёт внутри `identity/backend`, а не в отдельном top-level prefix.
 - Для `kv-v2` policy templates всегда использовать корректные `data/` и `metadata/` endpoints.
-- Preferred target для DB credentials - `database` secrets engine, а не broad `kv-v2` fallback.
-- Если dynamic DB credentials пока не включены для long-lived consumers, transitional `database/static-creds/*` path должен иметь documented rationale и restart-based runtime contract.
+- `database/` — историческое имя mount **KV v1**; `database/static-creds/*` хранит статические пары username/password. Это не database secrets engine и не автоматически ротируемые static roles.
+- Единственный runtime contract: `manual-static-kv-controlled-restart`; процедура в [database-runtime-roles.md](../../docs/database-runtime-roles.md). Dynamic credentials/leases не поддерживаются.
 
 ## Approved source policy
 
 - Approved mirror root: `https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/`
 - Pinned stable variant для Linux amd64 baseline: `https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_linux_amd64.zip`
-- Checksum source: `https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_SHA256SUMS`
-- Container baseline собирается локально через `deploy/vault/Dockerfile` из exact approved mirror artifact path и checksum source выше.
+- Independent checksum source: [official HashiCorp release](https://releases.hashicorp.com/vault/1.21.4/vault_1.21.4_SHA256SUMS), checked 2026-09-28. Repository pin: `vault_1.21.4_linux_amd64.sha256`, SHA-256 `889b681990fe221b884b7932fa9c9dd0ee9811b9349554f1aa287ab63c9f3dae`.
+- Container baseline собирается локально через `deploy/vault/Dockerfile` из exact approved mirror artifact path и проверяет его по закреплённому файлу из репозитория. Checksum не скачивается с зеркала; при обновлении версии сначала независимо проверить официальный checksum source.
 - Runtime image tag `jitsi-vault:1.21.4` допустим только как локальный результат этого build path, а не как отдельный source of truth.
 - Pre-release variants (`rc`, `beta`) не использовать для production baseline без отдельного решения.
 

@@ -39,6 +39,72 @@ class DatabaseRefreshTokenStoreIntegrationTest {
   @Autowired
   private PlatformTransactionManager transactionManager;
 
+  @Test
+  void reuseRevokesTheAlreadyIssuedSuccessor() {
+    var store = newStore();
+    store.createIfAbsent(activeState("family-root"));
+    store.rotate("family-root", activeState("family-child"));
+    assertThat(store.rotate("family-root", activeState("other-child")).status())
+        .isEqualTo(RefreshTokenStore.ConsumeStatus.USED);
+    assertThat(store.consume("family-child").status()).isEqualTo(RefreshTokenStore.ConsumeStatus.REVOKED);
+  }
+
+  @Test
+  void revokeIsOwnedAndNeverCreatesUnknownRows() {
+    var store = newStore();
+    store.createIfAbsent(activeState("owned-root"));
+    assertThat(store.revoke("owned-root", "other-user")).isFalse();
+    assertThat(store.revoke("unknown", "user-1")).isFalse();
+    assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM refresh_token_states", Integer.class)).isEqualTo(1);
+    assertThat(store.createIfAbsent(activeState("owned-root")).status()).isEqualTo(RefreshTokenStore.TokenStatus.ACTIVE);
+    assertThat(store.revoke("owned-root", "user-1")).isTrue();
+    assertThat(store.consume("owned-root").status()).isEqualTo(RefreshTokenStore.ConsumeStatus.REVOKED);
+  }
+
+  @Test
+  void cleanupKeepsReplayMarkersUntilAbsoluteExpiry() {
+    var store = newStore();
+    store.createIfAbsent(activeState("used-root"));
+    store.consume("used-root");
+    jdbcTemplate.update("UPDATE refresh_token_states SET idle_expires_at = ? WHERE token_id = 'used-root'",
+        java.sql.Timestamp.from(Instant.now().minusSeconds(60)));
+    store.cleanupExpired();
+    assertThat(store.createIfAbsent(activeState("used-root")).status()).isEqualTo(RefreshTokenStore.TokenStatus.USED);
+
+    jdbcTemplate.update("UPDATE refresh_token_states SET absolute_expires_at = ? WHERE token_id = 'used-root'",
+        java.sql.Timestamp.from(Instant.now().minusSeconds(60)));
+    store.cleanupExpired();
+    assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM refresh_token_states", Integer.class)).isZero();
+  }
+
+  @Test
+  void rotationRechecksExpiryInsideItsTransaction() {
+    var store = newStore();
+    store.createIfAbsent(activeState("expired-during-issuance"));
+    jdbcTemplate.update("UPDATE refresh_token_states SET idle_expires_at = ? WHERE token_id = 'expired-during-issuance'",
+        java.sql.Timestamp.from(Instant.now().minusSeconds(1)));
+    assertThat(store.rotate("expired-during-issuance", activeState("must-not-exist")).status())
+        .isEqualTo(RefreshTokenStore.ConsumeStatus.MISSING);
+    assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM refresh_token_states WHERE token_id = 'must-not-exist'", Integer.class))
+        .isZero();
+  }
+
+  @Test
+  void rootReplayAndChildRotationCannotLeaveAnActiveGrandchild() throws Exception {
+    var store = newStore();
+    store.createIfAbsent(activeState("root"));
+    store.rotate("root", activeState("child"));
+    var start = new java.util.concurrent.CyclicBarrier(2);
+    try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+      var replay = executor.submit(() -> { start.await(); return newStore().consume("root"); });
+      var rotate = executor.submit(() -> { start.await(); return newStore().rotate("child", activeState("grandchild")); });
+      replay.get(5, java.util.concurrent.TimeUnit.SECONDS);
+      rotate.get(5, java.util.concurrent.TimeUnit.SECONDS);
+    }
+    assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM refresh_token_states WHERE status = 'ACTIVE'", Integer.class)).isZero();
+    assertThat(store.consume("child").status()).isEqualTo(RefreshTokenStore.ConsumeStatus.REVOKED);
+  }
+
   @BeforeEach
   void setUp() {
     jdbcTemplate.execute("DELETE FROM refresh_token_states");
@@ -52,16 +118,16 @@ class DatabaseRefreshTokenStoreIntegrationTest {
     Instant firstBoundary = Instant.parse("2026-08-13T12:00:01Z");
     enforceCutover(firstBoundary);
 
-    assertThat(jdbcTemplate.queryForObject(
+    assertThat(jdbcTemplate.<Instant>queryForObject(
         "SELECT accept_issued_after FROM refresh_token_store_metadata WHERE singleton_id = 1",
-        Instant.class)).isEqualTo(firstBoundary);
+        (result, row) -> result.getTimestamp(1).toInstant())).isEqualTo(firstBoundary);
 
     assertThatThrownBy(() -> enforceCutover(firstBoundary.minusSeconds(1)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("cannot move backward");
-    assertThat(jdbcTemplate.queryForObject(
+    assertThat(jdbcTemplate.<Instant>queryForObject(
         "SELECT accept_issued_after FROM refresh_token_store_metadata WHERE singleton_id = 1",
-        Instant.class)).isEqualTo(firstBoundary);
+        (result, row) -> result.getTimestamp(1).toInstant())).isEqualTo(firstBoundary);
   }
 
   @Test
@@ -71,9 +137,9 @@ class DatabaseRefreshTokenStoreIntegrationTest {
 
     enforceCutover(laterBoundary);
 
-    assertThat(jdbcTemplate.queryForObject(
+    assertThat(jdbcTemplate.<Instant>queryForObject(
         "SELECT accept_issued_after FROM refresh_token_store_metadata WHERE singleton_id = 1",
-        Instant.class)).isEqualTo(laterBoundary);
+        (result, row) -> result.getTimestamp(1).toInstant())).isEqualTo(laterBoundary);
   }
 
   @Test
@@ -97,7 +163,8 @@ class DatabaseRefreshTokenStoreIntegrationTest {
   @Test
   void revokedMarkerSurvivesAStoreRecreationAndCannotBeReactivated() {
     DatabaseRefreshTokenStore firstProcess = newStore();
-    firstProcess.revoke("revoked-token");
+    firstProcess.createIfAbsent(activeState("revoked-token"));
+    firstProcess.revoke("revoked-token", "user-1");
 
     DatabaseRefreshTokenStore restartedProcess = newStore();
     RefreshTokenStore.RefreshTokenState persisted =
@@ -135,7 +202,7 @@ class DatabaseRefreshTokenStoreIntegrationTest {
         Integer.class)).isEqualTo(1);
     assertThat(jdbcTemplate.queryForObject(
         "SELECT status FROM refresh_token_states WHERE token_id = 'shared-current-token'",
-        String.class)).isEqualTo("USED");
+        String.class)).isEqualTo("REVOKED");
   }
 
   @Test
@@ -144,8 +211,10 @@ class DatabaseRefreshTokenStoreIntegrationTest {
     store.createIfAbsent(activeState("collision-current"));
     store.createIfAbsent(activeState("collision-successor"));
 
-    assertThat(store.rotate("collision-current", activeState("collision-successor")).status())
-        .isEqualTo(RefreshTokenStore.ConsumeStatus.USED);
+    assertThatThrownBy(() -> store.rotate("collision-current", activeState("collision-successor")))
+        .isInstanceOf(IllegalStateException.class);
+    assertThat(store.createIfAbsent(activeState("collision-successor")).status())
+        .isEqualTo(RefreshTokenStore.TokenStatus.ACTIVE);
     assertThat(store.createIfAbsent(activeState("collision-current")).status())
         .isEqualTo(RefreshTokenStore.TokenStatus.ACTIVE);
   }

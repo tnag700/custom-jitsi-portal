@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -214,9 +213,10 @@ class ObserverPatternArchitectureTest {
         Class<?> eventType = Class.forName(eventTypeName);
         Method method = listenerType.getDeclaredMethod(methodName, eventType);
 
-        ApplicationModuleListener annotation = method.getAnnotation(ApplicationModuleListener.class);
+        assertListenerMethodIsAsyncAfterCommit(listenerTypeName, methodName, eventTypeName);
+        TransactionalEventListener annotation = method.getAnnotation(TransactionalEventListener.class);
         assertNotNull(annotation,
-                listenerTypeName + "#" + methodName + " must be annotated with @ApplicationModuleListener");
+                listenerTypeName + "#" + methodName + " must be registered with the durable event registry");
         assertEquals(
                 "configsets.audit.rollout.completed",
                 annotation.id(),

@@ -2,6 +2,7 @@ import { component$, type QRL } from "@qwik.dev/core";
 
 interface RetryEscalationActionsProps {
   canRetry: boolean;
+  retryDisabled?: boolean;
   retryLabel?: string;
   escalationText?: string;
   copyLabel?: string;
@@ -14,6 +15,7 @@ interface RetryEscalationActionsProps {
 export const RetryEscalationActions = component$<RetryEscalationActionsProps>(
   ({
     canRetry,
+    retryDisabled,
     retryLabel = "Повторить",
     escalationText = "Обратитесь в поддержку",
     copyLabel = "Скопировать отчёт",
@@ -27,8 +29,9 @@ export const RetryEscalationActions = component$<RetryEscalationActionsProps>(
         {canRetry ? (
           <button
             type="button"
-            class="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            class="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
             onClick$={() => onRetry$?.()}
+            disabled={retryDisabled}
           >
             {retryLabel}
           </button>

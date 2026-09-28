@@ -72,12 +72,12 @@ class IdempotencyTracingIntegrationTest extends PostgresRedisContainerIntegratio
     private final RestTemplate restTemplate = new RestTemplate();
 
   @Test
-  void idempotentRequestProducesServerAndRedisSpansInSameTrace() throws Exception {
+  void idempotentRequestProducesServerAndDatabaseSpansInSameTrace() throws Exception {
     testSpanExporter.reset();
 
         ResponseEntity<String> response = restTemplate.exchange(
                 RequestEntity.post(URI.create("http://localhost:" + port + IDEMPOTENT_PATH))
-                .header("Idempotency-Key", "trace-redis-key-1")
+                .header("Idempotency-Key", "trace-database-key-1")
                         .build(),
                 String.class);
 
@@ -88,15 +88,15 @@ class IdempotencyTracingIntegrationTest extends PostgresRedisContainerIntegratio
             .filter(IdempotencyTracingIntegrationTest::isIdempotentServerSpan)
             .map(SpanData::getTraceId)
             .anyMatch(traceId -> exported.stream()
-                .anyMatch(span -> traceId.equals(span.getTraceId()) && isRedisSpan(span))),
+                .anyMatch(span -> traceId.equals(span.getTraceId()) && isDatabaseSpan(span))),
         Duration.ofSeconds(5));
 
     String traceId = spans.stream()
         .filter(IdempotencyTracingIntegrationTest::isIdempotentServerSpan)
         .map(SpanData::getTraceId)
-        .filter(serverTraceId -> spans.stream().anyMatch(span -> serverTraceId.equals(span.getTraceId()) && isRedisSpan(span)))
+        .filter(serverTraceId -> spans.stream().anyMatch(span -> serverTraceId.equals(span.getTraceId()) && isDatabaseSpan(span)))
         .findFirst()
-        .orElseThrow(() -> new AssertionError("No idempotent request trace with Redis spans exported. Spans: " + summarizeSpans(spans)));
+        .orElseThrow(() -> new AssertionError("No idempotent request trace with database spans exported. Spans: " + summarizeSpans(spans)));
 
     List<SpanData> traceSpans = spans.stream()
         .filter(span -> traceId.equals(span.getTraceId()))
@@ -105,7 +105,7 @@ class IdempotencyTracingIntegrationTest extends PostgresRedisContainerIntegratio
     assertThat(traceSpans)
         .anySatisfy(span -> assertThat(span.getKind()).isEqualTo(SpanKind.SERVER));
     assertThat(traceSpans)
-        .anySatisfy(span -> assertThat(matchesIdempotencyRedisMutation(span)).isTrue());
+        .anySatisfy(span -> assertThat(matchesIdempotencyDatabaseMutation(span)).isTrue());
   }
 
   private static boolean isIdempotentServerSpan(SpanData span) {
@@ -120,12 +120,12 @@ class IdempotencyTracingIntegrationTest extends PostgresRedisContainerIntegratio
                 || ("POST".equals(method) && span.getName().toLowerCase().contains("idempotent"));
   }
 
-  private static boolean isRedisSpan(SpanData span) {
-    return "redis".equalsIgnoreCase(span.getAttributes().get(DB_SYSTEM));
+  private static boolean isDatabaseSpan(SpanData span) {
+    return "postgresql".equalsIgnoreCase(span.getAttributes().get(DB_SYSTEM));
   }
 
-    private static boolean matchesIdempotencyRedisMutation(SpanData span) {
-        if (!isRedisSpan(span)) {
+    private static boolean matchesIdempotencyDatabaseMutation(SpanData span) {
+        if (!isDatabaseSpan(span)) {
             return false;
         }
 
@@ -135,7 +135,7 @@ class IdempotencyTracingIntegrationTest extends PostgresRedisContainerIntegratio
                 span.getName());
         return span.getKind() == SpanKind.CLIENT
             && operation != null
-            && operation.toUpperCase().contains("SET");
+            && operation.toUpperCase().contains("INSERT");
     }
 
     private static String firstNonBlank(String... values) {

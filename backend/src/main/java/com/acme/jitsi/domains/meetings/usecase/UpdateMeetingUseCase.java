@@ -6,6 +6,9 @@ import com.acme.jitsi.domains.meetings.service.InvalidMeetingScheduleException;
 import com.acme.jitsi.domains.meetings.service.Meeting;
 import com.acme.jitsi.domains.meetings.service.MeetingFinalizedException;
 import com.acme.jitsi.domains.meetings.service.MeetingRepository;
+import com.acme.jitsi.domains.meetings.service.MeetingNotFoundException;
+import com.acme.jitsi.domains.meetings.service.MeetingRoomsPort;
+import com.acme.jitsi.domains.meetings.service.MeetingRoomInactiveException;
 import com.acme.jitsi.domains.meetings.service.MeetingStatus;
 import com.acme.jitsi.infrastructure.usecase.UseCase;
 import com.acme.jitsi.shared.validation.TextInputNormalizer;
@@ -25,14 +28,17 @@ public class UpdateMeetingUseCase implements UseCase<UpdateMeetingCommand, Meeti
       "title,description,meetingType,startsAt,endsAt,allowGuests,recordingEnabled";
 
   private final MeetingRepository meetingRepository;
+  private final MeetingRoomsPort meetingRoomsPort;
   private final ApplicationEventPublisher eventPublisher;
   private final Clock clock;
 
   public UpdateMeetingUseCase(
       MeetingRepository meetingRepository,
+      MeetingRoomsPort meetingRoomsPort,
       ApplicationEventPublisher eventPublisher,
       Clock clock) {
     this.meetingRepository = meetingRepository;
+    this.meetingRoomsPort = meetingRoomsPort;
     this.eventPublisher = eventPublisher;
     this.clock = clock;
   }
@@ -40,8 +46,13 @@ public class UpdateMeetingUseCase implements UseCase<UpdateMeetingCommand, Meeti
   @Override
   @Transactional
   public Meeting execute(UpdateMeetingCommand command) {
-    Meeting existing = command.existing();
+    var room = meetingRoomsPort.getRequiredRoomForUpdate(command.existing().roomId());
+    Meeting existing = meetingRepository.findByIdForUpdate(command.existing().meetingId())
+        .orElseThrow(() -> new MeetingNotFoundException(command.existing().meetingId()));
     assertEditable(existing);
+    if (!room.active()) {
+      throw new MeetingRoomInactiveException(room.roomId());
+    }
 
     Instant nextStartsAt = command.startsAt() != null ? command.startsAt() : existing.startsAt();
     Instant nextEndsAt = command.endsAt() != null ? command.endsAt() : existing.endsAt();

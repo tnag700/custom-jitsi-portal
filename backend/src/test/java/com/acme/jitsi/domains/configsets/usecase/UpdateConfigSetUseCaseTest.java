@@ -66,7 +66,7 @@ class UpdateConfigSetUseCaseTest {
         Instant.parse("2026-01-01T00:00:00Z"),
         Instant.parse("2026-01-01T00:00:00Z"));
 
-    when(repository.findById("cs-1")).thenReturn(Optional.of(existing));
+    when(repository.findByIdForUpdate("cs-1")).thenReturn(Optional.of(existing));
     when(repository.existsByNameAndTenantIdAndConfigSetIdNot("Config B", "tenant-1", "cs-1")).thenReturn(false);
     when(jwtAlgorithmPolicy.isSupportedForKeySource("HS256", JwtKeySource.SECRET)).thenReturn(true);
     when(repository.save(any(ConfigSet.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -112,7 +112,7 @@ class UpdateConfigSetUseCaseTest {
         ConfigSetStatus.DRAFT,
         Instant.parse("2026-01-01T00:00:00Z"),
         Instant.parse("2026-01-01T00:00:00Z"));
-    when(repository.findById("cs-1")).thenReturn(Optional.of(existing));
+    when(repository.findByIdForUpdate("cs-1")).thenReturn(Optional.of(existing));
 
     assertThatThrownBy(() -> useCase.execute(new UpdateConfigSetCommand(
         "cs-1",

@@ -17,6 +17,7 @@ FROM node:24.18.0-alpine
 WORKDIR /app
 
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/server/build ./server/build
 COPY server/package.json server/package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
 COPY --from=build /app/server/entry.express.mjs ./server/entry.express.mjs

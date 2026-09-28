@@ -6,6 +6,8 @@ import com.acme.jitsi.domains.configsets.service.ConfigSetRepository;
 import com.acme.jitsi.domains.configsets.service.ConfigSetStatus;
 import java.util.List;
 import java.util.Optional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Repository;
@@ -15,6 +17,9 @@ class JpaConfigSetRepository implements ConfigSetRepository {
 
   private final ConfigSetJpaRepository jpaRepository;
   private final ConfigSetPersistenceTranslator translator;
+
+  @PersistenceContext
+  private EntityManager entityManager;
 
   JpaConfigSetRepository(
       ConfigSetJpaRepository jpaRepository,
@@ -33,6 +38,25 @@ class JpaConfigSetRepository implements ConfigSetRepository {
   public Optional<ConfigSet> findById(String configSetId) {
     return jpaRepository.findById(configSetId)
         .map(translator::toDomain);
+  }
+
+  @Override
+  public void lockMutations() {
+    // ponytail: rare config mutations share one DB lock; use per-tenant rows if contention matters.
+    jpaRepository.lockMutations();
+  }
+
+  @Override
+  public void flush() {
+    jpaRepository.flush();
+  }
+
+  @Override
+  public Optional<ConfigSet> findByIdForUpdate(String configSetId) {
+    return jpaRepository.findById(configSetId).map(entity -> {
+      entityManager.refresh(entity);
+      return translator.toDomain(entity);
+    });
   }
 
   @Override

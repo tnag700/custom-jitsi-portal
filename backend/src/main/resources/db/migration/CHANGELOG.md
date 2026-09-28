@@ -7,7 +7,7 @@
 - SQL-миграции: `backend/src/main/resources/db/migration/`
 - Java-миграции: `backend/src/main/java/db/migration/`
 
-## Список миграций V1-V21
+## Список миграций V1–V25
 
 | Version | File | Type | Summary |
 |---|---|---|---|
@@ -32,6 +32,12 @@
 | V19 | `V19__Create_auth_audit_events_table.sql` | SQL | Создает аудит-таблицу auth/token событий. |
 | V20 | `V20__Create_admin_incident_coordination_tables.sql` | SQL | Создает durable state и audit stream координации инцидентов. |
 | V21 | `V21__Create_refresh_token_states_table.sql` | SQL | Создает durable replay/revocation state и монотонную cutover-границу для production refresh-токенов. |
+| V22 | `V22__Serialize_config_set_mutations.sql` | SQL | Добавляет singleton-строку для сериализации редких административных изменений конфигураций. |
+| V24 | `V24__Track_refresh_token_families.sql` | SQL | Добавляет семейства refresh-токенов, отзывает исторические записи и повышает cutoff даже для ещё не зарегистрированных старых JWT. Требуется новая сессия через SSO. |
+| V25 | `V25__Transactional_idempotency.sql` | SQL | Хранит scoped idempotency markers в одной транзакции с изменением данных. |
+
+V23 не используется: повторная миграция индекса оказалась не нужна после проверки V14.
+Процедура перехода V24 и синхронизации cutoff описана в `docs/deployment-production.md`.
 
 ## V10: Add single host partial index (Java migration)
 
@@ -60,7 +66,7 @@
 - После V14 в PostgreSQL/H2 уникальность ограничена только ACTIVE-конфигурациями.
 - В fallback-ветке для иных БД (`V14__Align_config_sets_active_unique_index.java`) создается широкий индекс `uq_config_sets_env_tenant_status_deleted`; в этой ветке ограничение DRAFT может сохраняться.
 - Подтвержденное бизнес-решение для текущего проекта: несколько `DRAFT` config sets в одном `tenant + environment` допустимы.
-- Если в будущем потребуется правило "только 1 DRAFT", нужно добавить отдельную миграцию (например V18) с DRAFT-specific partial unique index.
+- Если в будущем потребуется правило "только 1 DRAFT", нужно добавить новую миграцию с DRAFT-specific partial unique index.
 
 ## Soft-delete audit (rooms, meetings, config_sets)
 
@@ -71,6 +77,6 @@
 - `ConfigSetEntity`: `@SQLRestriction("deleted = false")` присутствует.
 - `RoomJpaRepository`: native SQL-запросы отсутствуют.
 - `MeetingJpaRepository`: native SQL-запросы отсутствуют.
-- `ConfigSetJpaRepository`: native SQL-запросы отсутствуют.
+- `ConfigSetJpaRepository`: native SQL блокирует только `config_set_mutation_lock`; чтение config sets остаётся JPA-запросами с soft-delete фильтром.
 
 Вывод: soft-delete фильтрация на JPA-уровне настроена консистентно; дополнительных правок репозиториев не требуется.

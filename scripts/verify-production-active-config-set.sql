@@ -58,22 +58,22 @@ SELECT (
 \if :exact_active_config
 \else
   \echo 'Active production config-set contract is not exact.'
-  \quit 3
+  DO $$ BEGIN RAISE EXCEPTION 'Active production config-set contract is not exact.'; END $$;
 \endif
 \if :migration_audited
 \else
   \echo 'Production config-set migration audit is missing.'
-  \quit 4
+  DO $$ BEGIN RAISE EXCEPTION 'Production config-set migration audit is missing.'; END $$;
 \endif
 \if :latest_compatible
 \else
   \echo 'Latest production config-set compatibility check is not clean.'
-  \quit 5
+  DO $$ BEGIN RAISE EXCEPTION 'Latest production config-set compatibility check is not clean.'; END $$;
 \endif
 \if :restored_references_preserved
 \else
   \echo 'Restored room or meeting config-set references changed.'
-  \quit 6
+  DO $$ BEGIN RAISE EXCEPTION 'Restored room or meeting config-set references changed.'; END $$;
 \endif
 
 \echo 'Production active config set, audit, compatibility, and restored references are verified.'

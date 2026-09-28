@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 const serverEntry = resolve("server/entry.express.mjs");
-const distServerEntry = resolve("dist/server/entry.express.js");
+const distServerEntry = resolve("server/build/entry.express.js");
 const distClientDir = resolve("dist/build");
 
 if (
@@ -67,6 +67,11 @@ async function main() {
       (await healthRes.json()).status === "ok",
       "Health endpoint returned an unexpected payload",
     );
+
+    for (const path of ["/server/entry.express.js", "/server/package.json", "/server/build/entry.express.js"]) {
+      const response = await fetch(`${baseUrl}${path}`, { redirect: "manual" });
+      assert(response.status === 404, `Private server module ${path} returned ${response.status}`);
+    }
 
     const pageRes = await fetch(`${baseUrl}/auth`);
     assert(pageRes.ok, `Expected /auth to return 200, got ${pageRes.status}`);

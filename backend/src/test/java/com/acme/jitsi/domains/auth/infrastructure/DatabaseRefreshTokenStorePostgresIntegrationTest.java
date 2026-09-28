@@ -59,7 +59,7 @@ class DatabaseRefreshTokenStorePostgresIntegrationTest
 
     assertThat(jdbcTemplate.queryForObject(
         "SELECT status FROM refresh_token_states WHERE token_id = 'postgres-current'",
-        String.class)).isEqualTo("USED");
+        String.class)).isEqualTo("REVOKED");
     assertThat(jdbcTemplate.queryForObject(
         """
             SELECT COUNT(*)

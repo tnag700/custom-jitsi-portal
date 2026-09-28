@@ -24,8 +24,7 @@
 - `kv/data/realtime/jitsi/*` и `kv/metadata/realtime/jitsi/*` - Jitsi JWT/shared-secret contour.
 - `kv/data/backup/runner/*` и `kv/metadata/backup/runner/*` - backup destination and snapshot material.
 - `kv/data/backup/backend/*` и `kv/metadata/backup/backend/*` - backend-facing backup integration material.
-- `database/creds/*` - preferred target там, где consumer действительно может жить с lease rotation.
-- `database/static-creds/*` - transitional target для current long-lived consumers с documented controlled restart/redeploy contract.
+- `database/static-creds/*` — статические пары в legacy mount KV v1. Contract: `manual-static-kv-controlled-restart`. Lease renewal/revocation и автоматическая ротация отсутствуют.
 
 Важно: для `kv-v2` policy templates всегда использовать корректные `data/` и `metadata/` endpoints. Generic `kv/*` или broad `secret/*` access здесь не является baseline.
 
@@ -47,15 +46,15 @@
 
 ## Service mapping rules
 
-- Backend читает только свой `app/backend`, `identity/backend`, `backup/backend`, bounded `app/redis` contour и `database/static-creds/backend-app` либо `database/creds/backend-app` по explicit runtime contract.
+- Backend читает только свой `app/backend`, `identity/backend`, `backup/backend`, bounded `app/redis` contour и `database/static-creds/backend-app` по explicit runtime contract.
 - Backup runner получает отдельный AppRole, отдельную policy и отдельный startup-fetch example; shared machine identity запрещён.
 - Keycloak и Jitsi не становятся direct Vault clients автоматически. Для них в репозитории зафиксированы mapping rules и enablement criteria, а не обязательный runtime wiring.
 - Frontend SSR и browser runtime не становятся Vault clients по умолчанию.
 
 ## Database engine decision
 
-- Preferred target для DB credentials - `database` secrets engine.
-- Если dynamic DB credentials ещё не включены, transitional `database/static-creds/*` допустим только с явным documented rationale и controlled restart/redeploy contract, а не как silent rollback в static `kv-v2`.
+- Используется статический KV v1 mount `database/`. Название пути не означает database secrets engine.
+- Для одного long-lived JVM сохраняем ручную ротацию с остановкой consumers и обновлением bridge: [процедура](../../../docs/database-runtime-roles.md). Переход на database secrets engine потребует отдельной реализации одной выдачи credentials и полного lifecycle leases. Dynamic fallback удалён.
 - Policy examples здесь фиксируют shape и target path, но не коммитят реальные DB usernames/passwords.
 
 ## Sensitive artifacts
@@ -63,7 +62,7 @@
 - Не коммитить `role_id`, `secret_id`, wrapping token, operator OIDC client secret, leases или rendered secret files.
 - Для локальных operator inputs использовать `deploy/vault/local/`.
 - Bootstrap helper mounts и runtime sinks считаются sensitive delivery surface и должны заполняться только из private/local paths вне git.
-- Service-specific Vault Agent-rendered env files для PostgreSQL, Redis, Keycloak и Jitsi также считаются sensitive delivery surface и не должны жить в repo-kept operator workflow.
+- Service-specific private operator-rendered env files для PostgreSQL, Redis, Keycloak и Jitsi также считаются sensitive delivery surface и не должны жить в repo-kept operator workflow.
 
 ## Minimal smoke / evidence
 
@@ -71,5 +70,5 @@
 - successful backend login через response-wrapped AppRole handoff на `auth/approle-workloads`
 - successful read только своего path
 - denied read на соседнем service prefix
-- подтверждённый decision по `database` secrets engine и transitional `database/static-creds/*` path для long-lived consumers
+- подтверждение статического KV v1 mount и ручной ротации `database/static-creds/*` для long-lived consumers
 - подтверждение, что frontend SSR и browser runtime не получили direct Vault access по умолчанию

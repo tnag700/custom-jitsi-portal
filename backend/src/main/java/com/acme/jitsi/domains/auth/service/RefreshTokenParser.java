@@ -66,7 +66,7 @@ class RefreshTokenParser {
     }
 
     String normalized = message.toLowerCase(Locale.ROOT);
-    return normalized.contains("expired") || normalized.contains("expires") || normalized.contains("exp");
+    return normalized.contains("expired") || normalized.contains("expires");
   }
 
   private Jwt decodeJwt(String serializedRefreshToken) {
@@ -115,10 +115,12 @@ class RefreshTokenParser {
     Instant issuedAt = jwt.getIssuedAt();
     Instant expiresAt = jwt.getExpiresAt();
 
-    if (isBlank(tokenId) || isBlank(subject) || isBlank(meetingId) || issuedAt == null || expiresAt == null) {
+    if (isBlank(tokenId) || !tokenId.matches("[A-Za-z0-9._:-]{1,255}")
+        || isBlank(subject) || subject.length() > 255 || isBlank(meetingId) || meetingId.length() > 255
+        || issuedAt == null || expiresAt == null) {
       throw new AuthTokenException(HttpStatus.UNAUTHORIZED, ErrorCode.TOKEN_INVALID.code(), "Refresh-токен не содержит обязательные claims.");
     }
-    if (clock.instant().isAfter(expiresAt)) {
+    if (!clock.instant().isBefore(expiresAt)) {
       throw new AuthTokenException(HttpStatus.UNAUTHORIZED, ErrorCode.AUTH_REQUIRED.code(), "Сессия истекла. Выполните вход через SSO.");
     }
     return new RefreshTokenPayload(tokenId, subject, meetingId, issuedAt, expiresAt);

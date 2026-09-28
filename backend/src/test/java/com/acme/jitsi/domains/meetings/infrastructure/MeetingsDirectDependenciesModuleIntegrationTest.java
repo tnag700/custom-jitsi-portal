@@ -130,7 +130,7 @@ class MeetingsDirectDependenciesModuleIntegrationTest {
 
   @Test
   void createsMeetingThroughAllowedRoomsCollaboratorPathOnly(PublishedEvents events) {
-    when(roomRepository.findById("room-1")).thenReturn(Optional.of(new Room(
+    when(roomRepository.findByIdForUpdate("room-1")).thenReturn(Optional.of(new Room(
         "room-1",
         "Planning Room",
         null,

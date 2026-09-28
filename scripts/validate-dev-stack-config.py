@@ -26,6 +26,10 @@ def main() -> None:
         fail(f"Development Jitsi web access file not found: {jitsi_web_access_path}")
 
     realm = json.loads(realm_path.read_text(encoding="utf-8"))
+    backend_client = next(client for client in realm["clients"] if client["clientId"] == "jitsi-backend")
+    attributes = backend_client.get("attributes", {})
+    if attributes.get("backchannel.logout.url") != "${OIDC_BACKCHANNEL_LOGOUT_URI}" or attributes.get("backchannel.logout.session.required") != "true":
+        fail("Development Keycloak client must enable session-aware backchannel logout.")
     users = list(realm.get("users") or [])
     validate_portal_user_profile(
         realm,

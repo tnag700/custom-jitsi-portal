@@ -40,9 +40,9 @@ class ProductionDeploymentValidatorTest(unittest.TestCase):
             "component": "C" * 32,
         }
         service_file_contents = {
-            "POSTGRES_VAULT_ENV_FILE_PATH": f"POSTGRES_PASSWORD={shared['postgres']}\n",
+            "POSTGRES_VAULT_ENV_FILE_PATH": f"POSTGRES_PASSWORD={'B' * 32}\nAPP_DB_PASSWORD={shared['postgres']}\n",
             "REDIS_VAULT_ENV_FILE_PATH": f"REDIS_PASSWORD={shared['redis']}\n",
-            "KEYCLOAK_POSTGRES_VAULT_ENV_FILE_PATH": f"POSTGRES_PASSWORD={shared['keycloak_db']}\n",
+            "KEYCLOAK_POSTGRES_VAULT_ENV_FILE_PATH": f"POSTGRES_PASSWORD={'D' * 32}\nAPP_DB_PASSWORD={shared['keycloak_db']}\n",
             "KEYCLOAK_VAULT_ENV_FILE_PATH": (
                 f"KC_BOOTSTRAP_ADMIN_PASSWORD={shared['keycloak_admin']}\n"
                 f"KC_DB_PASSWORD={shared['keycloak_db']}\n"
@@ -95,7 +95,9 @@ class ProductionDeploymentValidatorTest(unittest.TestCase):
                             "redirectUris": ["${OIDC_REDIRECT_BASE_URI}/login/oauth2/code/keycloak"],
                             "webOrigins": ["${APP_FRONTEND_ORIGIN}"],
                             "attributes": {
-                                "post.logout.redirect.uris": "${APP_FRONTEND_ORIGIN}/auth"
+                                "post.logout.redirect.uris": "${APP_FRONTEND_ORIGIN}/auth",
+                                "backchannel.logout.url": "${OIDC_BACKCHANNEL_LOGOUT_URI}",
+                                "backchannel.logout.session.required": "true"
                             },
                         }
                     ],
@@ -271,10 +273,35 @@ class ProductionDeploymentValidatorTest(unittest.TestCase):
     def test_rejects_inconsistent_cross_service_credentials(self) -> None:
         self._write_private_file(
             self.secret_paths["KEYCLOAK_POSTGRES_VAULT_ENV_FILE_PATH"],
-            f"POSTGRES_PASSWORD={'X' * 32}\n",
+            f"POSTGRES_PASSWORD={'D' * 32}\nAPP_DB_PASSWORD={'X' * 32}\n",
         )
         env_file = self._write_env()
         self._assert_validation_error(env_file, "do not share the same database credential")
+
+    def test_rejects_runtime_database_superuser_identity(self) -> None:
+        for overrides in (
+            {"SPRING_DATASOURCE_USERNAME": "jitsi_admin", "POSTGRES_USER": "jitsi_admin"},
+            {"KC_DB_USERNAME": "keycloak_admin", "KEYCLOAK_POSTGRES_USER": "keycloak_admin"},
+        ):
+            with self.subTest(overrides=overrides):
+                self._assert_validation_error(self._write_env(**overrides), "must differ from its bootstrap")
+
+    def test_rejects_realm_without_backchannel_logout(self) -> None:
+        path = self.realm_import_dir / "jitsi-realm.json"
+        realm = json.loads(path.read_text(encoding="utf-8"))
+        del realm["clients"][0]["attributes"]["backchannel.logout.url"]
+        path.write_text(json.dumps(realm), encoding="utf-8")
+        self._assert_validation_error(self._write_env(), "must enable session-aware backchannel logout")
+
+    def test_rejects_shared_bootstrap_and_runtime_password(self) -> None:
+        for variable in ("POSTGRES_VAULT_ENV_FILE_PATH", "KEYCLOAK_POSTGRES_VAULT_ENV_FILE_PATH"):
+            with self.subTest(variable=variable):
+                original = self.secret_paths[variable].read_text(encoding="utf-8")
+                try:
+                    self._write_private_file(self.secret_paths[variable], f"POSTGRES_PASSWORD={'K' * 32}\nAPP_DB_PASSWORD={'K' * 32}\n")
+                    self._assert_validation_error(self._write_env(), "Bootstrap and runtime database passwords must differ")
+                finally:
+                    self._write_private_file(self.secret_paths[variable], original)
 
     def test_rejects_meetings_service_outside_portal_api(self) -> None:
         env_file = self._write_env(APP_MEETINGS_SERVICE_URL="https://meet.acme.org/api/v1")

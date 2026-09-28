@@ -3,6 +3,11 @@ package com.acme.jitsi.domains.rooms.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.acme.jitsi.domains.rooms.service.Room;
+import com.acme.jitsi.domains.rooms.service.RoomStatus;
+import com.acme.jitsi.domains.rooms.usecase.CloseRoomCommand;
+import com.acme.jitsi.domains.rooms.usecase.CloseRoomUseCase;
+import com.acme.jitsi.domains.rooms.usecase.UpdateRoomCommand;
+import com.acme.jitsi.domains.rooms.usecase.UpdateRoomUseCase;
 import com.acme.jitsi.shared.JwtTestProperties;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,6 +56,23 @@ class RoomJpaRepositorySoftDeleteIntegrationTest {
 
   @Autowired
   private JdbcTemplate jdbcTemplate;
+
+  @Autowired
+  private CloseRoomUseCase closeRoom;
+
+  @Autowired
+  private UpdateRoomUseCase updateRoom;
+
+  @Test
+  void staleUpdateCannotReopenClosedRoom() {
+    insertRoom("room-stale", "Room Stale", "tenant-1", false);
+    Room stale = repository.findById("room-stale").orElseThrow();
+    closeRoom.execute(new CloseRoomCommand(stale, "actor", "trace"));
+
+    Room updated = updateRoom.execute(new UpdateRoomCommand(stale, "New name", null, null, "actor", "trace"));
+    assertThat(updated.status()).isEqualTo(RoomStatus.CLOSED);
+    assertThat(repository.findById("room-stale").orElseThrow().status()).isEqualTo(RoomStatus.CLOSED);
+  }
 
   @BeforeEach
   void setUp() {

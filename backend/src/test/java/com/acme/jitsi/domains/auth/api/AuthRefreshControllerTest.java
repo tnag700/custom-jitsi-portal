@@ -1,6 +1,7 @@
 package com.acme.jitsi.domains.auth.api;
 
 import com.acme.jitsi.shared.ErrorCode;
+import com.acme.jitsi.domains.auth.service.RefreshTokenStore;
 
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
@@ -71,6 +72,23 @@ class AuthRefreshControllerTest {
   @Autowired
   private MockMvc mockMvc;
 
+  @Autowired
+  private RefreshTokenStore tokenStore;
+
+  @Test
+  void revokeCannotInvalidateAnotherSubjectsRefreshSession() throws Exception {
+    Instant now = Instant.now();
+    tokenStore.createIfAbsent(new RefreshTokenStore.RefreshTokenState("owned-token", "u-host", "meeting-a",
+        now.plusSeconds(7200), now.plusSeconds(3600), RefreshTokenStore.TokenStatus.ACTIVE));
+    mockMvc.perform(post("/api/v1/auth/refresh/revoke")
+            .with(csrf()).with(oauth2Login().attributes(attributes -> attributes.put("sub", "other-user")))
+            .contentType(MediaType.APPLICATION_JSON).content("{\"tokenId\":\"owned-token\"}"))
+        .andExpect(status().isNoContent());
+
+    org.assertj.core.api.Assertions.assertThat(tokenStore.consume("owned-token").status())
+        .isEqualTo(RefreshTokenStore.ConsumeStatus.CONSUMED);
+  }
+
   @MockitoBean
   private TokenIssuanceCompatibilityPolicy tokenIssuanceCompatibilityPolicy;
 
@@ -106,8 +124,8 @@ class AuthRefreshControllerTest {
             .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content("{" + "\"refreshToken\":\"" + newRefreshToken + "\"}"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.tokenType").value("Bearer"));
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.TOKEN_REVOKED.code()));
   }
 
   @Test
@@ -238,9 +256,12 @@ class AuthRefreshControllerTest {
   void authenticatedRevokeEndpointBlocksFurtherRefreshByTokenId() throws Exception {
     String refreshToken = buildRefreshToken("u-host", "meeting-a", "runtime-revoke-jti-1", Instant.now(), Instant.now().plus(2, ChronoUnit.HOURS));
 
+    Instant now = Instant.now();
+    tokenStore.createIfAbsent(new RefreshTokenStore.RefreshTokenState("runtime-revoke-jti-1", "u-host", "meeting-a",
+        now.plusSeconds(7200), now.plusSeconds(3600), RefreshTokenStore.TokenStatus.ACTIVE));
     mockMvc.perform(post("/api/v1/auth/refresh/revoke")
             .with(csrf())
-            .with(oauth2Login())
+            .with(oauth2Login().attributes(attributes -> attributes.put("sub", "u-host")))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{" + "\"tokenId\":\"runtime-revoke-jti-1\"}"))
         .andExpect(status().isNoContent());
@@ -361,5 +382,4 @@ class AuthRefreshControllerTest {
     return jwt.serialize();
   }
 }
-
 

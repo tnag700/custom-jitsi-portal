@@ -54,7 +54,8 @@ public class RolloutConfigSetUseCase implements UseCase<RolloutConfigSetCommand,
   @Override
   @Transactional(noRollbackFor = ConfigSetRolloutValidationFailedException.class)
   public ConfigSetRollout execute(RolloutConfigSetCommand command) {
-    ConfigSet target = configSetRepository.findById(command.configSetId())
+    configSetRepository.lockMutations();
+    ConfigSet target = configSetRepository.findByIdForUpdate(command.configSetId())
         .orElseThrow(() -> new ConfigSetNotFoundException(command.configSetId()));
 
     if (command.tenantId() == null

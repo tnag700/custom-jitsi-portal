@@ -48,7 +48,7 @@ class ActivateConfigSetUseCaseTest {
   void executeDeactivatesPreviousAndActivatesTarget() {
     ConfigSet currentActive = base("cs-old", ConfigSetStatus.ACTIVE);
     ConfigSet target = base("cs-new", ConfigSetStatus.DRAFT);
-    when(repository.findById("cs-new")).thenReturn(Optional.of(target));
+    when(repository.findByIdForUpdate("cs-new")).thenReturn(Optional.of(target));
     when(repository.findActiveByTenantIdAndEnvironmentType("tenant-1", ConfigSetEnvironmentType.DEV))
         .thenReturn(Optional.of(currentActive));
     when(repository.save(any(ConfigSet.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -64,7 +64,7 @@ class ActivateConfigSetUseCaseTest {
   @Test
   void executeRejectsTenantMismatch() {
     ConfigSet target = base("cs-new", ConfigSetStatus.DRAFT);
-    when(repository.findById("cs-new")).thenReturn(Optional.of(target));
+    when(repository.findByIdForUpdate("cs-new")).thenReturn(Optional.of(target));
 
     assertThatThrownBy(() -> useCase.execute(
         new ActivateConfigSetCommand("cs-new", "tenant-2", "actor-1", "trace-1")))

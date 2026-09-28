@@ -1,10 +1,11 @@
-import { $, component$, useSignal, useTask$ } from "@qwik.dev/core";
+import { $, component$, useSignal, useTask$, useVisibleTask$ } from "@qwik.dev/core";
 import {
   createInitialPreflightReport,
   createPreflightJoinError,
   fetchJoinReadiness,
   JoinErrorPanel,
   JoinPreflightPanel,
+  JoinServiceError,
   mergePreflightReport,
   resolveExpectedJoinOrigin,
   resolveRetryPreflightScope,
@@ -44,8 +45,14 @@ export const JoinPage = component$(() => {
     createInitialPreflightReport(readinessState.value),
   );
   const preflightRunning = useSignal(false);
+  const joinRunning = useSignal(false);
 
   const redirectToJoin$ = $((payload: unknown) => {
+    if (payload && typeof payload === "object" && "error" in payload) {
+      joinError.value = payload.error as JoinErrorPayload;
+      clipboardCopied.value = false;
+      return;
+    }
     const validated = validateJoinRedirect(
       payload,
       resolveExpectedJoinOrigin(readinessSnapshot.value.publicJoinUrl),
@@ -61,6 +68,7 @@ export const JoinPage = component$(() => {
   });
 
   const refreshPreflight$ = $(async (scope: PreflightScope) => {
+    if (preflightRunning.value) return null;
     preflightRunning.value = true;
     try {
       const snapshot =
@@ -87,6 +95,24 @@ export const JoinPage = component$(() => {
       );
       preflightReport.value = nextReport;
       return nextReport;
+    } catch (error) {
+      const payload = error instanceof JoinServiceError ? error.payload : {
+        title: "Не удалось обновить диагностику",
+        detail: "Проверка временно недоступна. Повторите попытку.",
+        errorCode: "JOIN_READINESS_UNAVAILABLE",
+      };
+      joinError.value = payload;
+      clipboardCopied.value = false;
+      preflightReport.value = {
+        ...preflightReport.value,
+        status: "blocked",
+        systemChecks: [{
+          key: "backend", status: "error", headline: payload.title,
+          reason: payload.detail, errorCode: payload.errorCode,
+          actions: ["Повторить диагностику"], blocking: true,
+        }],
+      };
+      return null;
     } finally {
       preflightRunning.value = false;
     }
@@ -102,54 +128,73 @@ export const JoinPage = component$(() => {
     }
   });
 
-  useTask$(async () => {
-    if (typeof window === "undefined") {
-      return;
+  // Browser media APIs must run after the server-rendered page resumes.
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(async () => {
+    if (!joinRunning.value) await refreshPreflight$("full");
+  }, { strategy: "document-ready" });
+
+  const submitJoin$ = $(async (meetingId: string) => {
+    try {
+      const result = await joinAction.submit({ meetingId });
+      if (typeof window !== "undefined" && result?.value) {
+        await redirectToJoin$(result.value);
+      }
+    } catch {
+      joinError.value = {
+        title: "Не удалось войти во встречу",
+        detail: "Соединение прервано. Повторите попытку.",
+        errorCode: "NETWORK_UNREACHABLE",
+      };
+      clipboardCopied.value = false;
     }
-    await refreshPreflight$("full");
   });
 
   const handleJoin$ = $(async (meetingId: string) => {
-    if (!canStartJoin(joinAction.isRunning)) {
+    if (!canStartJoin(joinRunning.value || preflightRunning.value || joinAction.isRunning)) {
       return;
     }
+    joinRunning.value = true;
     joiningMeetingId.value = meetingId;
     joinError.value = null;
     retryCount.value = 0;
     clipboardCopied.value = false;
-    const result = await joinAction.submit({ meetingId });
-    if (typeof window !== "undefined" && result?.value) {
-      await redirectToJoin$(result.value);
+    try {
+      await submitJoin$(meetingId);
+    } finally {
+      joinRunning.value = false;
     }
   });
 
   const handleRetry$ = $(async () => {
-    if (retryCount.value >= MAX_JOIN_RETRIES || !joiningMeetingId.value) {
+    if (joinRunning.value || preflightRunning.value || joinAction.isRunning ||
+        retryCount.value >= MAX_JOIN_RETRIES || !joiningMeetingId.value) {
       return;
     }
+    joinRunning.value = true;
+    const meetingId = joiningMeetingId.value;
+    try {
+      const scope = resolveRetryPreflightScope(joinError.value?.errorCode);
+      const report = await refreshPreflight$(scope);
+      if (!report) return;
+      const preflightError = createPreflightJoinError(report, scope);
+      if (preflightError) {
+        joinError.value = preflightError;
+        clipboardCopied.value = false;
+        return;
+      }
 
-    const scope = resolveRetryPreflightScope(joinError.value?.errorCode);
-    const report = await refreshPreflight$(scope);
-    const preflightError = createPreflightJoinError(report, scope);
-    if (preflightError) {
-      joinError.value = preflightError;
+      retryCount.value++;
+      joinError.value = null;
       clipboardCopied.value = false;
-      return;
-    }
-
-    retryCount.value++;
-    joinError.value = null;
-    clipboardCopied.value = false;
-    const result = await joinAction.submit({
-      meetingId: joiningMeetingId.value,
-    });
-    if (typeof window !== "undefined" && result?.value) {
-      await redirectToJoin$(result.value);
+      await submitJoin$(meetingId);
+    } finally {
+      joinRunning.value = false;
     }
   });
 
   const handleRefreshPreflight$ = $(async () => {
-    await refreshPreflight$("full");
+    if (!joinRunning.value && !joinAction.isRunning) await refreshPreflight$("full");
   });
 
   const handleCopyReport$ = $(async () => {
@@ -213,14 +258,15 @@ export const JoinPage = component$(() => {
             onRetry$={handleRetry$}
             onCopyReport$={handleCopyReport$}
             reportCopied={clipboardCopied.value}
+            retryDisabled={joinRunning.value || preflightRunning.value || joinAction.isRunning}
           />
         </div>
       ) : null}
 
       <UpcomingMeetingsList
         meetings={meetingsState.value.meetings}
-        joiningMeetingId={joinAction.isRunning ? joiningMeetingId.value : null}
-        disabled={joinAction.isRunning}
+        joiningMeetingId={joinRunning.value || joinAction.isRunning ? joiningMeetingId.value : null}
+        disabled={joinRunning.value || preflightRunning.value || joinAction.isRunning}
         onJoin$={handleJoin$}
       />
 
@@ -248,7 +294,7 @@ export const JoinPage = component$(() => {
         <div class="border-t border-border px-4 py-4">
           <JoinPreflightPanel
             report={preflightReport.value}
-            running={preflightRunning.value}
+            running={joinRunning.value || preflightRunning.value || joinAction.isRunning}
             onRefresh$={handleRefreshPreflight$}
           />
         </div>

@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from "../../shared/api";
 import type {
   AdminIncidentCoordination,
   AdminIncidentDetail,
@@ -174,7 +175,7 @@ export async function fetchAdminDashboard(
     typeof contextOrSessionCookie === "string" ? (apiUrlOrQuery as string) : undefined,
   );
   const resolvedQuery = typeof contextOrSessionCookie === "string" ? query : (apiUrlOrQuery as AdminDashboardQuery | undefined);
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(context.apiUrl, "/admin/dashboard", {
       period: resolvedQuery?.period,
       environment: resolvedQuery?.environment,
@@ -212,7 +213,7 @@ export async function fetchAdminDrillDown(
   const resolvedQuery = typeof contextOrSessionCookie === "string"
     ? (query ?? {})
     : (apiUrlOrQuery as AdminDrillDownQuery);
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(context.apiUrl, "/admin/dashboard/drill-down", {
       period: resolvedQuery.period,
       environment: resolvedQuery.environment,
@@ -250,7 +251,7 @@ export async function fetchAdminIncidents(
     typeof contextOrSessionCookie === "string" ? (apiUrlOrQuery as string) : undefined,
   );
   const resolvedQuery = typeof contextOrSessionCookie === "string" ? query : (apiUrlOrQuery as AdminIncidentsQuery | undefined);
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(context.apiUrl, "/admin/incidents", {
       period: resolvedQuery?.period,
       environment: resolvedQuery?.environment,
@@ -296,7 +297,7 @@ export async function fetchAdminIncidentDetail(
   const context = asServerRequestContext(contextOrSessionCookie, isStringOverload ? apiUrlOrIncidentId : undefined);
   const incidentId = isStringOverload ? (incidentIdOrEnvironment as string) : apiUrlOrIncidentId;
   const resolvedEnvironment = isStringOverload ? environment : incidentIdOrEnvironment;
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(context.apiUrl, `/admin/incidents/${incidentId}`, {
       environment: resolvedEnvironment,
     }),
@@ -331,7 +332,7 @@ export async function searchAdminIncidents(
   const resolvedQuery = typeof contextOrSessionCookie === "string"
     ? (query ?? {})
     : (apiUrlOrQuery as AdminIncidentSearchQuery);
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(context.apiUrl, "/admin/incidents/search", {
       environment: resolvedQuery.environment,
       traceId: resolvedQuery.traceId,
@@ -370,7 +371,7 @@ export async function createAdminIncidentTicket(
   const context = asMutationRequestContext(contextOrSessionCookie, isStringOverload ? apiUrlOrIncidentId : undefined);
   const incidentId = isStringOverload ? (incidentIdOrEnvironment as string) : apiUrlOrIncidentId;
   const resolvedEnvironment = isStringOverload ? environment : incidentIdOrEnvironment;
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(context.apiUrl, `/admin/incidents/${incidentId}/ticket`, {
       environment: resolvedEnvironment,
     }),
@@ -415,7 +416,7 @@ export async function updateAdminIncidentCoordination(
   const owner = normalizeMutationText(resolvedInput.owner);
   const ticketReference = normalizeMutationText(resolvedInput.ticketReference);
   const ticketStatus = normalizeTicketStatus(resolvedInput.ticketReference, resolvedInput.ticketStatus);
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(context.apiUrl, `/admin/incidents/${incidentId}/coordination`, {
       environment: resolvedInput.environment,
     }),
@@ -456,7 +457,7 @@ export async function fetchAdminRoleHistory(
   const resolvedQuery = typeof contextOrSessionCookie === "string"
     ? (query ?? {})
     : (apiUrlOrQuery as AdminRoleHistoryQuery);
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(context.apiUrl, "/admin/role-history", {
       environment: resolvedQuery.environment,
       q: resolvedQuery.q,
@@ -500,7 +501,7 @@ export async function fetchAdminFrameworkVersions(
   apiUrl?: string,
 ): Promise<AdminFrameworkVersions> {
   const context = asServerRequestContext(contextOrSessionCookie, apiUrl);
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(context.apiUrl, "/admin/framework-versions"),
     {
       method: "GET",
@@ -537,7 +538,7 @@ export async function refreshAdminFrameworkVersions(
     apiUrl,
     csrfToken,
   );
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     buildUrl(context.apiUrl, "/admin/framework-versions/refresh"),
     {
       method: "POST",

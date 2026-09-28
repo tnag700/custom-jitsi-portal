@@ -13,7 +13,7 @@ ROOT_TOKEN_FILE="$INIT_DIR/root-token"
 ROLE_ID_FILE="$BACKEND_DIR/role_id"
 WRAPPED_SECRET_ID_FILE="$BACKEND_DIR/wrapped-secret-id"
 
-DEV_VAULT_POSTGRES_USERNAME="${DEV_VAULT_POSTGRES_USERNAME:-jitsi}"
+DEV_VAULT_POSTGRES_USERNAME="${DEV_VAULT_POSTGRES_USERNAME:-jitsi_app}"
 DEV_VAULT_POSTGRES_PASSWORD="${DEV_VAULT_POSTGRES_PASSWORD:-dev-postgres-password}"
 DEV_VAULT_REDIS_PASSWORD="${DEV_VAULT_REDIS_PASSWORD:-dev-redis-password}"
 DEV_VAULT_KEYCLOAK_ADMIN_PASSWORD="${DEV_VAULT_KEYCLOAK_ADMIN_PASSWORD:-dev-keycloak-admin-password}"
@@ -170,7 +170,8 @@ printf '%s\n' "$ROLE_ID" > "$ROLE_ID_FILE"
 printf '%s\n' "$WRAPPED_SECRET_ID" > "$WRAPPED_SECRET_ID_FILE"
 
 write_kv_env "$RUNTIME_DIR/postgres.env" \
-  POSTGRES_PASSWORD "$(read_db_field database/static-creds/backend-app password)"
+  POSTGRES_PASSWORD "dev-bootstrap-admin-password" \
+  APP_DB_PASSWORD "$(read_db_field database/static-creds/backend-app password)"
 
 write_kv_env "$RUNTIME_DIR/redis.env" \
   REDIS_PASSWORD "$(read_kv_field kv/app/redis/runtime REDIS_PASSWORD)"

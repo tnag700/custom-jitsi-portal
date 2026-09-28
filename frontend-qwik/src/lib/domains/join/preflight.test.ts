@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createInitialPreflightReport,
   createPreflightJoinError,
   mergePreflightReport,
   resolveRetryPreflightScope,
+  runBrowserPreflight,
   type JoinPreflightReport,
 } from "./preflight";
 import type { JoinReadinessPayload } from "./types";
@@ -92,5 +93,53 @@ describe("join preflight", () => {
     expect(merged.status).toBe("degraded");
     expect(merged.systemChecks).toHaveLength(1);
     expect(merged.mediaChecks).toHaveLength(1);
+  });
+});
+
+describe("browser media lifecycle", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  function mockBrowser(getUserMedia: () => Promise<MediaStream>) {
+    vi.stubGlobal("window", globalThis);
+    vi.stubGlobal("navigator", {
+      mediaDevices: { getUserMedia, enumerateDevices: async () => [] },
+    });
+  }
+
+  it("stops every track even when permission arrives after the timeout", async () => {
+    vi.useFakeTimers();
+    const stopAudio = vi.fn();
+    const stopVideo = vi.fn();
+    let allow!: (stream: MediaStream) => void;
+    mockBrowser(() => new Promise((resolve) => { allow = resolve; }));
+    const checking = runBrowserPreflight({ publicJoinUrl: null, scope: "media" });
+    await vi.advanceTimersByTimeAsync(3001);
+    expect((await checking).mediaChecks).toContainEqual(expect.objectContaining({
+      errorCode: "MEDIA_SMOKE_TIMEOUT",
+    }));
+    allow({ getTracks: () => [{ stop: stopAudio }, { stop: stopVideo }] } as unknown as MediaStream);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(stopAudio).toHaveBeenCalledOnce();
+    expect(stopVideo).toHaveBeenCalledOnce();
+  });
+
+  it("preserves asynchronous permission denial as a blocking error", async () => {
+    mockBrowser(() => Promise.reject(new DOMException("Denied", "NotAllowedError")));
+    const report = await runBrowserPreflight({ publicJoinUrl: null, scope: "media" });
+    expect(report.mediaChecks).toContainEqual(expect.objectContaining({
+      key: "media-smoke-check", errorCode: "MEDIA_PERMISSION_DENIED", blocking: true,
+    }));
+  });
+
+  it("reports rejected device enumeration separately from timeout", async () => {
+    mockBrowser(async () => ({ getTracks: () => [] }) as unknown as MediaStream);
+    vi.spyOn(navigator.mediaDevices, "enumerateDevices").mockRejectedValue(new Error("Unavailable"));
+    const report = await runBrowserPreflight({ publicJoinUrl: null, scope: "media" });
+    expect(report.mediaChecks).toContainEqual(expect.objectContaining({
+      errorCode: "MEDIA_DEVICES_ENUMERATION_FAILED",
+    }));
   });
 });

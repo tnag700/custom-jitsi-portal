@@ -47,21 +47,21 @@ WHERE status = 'ACTIVE'
 \else
   \echo 'Expected exactly one active DEV config set; production migration aborted.'
   ROLLBACK;
-  \quit 3
+  DO $$ BEGIN RAISE EXCEPTION 'Expected exactly one active DEV config set; production migration aborted.'; END $$;
 \endif
 
 \if :no_active_prod
 \else
   \echo 'An active PROD config set already exists; production migration aborted.'
   ROLLBACK;
-  \quit 4
+  DO $$ BEGIN RAISE EXCEPTION 'An active PROD config set already exists; production migration aborted.'; END $$;
 \endif
 
 \if :exactly_one_active_total
 \else
   \echo 'Expected no additional active config sets; production migration aborted.'
   ROLLBACK;
-  \quit 5
+  DO $$ BEGIN RAISE EXCEPTION 'Expected no additional active config sets; production migration aborted.'; END $$;
 \endif
 
 WITH updated AS (
@@ -91,7 +91,7 @@ FROM updated
 \else
   \echo 'Active config set changed concurrently; production migration aborted.'
   ROLLBACK;
-  \quit 5
+  DO $$ BEGIN RAISE EXCEPTION 'Active config set changed concurrently; production migration aborted.'; END $$;
 \endif
 
 INSERT INTO config_set_audit_events (

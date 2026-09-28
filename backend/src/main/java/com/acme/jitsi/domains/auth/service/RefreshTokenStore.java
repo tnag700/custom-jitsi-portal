@@ -24,6 +24,13 @@ public interface RefreshTokenStore {
       Instant absoluteExpiresAt,
       Instant idleExpiresAt,
       TokenStatus status) {
+    public RefreshTokenState withStatus(TokenStatus nextStatus) {
+      return new RefreshTokenState(tokenId, subject, meetingId, absoluteExpiresAt, idleExpiresAt, nextStatus);
+    }
+
+    public boolean expiredAt(Instant now) {
+      return !now.isBefore(absoluteExpiresAt) || !now.isBefore(idleExpiresAt);
+    }
   }
 
   record ConsumeResult(ConsumeStatus status, RefreshTokenState state) {
@@ -35,5 +42,9 @@ public interface RefreshTokenStore {
 
   ConsumeResult rotate(String tokenId, RefreshTokenState nextState);
 
-  void revoke(String tokenId);
+  boolean revoke(String tokenId, String subject);
+
+  default Instant acceptIssuedAfter() {
+    return Instant.EPOCH;
+  }
 }

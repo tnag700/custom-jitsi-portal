@@ -14,7 +14,6 @@ BACKEND_APP_SECRET_PATH="${BACKEND_APP_SECRET_PATH:-kv/app/backend/runtime}"
 BACKEND_OIDC_SECRET_PATH="${BACKEND_OIDC_SECRET_PATH:-kv/identity/backend/oidc}"
 BACKEND_REDIS_SECRET_PATH="${BACKEND_REDIS_SECRET_PATH:-kv/app/redis/runtime}"
 BACKEND_DB_STATIC_CREDENTIAL_PATH="${BACKEND_DB_STATIC_CREDENTIAL_PATH:-database/static-creds/backend-app}"
-BACKEND_DB_DYNAMIC_CREDENTIAL_PATH="${BACKEND_DB_DYNAMIC_CREDENTIAL_PATH:-database/creds/backend-app}"
 OUTPUT_UID="${OUTPUT_UID:-10001}"
 OUTPUT_GID="${OUTPUT_GID:-10001}"
 
@@ -44,6 +43,15 @@ if runtime_bridge_is_complete; then
   echo "Backend runtime env bridge is already complete; no Vault handoff was consumed."
   exit 0
 fi
+
+BACKEND_ENV_FINAL_FILE="$BACKEND_ENV_OUTPUT_FILE"
+BACKEND_ENV_TEMP_FILE=""
+cleanup() {
+  rm -f "$TOKEN_SINK_FILE"
+  if [ -n "$BACKEND_ENV_TEMP_FILE" ]; then rm -f "$BACKEND_ENV_TEMP_FILE"; fi
+}
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
 
 shell_escape() {
   printf '%s' "$1" | sed "s/'/'\\''/g"
@@ -95,7 +103,8 @@ BACKEND_ENV_DIR="$(dirname "$BACKEND_ENV_OUTPUT_FILE")"
 mkdir -p "$BACKEND_ENV_DIR"
 chmod 0700 "$BACKEND_ENV_DIR"
 chown "$OUTPUT_UID:$OUTPUT_GID" "$BACKEND_ENV_DIR"
-: > "$BACKEND_ENV_OUTPUT_FILE"
+BACKEND_ENV_TEMP_FILE="$(mktemp "$BACKEND_ENV_DIR/.runtime.env.XXXXXX")"
+BACKEND_ENV_OUTPUT_FILE="$BACKEND_ENV_TEMP_FILE"
 
 export VAULT_TOKEN="$TOKEN"
 
@@ -104,20 +113,16 @@ write_export APP_CONFIG_SETS_ENCRYPTION_KEY "$(read_kv_field "$BACKEND_APP_SECRE
 write_export SSO_CLIENT_SECRET "$(read_kv_field "$BACKEND_OIDC_SECRET_PATH" SSO_CLIENT_SECRET)"
 write_export SPRING_DATA_REDIS_PASSWORD "$(read_kv_field "$BACKEND_REDIS_SECRET_PATH" REDIS_PASSWORD)"
 
-if read_db_field "$BACKEND_DB_STATIC_CREDENTIAL_PATH" username >/dev/null 2>&1; then
-  write_export SPRING_DATASOURCE_USERNAME "$(read_db_field "$BACKEND_DB_STATIC_CREDENTIAL_PATH" username)"
-  write_export SPRING_DATASOURCE_PASSWORD "$(read_db_field "$BACKEND_DB_STATIC_CREDENTIAL_PATH" password)"
-  write_export BACKEND_DB_ROTATION_CONTRACT "controlled-restart-static-role"
-  write_export BACKEND_DB_VAULT_SOURCE "$BACKEND_DB_STATIC_CREDENTIAL_PATH"
-else
-  write_export SPRING_DATASOURCE_USERNAME "$(read_db_field "$BACKEND_DB_DYNAMIC_CREDENTIAL_PATH" username)"
-  write_export SPRING_DATASOURCE_PASSWORD "$(read_db_field "$BACKEND_DB_DYNAMIC_CREDENTIAL_PATH" password)"
-  write_export BACKEND_DB_ROTATION_CONTRACT "lease-based-controlled-restart"
-  write_export BACKEND_DB_VAULT_SOURCE "$BACKEND_DB_DYNAMIC_CREDENTIAL_PATH"
-fi
+# database/ is a legacy-named KV v1 mount. No dynamic leases or automatic
+# password rotation are supported. Stop consumers during manual rotation.
+write_export SPRING_DATASOURCE_USERNAME "$(read_db_field "$BACKEND_DB_STATIC_CREDENTIAL_PATH" username)"
+write_export SPRING_DATASOURCE_PASSWORD "$(read_db_field "$BACKEND_DB_STATIC_CREDENTIAL_PATH" password)"
+write_export BACKEND_DB_ROTATION_CONTRACT "manual-static-kv-controlled-restart"
+write_export BACKEND_DB_VAULT_SOURCE "$BACKEND_DB_STATIC_CREDENTIAL_PATH"
 
 chmod 0600 "$BACKEND_ENV_OUTPUT_FILE"
 chown "$OUTPUT_UID:$OUTPUT_GID" "$BACKEND_ENV_OUTPUT_FILE"
+mv -f "$BACKEND_ENV_OUTPUT_FILE" "$BACKEND_ENV_FINAL_FILE"
 
 rm -f "$TOKEN_SINK_FILE"
 

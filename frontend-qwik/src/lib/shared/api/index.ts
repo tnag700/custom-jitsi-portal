@@ -1,4 +1,4 @@
-export { createApiClient, apiClient } from "./client";
+export { createApiClient, apiClient, fetchWithTimeout } from "./client";
 export type { TypedApiClient } from "./client";
 export { fetchCsrfToken, fetchCsrfTokenPair } from "./csrf";
 export type { CsrfTokenPair } from "./csrf";

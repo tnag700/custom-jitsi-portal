@@ -29,12 +29,18 @@ class UpdateMeetingUseCaseTest {
   @Mock
   private ApplicationEventPublisher eventPublisher;
 
+  @Mock
+  private com.acme.jitsi.domains.meetings.service.MeetingRoomsPort meetingRoomsPort;
+
   private UpdateMeetingUseCase useCase;
 
   @BeforeEach
   void setUp() {
+    when(meetingRoomsPort.getRequiredRoomForUpdate("room-1")).thenReturn(
+        new com.acme.jitsi.domains.meetings.service.MeetingRoomSnapshot("room-1", "Room", "tenant-1", "config-1", true, true));
     useCase = new UpdateMeetingUseCase(
         meetingRepository,
+        meetingRoomsPort,
         eventPublisher,
         Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC));
   }
@@ -55,6 +61,7 @@ class UpdateMeetingUseCaseTest {
         false,
         Instant.parse("2026-01-01T00:00:00Z"),
         Instant.parse("2026-01-01T00:00:00Z"));
+    when(meetingRepository.findByIdForUpdate(existing.meetingId())).thenReturn(java.util.Optional.of(existing));
 
     when(meetingRepository.save(any(Meeting.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -82,6 +89,7 @@ class UpdateMeetingUseCaseTest {
         Instant.parse("2026-02-17T10:00:00Z"), Instant.parse("2026-02-17T11:00:00Z"),
         true, false,
         Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z"));
+    when(meetingRepository.findByIdForUpdate(finalized.meetingId())).thenReturn(java.util.Optional.of(finalized));
 
     assertThatThrownBy(() -> useCase.execute(new UpdateMeetingCommand(
         finalized, "New title", null, null, null, null, null, null, "actor-1", "trace-1")))

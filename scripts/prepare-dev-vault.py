@@ -13,7 +13,7 @@ RUNTIME_DIR = LOCAL_DEV_ROOT / "runtime"
 
 
 PLACEHOLDER_ENV_FILES = {
-    "postgres.env": "POSTGRES_PASSWORD=bootstrap-pending\n",
+    "postgres.env": "POSTGRES_PASSWORD=bootstrap-pending\nAPP_DB_PASSWORD=bootstrap-pending\n",
     "redis.env": "REDIS_PASSWORD=bootstrap-pending\n",
     "keycloak.env": (
         "KEYCLOAK_ADMIN_PASSWORD=bootstrap-pending\n"

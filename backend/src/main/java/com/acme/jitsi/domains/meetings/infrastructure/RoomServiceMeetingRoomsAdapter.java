@@ -9,6 +9,8 @@ import com.acme.jitsi.domains.rooms.service.RoomNotFoundException;
 import com.acme.jitsi.domains.rooms.service.RoomService;
 import com.acme.jitsi.domains.rooms.service.RoomStatus;
 import org.springframework.stereotype.Component;
+import java.util.Map;
+import java.util.Set;
 
 @Component
 public class RoomServiceMeetingRoomsAdapter implements MeetingRoomsPort {
@@ -25,9 +27,23 @@ public class RoomServiceMeetingRoomsAdapter implements MeetingRoomsPort {
 
   @Override
   public MeetingRoomSnapshot getRequiredRoom(String roomId) {
+    return getRoom(roomId, false);
+  }
+
+  @Override
+  public MeetingRoomSnapshot getRequiredRoomForUpdate(String roomId) {
+    return getRoom(roomId, true);
+  }
+
+  @Override
+  public Map<String, String> getRoomNames(Set<String> roomIds) {
+    return roomService.getRoomNames(roomIds);
+  }
+
+  private MeetingRoomSnapshot getRoom(String roomId, boolean forUpdate) {
     Room room;
     try {
-      room = roomService.getRoom(roomId);
+      room = forUpdate ? roomService.getRoomForUpdate(roomId) : roomService.getRoom(roomId);
     } catch (RoomNotFoundException ex) {
       throw new MeetingRoomNotFoundException(roomId, ex);
     }

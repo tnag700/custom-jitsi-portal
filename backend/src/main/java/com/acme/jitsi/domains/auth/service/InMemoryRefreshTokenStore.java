@@ -1,99 +1,92 @@
 package com.acme.jitsi.domains.auth.service;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 class InMemoryRefreshTokenStore implements RefreshTokenStore {
 
-  private final Map<String, RefreshTokenState> tokens = new ConcurrentHashMap<>();
+  private record StoredToken(RefreshTokenState state, String familyId) {}
 
+  private final Map<String, StoredToken> tokens = new HashMap<>();
+
+  // ponytail: one monitor protects families in the development-only store; shard only if contention matters.
   @Override
-  public RefreshTokenState createIfAbsent(RefreshTokenState state) {
-    return tokens.computeIfAbsent(state.tokenId(), ignored -> state);
+  public synchronized RefreshTokenState createIfAbsent(RefreshTokenState state) {
+    cleanupExpired();
+    StoredToken existing = tokens.get(state.tokenId());
+    if (existing != null) {
+      return existing.state();
+    }
+    if (state.expiredAt(Instant.now())) {
+      return state;
+    }
+    return tokens.computeIfAbsent(state.tokenId(), ignored -> new StoredToken(state, state.tokenId())).state();
   }
 
   @Override
-  public ConsumeResult consume(String tokenId) {
-    final ConsumeStatus[] statusHolder = {ConsumeStatus.MISSING};
-    final RefreshTokenState[] stateHolder = {null};
-
-    tokens.compute(tokenId, (ignored, existing) -> {
-      if (existing == null) {
-        statusHolder[0] = ConsumeStatus.MISSING;
-        stateHolder[0] = null;
-        return null;
-      }
-
-      stateHolder[0] = existing;
-      if (existing.status() == TokenStatus.REVOKED) {
-        statusHolder[0] = ConsumeStatus.REVOKED;
-        return existing;
-      }
-      if (existing.status() == TokenStatus.USED) {
-        statusHolder[0] = ConsumeStatus.USED;
-        return existing;
-      }
-
-      statusHolder[0] = ConsumeStatus.CONSUMED;
-      return new RefreshTokenState(
-          existing.tokenId(),
-          existing.subject(),
-          existing.meetingId(),
-          existing.absoluteExpiresAt(),
-          existing.idleExpiresAt(),
-          TokenStatus.USED);
-    });
-
-    return new ConsumeResult(statusHolder[0], stateHolder[0]);
+  public synchronized ConsumeResult consume(String tokenId) {
+    return consumeOrRotate(tokenId, null);
   }
 
   @Override
   public synchronized ConsumeResult rotate(String tokenId, RefreshTokenState nextState) {
-    RefreshTokenState existing = tokens.get(tokenId);
-    if (existing == null) {
+    return consumeOrRotate(tokenId, java.util.Objects.requireNonNull(nextState));
+  }
+
+  private ConsumeResult consumeOrRotate(String tokenId, RefreshTokenState nextState) {
+    cleanupExpired();
+    StoredToken stored = tokens.get(tokenId);
+    if (stored == null) {
       return new ConsumeResult(ConsumeStatus.MISSING, null);
     }
-    if (existing.status() == TokenStatus.REVOKED) {
-      return new ConsumeResult(ConsumeStatus.REVOKED, existing);
+    RefreshTokenState current = stored.state();
+    if (current.status() == TokenStatus.REVOKED) {
+      return new ConsumeResult(ConsumeStatus.REVOKED, current);
     }
-    if (existing.status() == TokenStatus.USED) {
-      return new ConsumeResult(ConsumeStatus.USED, existing);
+    if (current.status() == TokenStatus.USED) {
+      revokeFamily(stored.familyId());
+      return new ConsumeResult(ConsumeStatus.USED, current);
     }
-
-    RefreshTokenState consumed = new RefreshTokenState(
-        existing.tokenId(),
-        existing.subject(),
-        existing.meetingId(),
-        existing.absoluteExpiresAt(),
-        existing.idleExpiresAt(),
-        TokenStatus.USED);
-    tokens.put(tokenId, consumed);
-    tokens.put(nextState.tokenId(), nextState);
-    return new ConsumeResult(ConsumeStatus.CONSUMED, consumed);
+    if (current.expiredAt(Instant.now())) {
+      return new ConsumeResult(ConsumeStatus.MISSING, current);
+    }
+    if (nextState != null) {
+      if (tokens.containsKey(nextState.tokenId())) {
+        throw new IllegalStateException("A refresh successor token ID already exists.");
+      }
+      if (!current.subject().equals(nextState.subject()) || !current.meetingId().equals(nextState.meetingId())) {
+        throw new IllegalArgumentException("A refresh successor must belong to the same session.");
+      }
+      Instant idle = nextState.idleExpiresAt().isBefore(current.absoluteExpiresAt())
+          ? nextState.idleExpiresAt() : current.absoluteExpiresAt();
+      var successor = new RefreshTokenState(nextState.tokenId(), current.subject(), current.meetingId(),
+          current.absoluteExpiresAt(), idle, TokenStatus.ACTIVE);
+      tokens.put(successor.tokenId(), new StoredToken(successor, stored.familyId()));
+    }
+    RefreshTokenState used = current.withStatus(TokenStatus.USED);
+    tokens.put(tokenId, new StoredToken(used, stored.familyId()));
+    return new ConsumeResult(ConsumeStatus.CONSUMED, used);
   }
 
   @Override
-  public void revoke(String tokenId) {
-    tokens.compute(tokenId, (ignored, existing) -> {
-      if (existing == null) {
-        Instant placeholderExpiry = Instant.now().plus(30, ChronoUnit.DAYS);
-        return new RefreshTokenState(
-            tokenId,
-            "",
-            "",
-            placeholderExpiry,
-            placeholderExpiry,
-            TokenStatus.REVOKED);
-      }
-      return new RefreshTokenState(
-          existing.tokenId(),
-          existing.subject(),
-          existing.meetingId(),
-          existing.absoluteExpiresAt(),
-          existing.idleExpiresAt(),
-          TokenStatus.REVOKED);
-    });
+  public synchronized boolean revoke(String tokenId, String subject) {
+    cleanupExpired();
+    StoredToken stored = tokens.get(tokenId);
+    if (stored == null || !stored.state().subject().equals(subject)) {
+      return false;
+    }
+    revokeFamily(stored.familyId());
+    return true;
+  }
+
+  private void revokeFamily(String familyId) {
+    tokens.replaceAll((id, token) -> token.familyId().equals(familyId)
+        ? new StoredToken(token.state().withStatus(TokenStatus.REVOKED), familyId) : token);
+  }
+
+  synchronized void cleanupExpired() {
+    Instant now = Instant.now();
+    tokens.values().removeIf(token -> !now.isBefore(token.state().absoluteExpiresAt()));
   }
 }

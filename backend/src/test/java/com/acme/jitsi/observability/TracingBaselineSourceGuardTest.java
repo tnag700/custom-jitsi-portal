@@ -66,7 +66,7 @@ class TracingBaselineSourceGuardTest {
         .contains("TestSpanExporter")
         .contains("/api/v1/test/idempotent")
         .contains("SpanKind.SERVER")
-        .contains("matchesIdempotencyRedisMutation")
+        .contains("matchesIdempotencyDatabaseMutation")
         .contains("db.operation.name");
 
     assertThat(containerSupport)

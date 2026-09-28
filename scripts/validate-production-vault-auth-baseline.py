@@ -76,8 +76,7 @@ def main() -> None:
         ("kv/data/app/redis/*", "Backend policy must declare bounded Redis credential access explicitly."),
         ("kv/data/identity/backend/*", "Backend policy must document bounded identity-related access."),
         ("kv/data/backup/backend/*", "Backend policy must document bounded backup-related access."),
-        ("database/creds/backend-app", "Backend policy must keep database secrets engine as the preferred DB credential target."),
-        ("database/static-creds/backend-app", "Backend policy must document transitional static-role DB access for current long-lived consumers."),
+        ("database/static-creds/backend-app", "Backend policy must document static KV v1 DB access for current long-lived consumers."),
     ]:
         assert_contains(backend_policy, needle, message)
     for forbidden in ["sys/*", "auth/*", "kv/*"]:
@@ -86,9 +85,10 @@ def main() -> None:
     assert_contains(keycloak_policy, "kv/data/identity/keycloak/*", "Keycloak mapping must stay inside identity/keycloak contour.")
     assert_contains(jitsi_policy, "kv/data/realtime/jitsi/*", "Jitsi mapping must stay inside realtime/jitsi contour.")
     assert_contains(backup_policy, "kv/data/backup/runner/*", "Backup runner policy must stay inside backup contour.")
-    assert_contains(backup_policy, "database/creds/backup-job", "Backup runner policy must declare DB credential target explicitly.")
-    assert_contains(backup_policy, "database/static-creds/backup-job", "Backup runner policy must document transitional static-role DB access explicitly.")
-    assert_contains(keycloak_policy, "database/static-creds/keycloak-app", "Keycloak policy must document transitional static-role DB access explicitly.")
+    for policy in (backend_policy, keycloak_policy, backup_policy):
+        assert_not_contains(policy, "database/creds/", "Dynamic DB leases are unsupported; do not grant access to that path.")
+    assert_contains(backup_policy, "database/static-creds/backup-job", "Backup runner policy must document static KV v1 DB access explicitly.")
+    assert_contains(keycloak_policy, "database/static-creds/keycloak-app", "Keycloak policy must document static KV v1 DB access explicitly.")
     assert_not_contains(keycloak_policy, "kv/data/app/", "Keycloak mapping must not read backend app secrets.")
     assert_not_contains(jitsi_policy, "kv/data/app/", "Jitsi mapping must not read backend app secrets.")
 
@@ -117,8 +117,8 @@ def main() -> None:
     assert_contains(startup_fetch, "auth/approle-workloads/login", "Backend startup fetch example must log in through the scoped AppRole mount.")
 
     for needle, message in [
-        ("database/creds/*", "Auth README must document database secrets engine target paths."),
-        ("database/static-creds/*", "Auth README must document transitional static-role DB target paths."),
+        ("manual-static-kv-controlled-restart", "Auth README must document the actual static KV manual rotation contract."),
+        ("database/static-creds/*", "Auth README must document static KV v1 DB target paths."),
         ("Frontend SSR и browser runtime не становятся Vault clients по умолчанию.", "Auth README must keep browser and SSR outside the default Vault client model."),
         ("Keycloak и Jitsi не становятся direct Vault clients автоматически.", "Auth README must keep Keycloak and Jitsi on reviewable mapping rules only."),
         ("backend-scoped bootstrap helper container", "Auth README must describe the runnable backend bootstrap helper path."),

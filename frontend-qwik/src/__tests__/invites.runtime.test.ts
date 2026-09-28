@@ -118,6 +118,7 @@ describe("invites exchange runtime", () => {
       "http://localhost:8080/api/v1/invites/validate",
       {
         method: "POST",
+        signal: expect.any(AbortSignal),
         headers: {
           "Content-Type": "application/json",
         },

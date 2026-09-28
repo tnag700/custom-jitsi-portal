@@ -21,7 +21,7 @@ FROM production_backend_client
 \else
   \echo 'Expected exactly one jitsi/jitsi-backend client; migration aborted.'
   ROLLBACK;
-  \quit 3
+  DO $$ BEGIN RAISE EXCEPTION 'Expected exactly one jitsi/jitsi-backend client'; END $$;
 \endif
 
 INSERT INTO client_attributes (client_id, name, value)
@@ -30,6 +30,16 @@ SELECT
   'post.logout.redirect.uris',
   'https://jitsi-mgorka.top/auth'
 FROM production_backend_client
+ON CONFLICT (client_id, name)
+DO UPDATE SET value = EXCLUDED.value;
+
+INSERT INTO client_attributes (client_id, name, value)
+SELECT id, policy.name, policy.value
+FROM production_backend_client
+CROSS JOIN (VALUES
+  ('backchannel.logout.url', 'http://backend:8080/logout/connect/back-channel/keycloak'),
+  ('backchannel.logout.session.required', 'true')
+) AS policy(name, value)
 ON CONFLICT (client_id, name)
 DO UPDATE SET value = EXCLUDED.value;
 

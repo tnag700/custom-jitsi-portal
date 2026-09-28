@@ -45,6 +45,7 @@ class UpdateRoomUseCaseTest {
   @Test
   void executeUpdatesRoomAndPublishesEvent() {
     Room existing = TestFixtures.room("room-1", "Old", "desc", "tenant-1", "config-1", RoomStatus.ACTIVE);
+    when(roomRepository.findByIdForUpdate(existing.roomId())).thenReturn(java.util.Optional.of(existing));
     when(roomRepository.existsByNameAndTenantIdAndRoomIdNot("New", "tenant-1", "room-1")).thenReturn(false);
     when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

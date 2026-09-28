@@ -6,6 +6,7 @@ import com.acme.jitsi.domains.rooms.service.Room;
 import com.acme.jitsi.domains.rooms.service.RoomAlreadyClosedException;
 import com.acme.jitsi.domains.rooms.service.RoomHasActiveMeetingsException;
 import com.acme.jitsi.domains.rooms.service.RoomRepository;
+import com.acme.jitsi.domains.rooms.service.RoomNotFoundException;
 import com.acme.jitsi.domains.rooms.service.RoomStatus;
 import com.acme.jitsi.infrastructure.usecase.UseCase;
 import java.time.Clock;
@@ -36,7 +37,8 @@ public class CloseRoomUseCase implements UseCase<CloseRoomCommand, Room> {
   @Override
   @Transactional
   public Room execute(CloseRoomCommand command) {
-    Room existing = command.existing();
+    Room existing = roomRepository.findByIdForUpdate(command.existing().roomId())
+        .orElseThrow(() -> new RoomNotFoundException(command.existing().roomId()));
 
     if (existing.status() == RoomStatus.CLOSED) {
       throw new RoomAlreadyClosedException(existing.roomId());

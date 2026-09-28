@@ -25,7 +25,7 @@ class RefreshSessionValidatorChain {
       throw new AuthTokenException(HttpStatus.FORBIDDEN, ErrorCode.TOKEN_REVOKED.code(), "Сессия отозвана. Выполните вход через SSO.");
     }
 
-    if (now.isAfter(knownState.absoluteExpiresAt()) || now.isAfter(knownState.idleExpiresAt())) {
+    if (knownState.expiredAt(now)) {
       securityEventPublisher.publish(
           "REFRESH_EXPIRED",
           ErrorCode.AUTH_REQUIRED.code(),

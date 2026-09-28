@@ -141,6 +141,7 @@ class MeetingInvitesControllerBulkTest {
             .with(csrf())
             .with(adminLogin("tenant-1"))
             .header("X-Trace-Id", "trace-bulk-partial")
+            .header("Idempotency-Key", "bulk-partial")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {
@@ -161,6 +162,16 @@ class MeetingInvitesControllerBulkTest {
         .andExpect(jsonPath("$.properties.summary.created").value(1))
         .andExpect(jsonPath("$.properties.summary.failed").value(1))
         .andExpect(jsonPath("$.properties.errors[0].rowIndex").value(2));
+    org.assertj.core.api.Assertions.assertThat(jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM meeting_invites WHERE meeting_id = ?", Integer.class, meetingId)).isEqualTo(1);
+    mockMvc.perform(post("/api/v1/meetings/{meetingId}/invites/bulk", meetingId)
+            .with(csrf()).with(adminLogin("tenant-1"))
+            .header("Idempotency-Key", "bulk-partial")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"recipients":[{"email":"valid@example.com","role":"participant"}]}
+                """))
+        .andExpect(status().isConflict());
   }
 
   @Test

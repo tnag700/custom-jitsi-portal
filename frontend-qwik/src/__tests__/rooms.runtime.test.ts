@@ -73,12 +73,12 @@ describe("rooms.service runtime: fetchRooms", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/config-sets/active?tenantId=tenant-1&environmentType=DEV",
-      {
+      expect.objectContaining({
         method: "GET",
         headers: {
           Cookie: "JSESSIONID=sess-1",
         },
-      },
+      }),
     );
     expect(result).toBe("cfg-active");
   });
@@ -106,12 +106,12 @@ describe("rooms.service runtime: fetchRooms", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/v1/rooms?tenantId=tenant%20a%2Fb&page=2&size=10",
-      {
+      expect.objectContaining({
         method: "GET",
         headers: {
           Cookie: "JSESSIONID=sess-1",
         },
-      },
+      }),
     );
     expect(result).toEqual(payload);
   });

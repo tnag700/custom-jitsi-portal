@@ -16,7 +16,9 @@ public class RefreshSecurityEventPublisher {
     this.clock = clock;
   }
 
-  void publish(String eventType, String errorCode, String tokenId, String subject, String meetingId) {
+  @org.springframework.transaction.annotation.Transactional(
+      propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+  public void publish(String eventType, String errorCode, String tokenId, String subject, String meetingId) {
     eventPublisher.publishEvent(new AuthRefreshSecurityEvent(
         eventType,
         errorCode,

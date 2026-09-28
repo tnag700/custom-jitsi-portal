@@ -60,21 +60,16 @@ public class AuthRefreshService {
     this.refreshRotationService = refreshRotationService;
     this.securityEventPublisher = securityEventPublisher;
     this.flowObservationFacade = flowObservationFacade;
-
-    if (refreshProperties.revokedTokenIds() != null) {
-      refreshProperties.revokedTokenIds().stream()
-          .filter(tokenId -> tokenId != null && !tokenId.isBlank())
-          .forEach(refreshTokenStore::revoke);
-    }
   }
 
-  public void revoke(String tokenId) {
-    if (tokenId == null || tokenId.isBlank()) {
+  public void revoke(String tokenId, String subject) {
+    if (tokenId == null || !tokenId.matches("[A-Za-z0-9._:-]{1,255}") || subject == null || subject.isBlank()) {
       throw new AuthTokenException(HttpStatus.BAD_REQUEST, ErrorCode.INVALID_REQUEST.code(), "Требуется идентификатор refresh-токена.");
     }
 
-    refreshTokenStore.revoke(tokenId);
-    securityEventPublisher.publish("TOKEN_REFRESH_REVOKED", ErrorCode.TOKEN_REVOKED.code(), tokenId, "", "");
+    if (refreshTokenStore.revoke(tokenId, subject)) {
+      securityEventPublisher.publish("TOKEN_REFRESH_REVOKED", ErrorCode.TOKEN_REVOKED.code(), tokenId, subject, "");
+    }
   }
 
   public RefreshResult refresh(String serializedRefreshToken) {
@@ -92,11 +87,19 @@ public class AuthRefreshService {
 
       Instant now = Instant.now();
       rejectPreCutoverToken(parsed);
+      if (refreshProperties.revokedTokenIds() != null && refreshProperties.revokedTokenIds().contains(parsed.tokenId())) {
+        securityEventPublisher.publish("REFRESH_REVOKED", ErrorCode.TOKEN_REVOKED.code(),
+            parsed.tokenId(), parsed.subject(), parsed.meetingId());
+        throw new AuthTokenException(HttpStatus.FORBIDDEN, ErrorCode.TOKEN_REVOKED.code(), "Сессия отозвана. Выполните вход через SSO.");
+      }
 
       RefreshTokenStore.RefreshTokenState knownState;
       try {
         observation.stage("validate_known_state");
         knownState = refreshTokenStore.createIfAbsent(initialStateFromParsedToken(parsed));
+        if (knownState.status() == RefreshTokenStore.TokenStatus.USED) {
+          refreshSessionValidatorChain.requireConsumable(refreshTokenStore.consume(parsed.tokenId()), parsed);
+        }
         refreshSessionValidatorChain.validateKnownState(knownState, now);
       } catch (RuntimeException ex) {
         classifyRefreshFailure(observation, ex, "validate_known_state");
@@ -169,6 +172,10 @@ public class AuthRefreshService {
 
   private void rejectPreCutoverToken(RefreshTokenPayload parsed) {
     Instant acceptIssuedAfter = refreshProperties.acceptIssuedAfter();
+    Instant persistedFloor = refreshTokenStore.acceptIssuedAfter();
+    if (persistedFloor != null && (acceptIssuedAfter == null || persistedFloor.isAfter(acceptIssuedAfter))) {
+      acceptIssuedAfter = persistedFloor;
+    }
     if (acceptIssuedAfter == null || parsed.issuedAt().isAfter(acceptIssuedAfter)) {
       return;
     }

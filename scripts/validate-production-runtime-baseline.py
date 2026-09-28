@@ -130,6 +130,12 @@ def main() -> None:
         "The runtime-mounted Vault TLS directory must never receive the CA private key.",
     )
 
+    for database_service, runtime_assignment in [("db", "APP_DB_USER=${SPRING_DATASOURCE_USERNAME:-jitsi_app}"), ("keycloak-db", "APP_DB_USER=${KC_DB_USERNAME:-keycloak_app}")]:
+        database_block = get_service_block(base_text, database_service)
+        assert_contains(database_block, runtime_assignment, "Each database must use its service-specific runtime role.")
+        assert_contains(database_block, "./deploy/postgres/init-runtime-role.sh:/docker-entrypoint-initdb.d/10-runtime-role.sh:ro", "Fresh database volumes must initialize the non-superuser runtime role.")
+    assert_contains(get_service_block(base_text, "keycloak"), "KC_DB_USERNAME=${KC_DB_USERNAME:-keycloak_app}", "Keycloak must not use the bootstrap database user.")
+
     jvb_block = get_service_block(base_text, "jitsi-jvb")
     assert_contains(
         jvb_block,
@@ -246,6 +252,11 @@ def main() -> None:
     production_realm = json.loads(production_realm_path.read_text(encoding="utf-8"))
     if production_realm.get("users"):
         fail("Production Keycloak realm must not seed test users.")
+    backend_client = next(client for client in production_realm["clients"] if client["clientId"] == "jitsi-backend")
+    attributes = backend_client.get("attributes", {})
+    if attributes.get("backchannel.logout.url") != "${OIDC_BACKCHANNEL_LOGOUT_URI}" or attributes.get("backchannel.logout.session.required") != "true":
+        fail("Production Keycloak client must enable session-aware backchannel logout.")
+    assert_contains(keycloak_block, "OIDC_BACKCHANNEL_LOGOUT_URI=http://backend:8080/logout/connect/back-channel/keycloak", "Keycloak must reach backchannel logout through the private backend address.")
 
     least_privilege_base_services = [
         "nginx-cert-bootstrap",

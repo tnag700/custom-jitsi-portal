@@ -148,7 +148,7 @@ describe("profile.service runtime", () => {
   });
 
   it("throws ProfileServiceError with fallback code for 5xx", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({}, 503));
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => jsonResponse({}, 503));
 
     await expect(
       upsertMyProfile("sess", "http://localhost:8080/api/v1", "csrf", {
@@ -170,7 +170,7 @@ describe("profile.service runtime", () => {
   });
 
   it("fetchMyProfile throws ProfileServiceError with AUTH_REQUIRED on 401", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
       jsonResponse(
         {
           errorCode: "AUTH_REQUIRED",
@@ -193,7 +193,7 @@ describe("profile.service runtime", () => {
   });
 
   it("fetchMyProfile throws ProfileServiceError with fallback code on 500", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({}, 500));
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => jsonResponse({}, 500));
 
     await expect(
       fetchMyProfile("sess", "http://localhost:8080/api/v1"),
