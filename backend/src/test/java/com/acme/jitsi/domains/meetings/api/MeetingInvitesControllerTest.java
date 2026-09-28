@@ -19,6 +19,8 @@ import com.acme.jitsi.shared.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.Method;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -117,6 +119,7 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
     roomId = JsonPath.parse(roomResponse).read("$.roomId");
 
     // Create meeting
+    Instant startsAt = Instant.now().plus(3, ChronoUnit.DAYS);
     String meetingResponse = mockMvc.perform(post("/api/v1/rooms/{roomId}/meetings", roomId)
             .with(csrf())
             .with(TestFixtures.adminLogin("tenant-1"))
@@ -127,11 +130,11 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
                   "title": "Invite Test Meeting",
                   "description": "Meeting for testing invites",
                   "meetingType": "scheduled",
-                  "startsAt": "2026-02-17T10:00:00Z",
-                  "endsAt": "2026-02-17T11:00:00Z",
+                  "startsAt": "%s",
+                  "endsAt": "%s",
                   "allowGuests": true
                 }
-                """))
+                """.formatted(startsAt, startsAt.plus(1, ChronoUnit.HOURS))))
         .andExpect(status().isCreated())
         .andReturn().getResponse().getContentAsString();
 
@@ -190,6 +193,7 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
 
     String roomId = JsonPath.parse(roomResponse).read("$.roomId");
 
+    Instant startsAt = Instant.now().plus(3, ChronoUnit.DAYS);
     String meetingResponse = mockMvc.perform(post("/api/v1/rooms/{roomId}/meetings", roomId)
             .with(csrf())
             .with(oauth2Login()
@@ -204,10 +208,11 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
                   "title": "Invite idempotency meeting",
                   "description": "Create once",
                   "meetingType": "scheduled",
-                  "startsAt": "2026-02-17T10:00:00Z",
-                  "endsAt": "2026-02-17T11:00:00Z"
+                  "startsAt": "%s",
+                  "endsAt": "%s",
+                  "allowGuests": true
                 }
-                """))
+                """.formatted(startsAt, startsAt.plus(1, ChronoUnit.HOURS))))
         .andExpect(status().isCreated())
         .andReturn().getResponse().getContentAsString();
 
@@ -622,7 +627,8 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
             .content("""
                 {
                   "role": "participant",
-                  "maxUses": 0
+                  "maxUses": 0,
+                  "expiresInHours": 24
                 }
                 """))
         .andExpect(status().isBadRequest())
@@ -652,7 +658,7 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
                 """))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.VALIDATION_ERROR.code()));
+        .andExpect(jsonPath("$.properties.errorCode").value(ErrorCode.INVALID_REQUEST.code()));
   }
 
   // AC6: List invites for non-existent meeting returns not found
@@ -703,7 +709,8 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
             .content("""
                 {
                   "role": "participant",
-                  "maxUses": 5
+                  "maxUses": 5,
+                  "expiresInHours": 24
                 }
                 """))
         .andExpect(status().isForbidden());
@@ -763,7 +770,8 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
             .content("""
                 {
                   "role": "participant",
-                  "maxUses": 5
+                  "maxUses": 5,
+                  "expiresInHours": 24
                 }
                 """))
         .andExpect(status().isCreated())
@@ -798,4 +806,3 @@ class MeetingInvitesControllerTest extends RedisBackedMeetingApiIntegrationTestS
         .andExpect(jsonPath("$.pageSize").value(20));
   }
 }
-

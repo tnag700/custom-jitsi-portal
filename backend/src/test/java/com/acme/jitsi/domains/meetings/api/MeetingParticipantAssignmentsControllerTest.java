@@ -274,21 +274,18 @@ class MeetingParticipantAssignmentsControllerTest {
         .header("X-Trace-Id", "trace-unassign-1"))
         .andExpect(status().isNoContent());
 
-    long eventCount = applicationEvents.stream(MeetingParticipantRemovedEvent.class)
+    var removedEvents = applicationEvents.stream(MeetingParticipantRemovedEvent.class)
         .filter(e -> e.meetingId().equals(meetingId)
             && e.roomId().equals(roomId)
             && e.actorId().equals("admin-user")
-        && !e.traceId().isBlank()
+            && !e.traceId().isBlank()
             && e.subjectId().equals("user-delete-1")
             && e.changedFields().equals("subjectId:user-delete-1;role:participant->none"))
-        .count();
-    assertEquals(1, eventCount);
+        .toList();
+    assertEquals(1, removedEvents.size());
 
-        Integer auditCount = jdbcTemplate.queryForObject(
-          "SELECT COUNT(*) FROM meeting_audit_events WHERE action_type = ?",
-          Integer.class,
-          "unassign");
-        assertEquals(1, auditCount);
+    Integer auditCount = awaitAuditCount(removedEvents.getFirst().traceId(), "unassign");
+    assertEquals(1, auditCount);
   }
 
   @Test

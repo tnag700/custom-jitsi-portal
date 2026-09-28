@@ -39,7 +39,10 @@ class AuthRefreshSecurityEventListenerTest {
           Instant.now()));
 
       assertThat(appender.list).isNotEmpty();
-      ILoggingEvent event = appender.list.getFirst();
+      ILoggingEvent event = appender.list.stream()
+          .filter(item -> item.getFormattedMessage().contains("tokenId=token-1"))
+          .findFirst()
+          .orElseThrow();
       assertThat(event.getLevel()).isEqualTo(Level.WARN);
       assertThat(event.getFormattedMessage()).contains("auth_audit_event");
       assertThat(event.getFormattedMessage()).contains(ErrorCode.REFRESH_REUSE_DETECTED.code());
@@ -102,7 +105,10 @@ class AuthRefreshSecurityEventListenerTest {
           Instant.now()));
 
       assertThat(appender.list).isNotEmpty();
-      ILoggingEvent event = appender.list.getFirst();
+      ILoggingEvent event = appender.list.stream()
+          .filter(item -> item.getFormattedMessage().contains("tokenId=token-2"))
+          .findFirst()
+          .orElseThrow();
       assertThat(event.getLevel()).isEqualTo(Level.INFO);
       assertThat(event.getFormattedMessage()).contains("auth_audit_event");
       assertThat(event.getFormattedMessage()).contains("TOKEN_REFRESHED");
@@ -120,5 +126,4 @@ class AuthRefreshSecurityEventListenerTest {
     }
   }
 }
-
 

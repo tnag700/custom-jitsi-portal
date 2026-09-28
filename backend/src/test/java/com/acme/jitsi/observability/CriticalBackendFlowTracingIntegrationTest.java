@@ -100,7 +100,7 @@ class CriticalBackendFlowTracingIntegrationTest {
         .andExpect(status().isOk());
 
     List<SpanData> spans = testSpanExporter.await(
-        exported -> hasSpan(exported, "invite.exchange"),
+        exported -> hasServerSpanForFlow(exported, "invite.exchange", "/api/v1/invites/exchange"),
         Duration.ofSeconds(5));
 
     SpanData customSpan = findSpan(spans, "invite.exchange");
@@ -133,7 +133,8 @@ class CriticalBackendFlowTracingIntegrationTest {
 
     List<SpanData> spans = testSpanExporter.await(
         exported -> hasSpan(exported, "auth.refresh") && hasSpan(exported, "auth.refresh.rotation")
-            && hasSpan(exported, "config.compatibility.check"),
+            && hasSpan(exported, "config.compatibility.check")
+            && hasServerSpanForFlow(exported, "auth.refresh", "/api/v1/auth/refresh"),
         Duration.ofSeconds(5));
 
     SpanData authSpan = findSpan(spans, "auth.refresh");
@@ -164,7 +165,9 @@ class CriticalBackendFlowTracingIntegrationTest {
         .andExpect(status().isOk());
 
     List<SpanData> spans = testSpanExporter.await(
-        exported -> hasSpan(exported, "meetings.access-token.issue") && hasSpan(exported, "config.compatibility.check"),
+        exported -> hasSpan(exported, "config.compatibility.check")
+            && hasServerSpanForFlow(
+                exported, "meetings.access-token.issue", "/api/v1/meetings/meeting-a/access-token"),
         Duration.ofSeconds(5));
 
     SpanData meetingSpan = findSpan(spans, "meetings.access-token.issue");
@@ -177,6 +180,13 @@ class CriticalBackendFlowTracingIntegrationTest {
 
   private static boolean hasSpan(List<SpanData> spans, String name) {
     return spans.stream().anyMatch(span -> name.equals(span.getName()));
+  }
+
+  private static boolean hasServerSpanForFlow(List<SpanData> spans, String flowName, String path) {
+    return spans.stream()
+        .filter(span -> flowName.equals(span.getName()))
+        .anyMatch(flow -> spans.stream().anyMatch(server -> isServerSpanForPath(server, path)
+            && server.getTraceId().equals(flow.getTraceId())));
   }
 
   private static SpanData findSpan(List<SpanData> spans, String name) {
