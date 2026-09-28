@@ -20,12 +20,14 @@
 `resolved` в локальный тестовый приёмник. Task 4 остаётся частичным:
 фильтры статуса комнат, встреч и инвайтов работают на текущей странице.
 Task 0 частичен без SQL/SSR/JVB baseline, Task 6 ждёт измерений, Task 8 —
-исследование. Внешний WebRTC и запуск workflow на PR ещё не проверены.
+исследование. GitHub workflow прошёл на `c55285f` через ручной
+`workflow_dispatch`; внешний WebRTC и запуск workflow на PR ещё не проверены.
 
 **Validation:** 2026-09-28. Пункт о недолговечности meeting audit снят:
 JDBC registry уже подключён. Task 8 проверяет восстановление существующего
-механизма. SQL count — оценка пути; workflow добавлен, но внешний PR gate
-и required check ещё не проверены. Результаты production smoke описаны в
+механизма. SQL count — оценка пути; ручной GitHub gate прошёл, но событие PR
+не проверено, а у `main` нет branch protection или required check.
+Результаты production smoke описаны в
 [ревью](../../review-2026-09-28.md).
 
 ## Общие ограничения
