@@ -1,5 +1,24 @@
 # Operations runbook
 
+## LAN browser timeout while the VM is healthy
+
+Check the path from the affected client before treating a VM-local HTTPS 200
+as proof of browser access. Compare DNS for all three canonical names, a
+hostname-preserving TLS connection to the VM LAN address, and a connection to
+the public address. A local HTTP/SOCKS proxy may send the names to a remote
+resolver, so its approved routing policy must be checked separately. Internal
+clients need split DNS to `10.10.100.29` plus a compatible proxy route, or
+working NAT reflection; external clients need the DNAT/firewall rules in the
+[deployment guide](deployment-production.md#dns-and-router-prerequisites).
+
+On 2026-09-28, the LAN client resolved the names to `86.57.222.216`. Direct
+TLS to `10.10.100.29` passed, while TLS to the public address was reset and
+the proxied request timed out. A simultaneous capture on the VM saw the LAN
+connection but no packet from the public/proxy attempt. The VM's observed
+outbound public IP matched DNS. This localizes the failure before the VM;
+the network operator must check the router/ISP NAT and firewall path. Do not
+disable endpoint protection or assume an application restart repairs it.
+
 ## Phase 1 alerting
 
 Canonical alert definitions live in

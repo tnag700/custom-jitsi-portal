@@ -165,10 +165,11 @@ tenant's active PROD config set in the room editor. Local development defaults
 to `DEV`; this selector is separate from the backend Spring profile. Confirm
 the tenant has an active PROD set before opening `/rooms`.
 
-The pending meeting-ID room key change must be released after active Jitsi
-conferences have ended and previously issued join JWTs have expired. Inventory
-active rooms and links before choosing the cutover window: a mid-conference
-change would send new participants to a different Jitsi room.
+The meeting-ID room key was released on 2026-09-28 after observing no active
+JVB conferences and no access-token issuance for 25 minutes (JWT TTL: 20
+minutes). For any later room-identity change, inventory active conferences and
+issued links before cutover: a mid-conference change would send new
+participants to a different Jitsi room.
 
 When restoring the development application database for the first production
 cutover, promote its single active config set before starting the backend. The
