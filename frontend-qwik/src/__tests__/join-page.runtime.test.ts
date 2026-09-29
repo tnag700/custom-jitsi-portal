@@ -129,4 +129,20 @@ describe("join page lifecycle", () => {
     await state.props.preflight.onRefresh$();
     expect(state.props.preflight.running).toBe(false);
   });
+
+  it("retries automatic diagnostics without a meeting and clears the recovered error", async () => {
+    await renderPage();
+    state.readiness.mockRejectedValueOnce(new Error("temporary outage"));
+    for (const task of state.visibleTasks) await task({});
+    await renderPage();
+    expect(state.props.error.error.errorCode).toBe("JOIN_READINESS_UNAVAILABLE");
+
+    await state.props.error.onRetry$();
+    state.props.error = undefined;
+    await renderPage();
+    expect(state.readiness).toHaveBeenCalledTimes(2);
+    expect(state.props.error).toBeUndefined();
+    expect(state.props.preflight.report.status).toBe("ready");
+    expect(state.action.submit).not.toHaveBeenCalled();
+  });
 });

@@ -94,6 +94,10 @@ export const JoinPage = component$(() => {
         scope,
       );
       preflightReport.value = nextReport;
+      if (!joiningMeetingId.value && joinError.value) {
+        joinError.value = createPreflightJoinError(nextReport, scope);
+        clipboardCopied.value = false;
+      }
       return nextReport;
     } catch (error) {
       const payload = error instanceof JoinServiceError ? error.payload : {
@@ -167,10 +171,14 @@ export const JoinPage = component$(() => {
   });
 
   const handleRetry$ = $(async () => {
-    if (joinRunning.value || preflightRunning.value || joinAction.isRunning ||
-        retryCount.value >= MAX_JOIN_RETRIES || !joiningMeetingId.value) {
+    if (joinRunning.value || preflightRunning.value || joinAction.isRunning) {
       return;
     }
+    if (!joiningMeetingId.value) {
+      await refreshPreflight$("full");
+      return;
+    }
+    if (retryCount.value >= MAX_JOIN_RETRIES) return;
     joinRunning.value = true;
     const meetingId = joiningMeetingId.value;
     try {
