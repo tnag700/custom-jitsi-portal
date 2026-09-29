@@ -433,6 +433,7 @@ class SecurityConfigRouteMatrixTest {
         false,
         0,
         0,
+        0,
         List.of());
   }
 }

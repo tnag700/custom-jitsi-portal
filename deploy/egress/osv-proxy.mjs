@@ -3,13 +3,16 @@ import net from "node:net";
 import { pathToFileURL } from "node:url";
 
 export function createOsvProxy({
-  targetHost = "api.osv.dev",
+  allowedHosts = ["api.osv.dev", "repo.maven.apache.org", "registry.npmjs.org"],
   targetPort = 443,
   listenHost = "0.0.0.0",
   listenPort = 3128,
   maxConnections = 32,
 } = {}) {
   let activeConnections = 0;
+  const allowedAuthorities = new Map(
+    allowedHosts.map((host) => [`${host}:${targetPort}`, host]),
+  );
 
   const server = http.createServer((_request, response) => {
     response.writeHead(405, { Connection: "close", "Content-Type": "text/plain" });
@@ -17,8 +20,8 @@ export function createOsvProxy({
   });
 
   server.on("connect", (request, clientSocket, head) => {
-    const expectedAuthority = `${targetHost}:${targetPort}`;
-    if (request.url !== expectedAuthority) {
+    const targetHost = allowedAuthorities.get(request.url);
+    if (!targetHost) {
       clientSocket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
       return;
     }
@@ -72,11 +75,10 @@ const isEntrypoint = process.argv[1]
   && import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isEntrypoint) {
-  const targetHost = process.env.OSV_TARGET_HOST ?? "api.osv.dev";
   const targetPort = Number.parseInt(process.env.OSV_TARGET_PORT ?? "443", 10);
   const listenPort = Number.parseInt(process.env.PROXY_PORT ?? "3128", 10);
-  const proxy = createOsvProxy({ targetHost, targetPort, listenPort });
+  const proxy = createOsvProxy({ targetPort, listenPort });
   proxy.listen(() => {
-    process.stdout.write("OSV allowlist proxy ready\n");
+    process.stdout.write("Release and OSV allowlist proxy ready\n");
   });
 }

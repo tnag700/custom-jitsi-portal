@@ -24,6 +24,62 @@ class FrameworkVersionMonitorServiceTest {
       "build-config");
 
   @Test
+  void newerReleaseCreatesIndependentUpdateNoticeWithoutCve() {
+    FrameworkVersionMonitorService service = service(
+        frameworks -> new FrameworkVulnerabilityScan(Map.of(
+            "qwik", FrameworkVulnerabilityScan.ComponentScan.available(List.of(), true))),
+        frameworks -> Map.of("qwik", "2.0.0-beta.40"),
+        Clock.fixed(NOW, ZoneOffset.UTC));
+
+    AdminFrameworkVersionsResponse response = service.refresh();
+
+    assertThat(response.criticalUpdateRequired()).isFalse();
+    assertThat(response.updateAvailableCount()).isEqualTo(1);
+    assertThat(response.components()).singleElement().satisfies(component -> {
+      assertThat(component.latestVersion()).isEqualTo("2.0.0-beta.40");
+      assertThat(component.releaseStatus()).isEqualTo("update_available");
+      assertThat(component.securityStatus()).isEqualTo("safe");
+    });
+  }
+
+  @Test
+  void failedReleaseLookupDoesNotErasePreviousUpdateNotice() {
+    AtomicReference<Map<String, String>> releases = new AtomicReference<>(
+        Map.of("qwik", "2.0.0-beta.40"));
+    FrameworkVersionMonitorService service = service(
+        frameworks -> new FrameworkVulnerabilityScan(Map.of(
+            "qwik", FrameworkVulnerabilityScan.ComponentScan.available(List.of(), true))),
+        frameworks -> releases.get(),
+        Clock.fixed(NOW, ZoneOffset.UTC));
+    service.refresh();
+    releases.set(Map.of());
+
+    AdminFrameworkVersionsResponse response = service.refresh();
+
+    assertThat(response.updateAvailableCount()).isEqualTo(1);
+    assertThat(response.components()).singleElement().satisfies(component -> {
+      assertThat(component.latestVersion()).isEqualTo("2.0.0-beta.40");
+      assertThat(component.releaseStatus()).isEqualTo("stale");
+    });
+  }
+
+  @Test
+  void missingCveAndReleaseResponsesAreUnknownRatherThanSafeOrCurrent() {
+    FrameworkVersionMonitorService service = service(
+        frameworks -> new FrameworkVulnerabilityScan(Map.of()),
+        frameworks -> Map.of(),
+        Clock.fixed(NOW, ZoneOffset.UTC));
+
+    AdminFrameworkVersionsResponse response = service.refresh();
+
+    assertThat(response.updateAvailableCount()).isZero();
+    assertThat(response.components()).singleElement().satisfies(component -> {
+      assertThat(component.securityStatus()).isEqualTo("unknown");
+      assertThat(component.releaseStatus()).isEqualTo("unavailable");
+    });
+  }
+
+  @Test
   void criticalAdvisoryActivatesUpdateNotificationAndKeepsFixedVersions() {
     FrameworkAdvisory advisory = new FrameworkAdvisory(
         "GHSA-test-critical",
@@ -109,6 +165,13 @@ class FrameworkVersionMonitorServiceTest {
   private FrameworkVersionMonitorService service(
       FrameworkVulnerabilityPort port,
       Clock clock) {
+    return service(port, frameworks -> Map.of(), clock);
+  }
+
+  private FrameworkVersionMonitorService service(
+      FrameworkVulnerabilityPort port,
+      FrameworkReleasePort releasePort,
+      Clock clock) {
     FrameworkVersionInventory inventory = new FrameworkVersionInventory(
         QWIK.currentVersion(),
         "unknown",
@@ -127,6 +190,7 @@ class FrameworkVersionMonitorServiceTest {
     return new FrameworkVersionMonitorService(
         inventory,
         port,
+        releasePort,
         clock,
         Duration.ofHours(6),
         true);

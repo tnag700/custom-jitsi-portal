@@ -81,6 +81,7 @@ def main() -> None:
         "Jitsi production access policy",
     )
     application_prod_text = read_repo_text("backend/src/main/resources/application-prod.yml", "Spring production config")
+    release_egress_source = read_repo_text("deploy/egress/osv-proxy.mjs", "CVE and release egress proxy")
     realm_path = root / "pilot/keycloak/realm/production/jitsi-realm.json"
     production_realm = json.loads(realm_path.read_text(encoding="utf-8"))
     validate_portal_user_profile(
@@ -252,9 +253,9 @@ def main() -> None:
     assert_contains(keycloak, "/health/ready", "Production Keycloak healthcheck must verify the management readiness endpoint.")
     assert_contains(keycloak, "KC_PROXY_HEADERS=xforwarded", "Keycloak must use xforwarded proxy headers mode in production baseline.")
     assert_contains(keycloak, "KC_PROXY_TRUSTED_ADDRESSES=${KC_PROXY_TRUSTED_ADDRESSES:-172.28.240.10}", "Keycloak must trust only the pinned nginx reverse proxy address by default.")
-    assert_contains(osv_egress_proxy, "OSV_TARGET_HOST=api.osv.dev", "The CVE egress proxy must allow only the OSV API hostname.")
-    assert_contains(osv_egress_proxy, "OSV_TARGET_PORT=443", "The CVE egress proxy must allow only TLS to OSV.")
-    assert_contains(backend, "-Dhttps.proxyHost=osv-egress-proxy", "Backend CVE checks must use the allowlisted egress proxy.")
+    assert_contains(release_egress_source, 'allowedHosts = ["api.osv.dev", "repo.maven.apache.org", "registry.npmjs.org"]', "CVE and release egress must use only the three approved hosts.")
+    assert_contains(osv_egress_proxy, "OSV_TARGET_PORT=443", "CVE and release egress must allow only TLS.")
+    assert_contains(backend, "-Dhttps.proxyHost=osv-egress-proxy", "Backend CVE and release checks must use the allowlisted egress proxy.")
     assert_not_contains(keycloak, "9000:", "Keycloak management port 9000 must not be published in production baseline.")
     for forbidden in ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.1,::1"]:
         assert_not_contains(keycloak, forbidden, f"Keycloak trusted proxy baseline must not use broad private-range defaults like '{forbidden}'.")

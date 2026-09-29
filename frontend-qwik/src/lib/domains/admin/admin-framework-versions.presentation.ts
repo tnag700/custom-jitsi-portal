@@ -51,11 +51,27 @@ export function frameworkSecurityStatusLabel(status: string): string {
   }
 }
 
+export function frameworkReleaseStatusLabel(status: string): string {
+  switch (status) {
+    case "update_available":
+      return "Есть обновление";
+    case "current":
+      return "Актуальная версия";
+    case "stale":
+      return "Данные устарели";
+    case "disabled":
+      return "Проверка отключена";
+    default:
+      return "Проверка недоступна";
+  }
+}
+
 export function resolveFrameworkStatusTone(
   status: string,
 ): "danger" | "warning" | "success" | "neutral" {
   if (status === "critical") return "danger";
-  if (status === "attention" || status === "partial" || status === "stale") {
+  if (status === "attention" || status === "partial" || status === "stale"
+    || status === "update_available") {
     return "warning";
   }
   if (status === "safe" || status === "current") return "success";
@@ -66,4 +82,10 @@ export function hasCriticalFrameworkAlert(
   snapshot: AdminFrameworkVersions | null,
 ): boolean {
   return snapshot?.criticalUpdateRequired === true;
+}
+
+export function hasFrameworkReleaseAlert(
+  snapshot: AdminFrameworkVersions | null,
+): boolean {
+  return (snapshot?.updateAvailableCount ?? 0) > 0;
 }

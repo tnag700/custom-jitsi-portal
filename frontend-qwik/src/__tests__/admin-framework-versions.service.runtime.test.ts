@@ -14,6 +14,7 @@ function snapshotPayload() {
     criticalUpdateRequired: true,
     vulnerabilityCount: 1,
     criticalVulnerabilityCount: 1,
+    updateAvailableCount: 1,
     components: [
       {
         key: "qwik",
@@ -24,6 +25,8 @@ function snapshotPayload() {
         versionSource: "build-config",
         scanStatus: "current",
         securityStatus: "critical",
+        latestVersion: "2.0.0-beta.40",
+        releaseStatus: "update_available",
         vulnerabilityCount: 1,
         criticalVulnerabilityCount: 1,
         advisories: [
@@ -65,6 +68,7 @@ describe("admin framework version service", () => {
       expect.objectContaining({ method: "GET" }),
     );
     expect(result.criticalUpdateRequired).toBe(true);
+    expect(result.updateAvailableCount).toBe(1);
     expect(result.components[0]?.advisories[0]?.fixedVersions).toEqual([
       "2.0.0",
     ]);

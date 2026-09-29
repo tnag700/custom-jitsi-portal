@@ -364,6 +364,8 @@ export const adminFrameworkComponentSchema = z.object({
   versionSource: z.string(),
   scanStatus: z.string(),
   securityStatus: z.string(),
+  latestVersion: z.string().nullable(),
+  releaseStatus: z.string(),
   vulnerabilityCount: z.number(),
   criticalVulnerabilityCount: z.number(),
   advisories: z.array(adminFrameworkAdvisorySchema),
@@ -378,6 +380,7 @@ export const adminFrameworkVersionsSchema = z.object({
   criticalUpdateRequired: z.boolean(),
   vulnerabilityCount: z.number(),
   criticalVulnerabilityCount: z.number(),
+  updateAvailableCount: z.number(),
   components: z.array(adminFrameworkComponentSchema),
 });
 

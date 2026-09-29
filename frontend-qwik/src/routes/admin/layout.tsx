@@ -6,6 +6,7 @@ import {
   fetchAdminFrameworkVersions,
   hasAdminCabinetAccess,
   hasCriticalFrameworkAlert,
+  hasFrameworkReleaseAlert,
   isActiveAdminNavItem,
   withAdminEnvironment,
 } from "~/lib/domains/admin";
@@ -159,6 +160,26 @@ export default component$(() => {
             class="w-fit rounded-full bg-danger px-4 py-2 text-sm font-medium text-white"
           >
             Открыть отчёт
+          </a>
+        </aside>
+      ) : null}
+      {hasFrameworkReleaseAlert(versionAlert.value) ? (
+        <aside
+          role="alert"
+          class="flex flex-col gap-3 rounded-3xl border border-warning/30 bg-warning/10 px-4 py-4 text-warning shadow-sm sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div>
+            <p class="font-semibold">Доступны новые версии компонентов</p>
+            <p class="mt-1 text-sm">
+              По последней проверке обновлений: {versionAlert.value?.updateAvailableCount ?? 0}.
+              Проверьте совместимость перед установкой.
+            </p>
+          </div>
+          <a
+            href={withAdminEnvironment("/admin/framework-versions", environment)}
+            class="w-fit rounded-full bg-warning px-4 py-2 text-sm font-medium text-white"
+          >
+            Открыть версии
           </a>
         </aside>
       ) : null}

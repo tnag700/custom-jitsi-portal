@@ -129,6 +129,10 @@
           "statusMessage" : {
             "type" : "string"
           },
+          "updateAvailableCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
           "vulnerabilityCount" : {
             "format" : "int32",
             "type" : "integer"
@@ -689,7 +693,13 @@
           "key" : {
             "type" : "string"
           },
+          "latestVersion" : {
+            "type" : "string"
+          },
           "packageName" : {
+            "type" : "string"
+          },
+          "releaseStatus" : {
             "type" : "string"
           },
           "scanStatus" : {

@@ -834,6 +834,8 @@ export interface components {
             scanStatus?: string;
             statusMessage?: string;
             /** Format: int32 */
+            updateAvailableCount?: number;
+            /** Format: int32 */
             vulnerabilityCount?: number;
         };
         AdminIncidentCoordinationUpdateRequest: {
@@ -1019,7 +1021,9 @@ export interface components {
             displayName?: string;
             ecosystem?: string;
             key?: string;
+            latestVersion?: string;
             packageName?: string;
+            releaseStatus?: string;
             scanStatus?: string;
             securityStatus?: string;
             versionSource?: string;

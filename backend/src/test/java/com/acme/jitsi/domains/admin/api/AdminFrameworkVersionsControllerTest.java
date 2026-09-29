@@ -69,6 +69,7 @@ class AdminFrameworkVersionsControllerTest {
         true,
         1,
         1,
+        0,
         List.of(new AdminFrameworkVersionsResponse.Component(
             "qwik",
             "Qwik",
@@ -78,6 +79,8 @@ class AdminFrameworkVersionsControllerTest {
             "build-config",
             "current",
             "critical",
+            "2.0.0-beta.38",
+            "current",
             1,
             1,
             List.of(new AdminFrameworkVersionsResponse.Advisory(

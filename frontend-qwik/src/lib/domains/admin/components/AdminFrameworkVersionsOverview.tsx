@@ -1,6 +1,7 @@
 import { component$, type QRL } from "@qwik.dev/core";
 import {
   formatFrameworkCheckTime,
+  frameworkReleaseStatusLabel,
   frameworkScanStatusLabel,
   frameworkSecurityStatusLabel,
   resolveFrameworkStatusTone,
@@ -42,13 +43,12 @@ export const AdminFrameworkVersionsOverview = component$(
                 Версии фреймворков и известные CVE
               </h2>
               <p class="mt-2 max-w-3xl text-sm text-muted">
-                Сервер сверяет фактически используемые версии с OSV и хранит
-                последний результат, чтобы сбой внешнего источника не ломал
-                административную консоль.
+                Сервер проверяет известные уязвимости в OSV, а новые релизы —
+                в Maven Central и npm. Обе проверки выполняются каждые 6 часов.
               </p>
               <p class="mt-2 max-w-3xl text-sm font-medium text-warning">
-                Отсутствие CVE не означает, что версия последняя. Свежесть
-                релизов отдельно проверяет еженедельный stack-version audit.
+                Новая версия не обязательно совместима с текущим стеком.
+                Перед обновлением проверьте изменения и зависимости.
               </p>
             </div>
             {canRefresh ? (
@@ -63,9 +63,9 @@ export const AdminFrameworkVersionsOverview = component$(
             ) : null}
           </div>
 
-          <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <SummaryMetric
-              label="Состояние"
+              label="Проверка CVE"
               value={frameworkScanStatusLabel(snapshot.scanStatus)}
               toneClass={TONE_CLASSES[scanTone]}
             />
@@ -83,6 +83,15 @@ export const AdminFrameworkVersionsOverview = component$(
               toneClass={
                 snapshot.criticalVulnerabilityCount > 0
                   ? TONE_CLASSES.danger
+                  : TONE_CLASSES.success
+              }
+            />
+            <SummaryMetric
+              label="Найдено обновлений"
+              value={String(snapshot.updateAvailableCount)}
+              toneClass={
+                snapshot.updateAvailableCount > 0
+                  ? TONE_CLASSES.warning
                   : TONE_CLASSES.success
               }
             />
@@ -126,7 +135,7 @@ export const AdminFrameworkVersionsOverview = component$(
                   </span>
                 </div>
 
-                <dl class="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-surface-alt p-3">
+                <dl class="mt-4 grid gap-3 rounded-2xl bg-surface-alt p-3 sm:grid-cols-3">
                   <div>
                     <dt class="text-xs text-muted">Текущая версия</dt>
                     <dd class="mt-1 font-mono text-sm font-semibold text-text">
@@ -134,14 +143,27 @@ export const AdminFrameworkVersionsOverview = component$(
                     </dd>
                   </div>
                   <div>
-                    <dt class="text-xs text-muted">Проверка</dt>
+                    <dt class="text-xs text-muted">Последний релиз</dt>
+                    <dd class="mt-1 font-mono text-sm font-semibold text-text">
+                      {framework.latestVersion ?? "Неизвестно"}
+                    </dd>
+                    <dd class="mt-1 text-xs text-muted">
+                      {frameworkReleaseStatusLabel(framework.releaseStatus)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt class="text-xs text-muted">Проверка CVE</dt>
                     <dd class="mt-1 text-sm font-medium text-text">
                       {frameworkScanStatusLabel(framework.scanStatus)}
                     </dd>
                   </div>
                 </dl>
 
-                {framework.advisories.length === 0 ? (
+                {framework.scanStatus !== "current" && framework.scanStatus !== "partial" ? (
+                  <p class="mt-4 text-sm text-muted">
+                    Результат проверки CVE недоступен или устарел.
+                  </p>
+                ) : framework.advisories.length === 0 ? (
                   <p class="mt-4 text-sm text-muted">
                     Для этой версии известных уязвимостей не найдено.
                   </p>

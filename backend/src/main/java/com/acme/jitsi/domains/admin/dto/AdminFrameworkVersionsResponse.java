@@ -12,6 +12,7 @@ public record AdminFrameworkVersionsResponse(
     boolean criticalUpdateRequired,
     int vulnerabilityCount,
     int criticalVulnerabilityCount,
+    int updateAvailableCount,
     List<Component> components) {
 
   public AdminFrameworkVersionsResponse {
@@ -27,6 +28,8 @@ public record AdminFrameworkVersionsResponse(
       String versionSource,
       String scanStatus,
       String securityStatus,
+      String latestVersion,
+      String releaseStatus,
       int vulnerabilityCount,
       int criticalVulnerabilityCount,
       List<Advisory> advisories) {

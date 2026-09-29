@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import fs from "node:fs";
-import path from "node:path";
 import {
   canRefreshFrameworkVersions,
+  frameworkReleaseStatusLabel,
   frameworkScanStatusLabel,
   frameworkSecurityStatusLabel,
   hasCriticalFrameworkAlert,
+  hasFrameworkReleaseAlert,
   resolveFrameworkStatusTone,
 } from "../lib/domains/admin/admin-framework-versions.presentation";
 
@@ -34,17 +34,25 @@ describe("admin framework version presentation", () => {
     expect(hasCriticalFrameworkAlert(null)).toBe(false);
   });
 
-  it("does not present a clean CVE result as proof of the latest release", () => {
-    const source = fs.readFileSync(
-      path.resolve(
-        "src/lib/domains/admin/components/AdminFrameworkVersionsOverview.tsx",
-      ),
-      "utf8",
+  it("shows a release alert without requiring a CVE finding", () => {
+    expect(
+      hasFrameworkReleaseAlert({
+        criticalUpdateRequired: false,
+        updateAvailableCount: 1,
+      } as never),
+    ).toBe(true);
+    expect(hasFrameworkReleaseAlert({ updateAvailableCount: 0 } as never)).toBe(
+      false,
     );
+  });
 
-    expect(source).toContain(
-      "Отсутствие CVE не означает, что версия последняя",
+  it("does not call a failed release lookup current", () => {
+    expect(frameworkReleaseStatusLabel("stale")).toBe("Данные устарели");
+    expect(frameworkReleaseStatusLabel("unavailable")).toBe(
+      "Проверка недоступна",
     );
-    expect(source).toContain("stack-version audit");
+    expect(frameworkReleaseStatusLabel("update_available")).toBe(
+      "Есть обновление",
+    );
   });
 });

@@ -13,7 +13,7 @@ before(async () => {
   await new Promise((resolve) => target.listen(0, "127.0.0.1", resolve));
   targetPort = target.address().port;
   proxy = createOsvProxy({
-    targetHost: "127.0.0.1",
+    allowedHosts: ["127.0.0.1"],
     targetPort,
     listenHost: "127.0.0.1",
     listenPort: 0,

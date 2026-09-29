@@ -226,7 +226,6 @@ services:
     pids_limit: 64
     command: ["node", "/app/osv-proxy.mjs"]
     environment:
-      - OSV_TARGET_HOST=api.osv.dev
       - OSV_TARGET_PORT=443
       - PROXY_PORT=3128
     volumes:

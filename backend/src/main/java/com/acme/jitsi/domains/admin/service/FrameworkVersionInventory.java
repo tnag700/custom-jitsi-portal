@@ -38,7 +38,7 @@ public class FrameworkVersionInventory {
       String typescriptVersion,
       @Value("${app.version-monitor.components.tailwind.version:4.3.3}")
       String tailwindVersion,
-      @Value("${app.version-monitor.components.vitest.version:3.2.7}")
+      @Value("${app.version-monitor.components.vitest.version:4.1.11}")
       String vitestVersion,
       @Value("${app.version-monitor.components.eslint.version:10.8.1}")
       String eslintVersion) {

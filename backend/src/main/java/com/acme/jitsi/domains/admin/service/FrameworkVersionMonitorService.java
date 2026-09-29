@@ -19,6 +19,7 @@ public class FrameworkVersionMonitorService {
 
   private final FrameworkVersionInventory inventory;
   private final FrameworkVulnerabilityPort vulnerabilityPort;
+  private final FrameworkReleasePort releasePort;
   private final Clock clock;
   private final Duration cacheTtl;
   private final boolean enabled;
@@ -28,6 +29,7 @@ public class FrameworkVersionMonitorService {
   public FrameworkVersionMonitorService(
       FrameworkVersionInventory inventory,
       FrameworkVulnerabilityPort vulnerabilityPort,
+      FrameworkReleasePort releasePort,
       Clock clock,
       @Value("${app.version-monitor.cache-ttl:PT6H}") Duration cacheTtl,
       @Value("${app.version-monitor.enabled:true}") boolean enabled) {
@@ -36,6 +38,7 @@ public class FrameworkVersionMonitorService {
     }
     this.inventory = inventory;
     this.vulnerabilityPort = vulnerabilityPort;
+    this.releasePort = releasePort;
     this.clock = clock;
     this.cacheTtl = cacheTtl;
     this.enabled = enabled;
@@ -63,9 +66,22 @@ public class FrameworkVersionMonitorService {
       }
 
       List<MonitoredFramework> frameworks = inventory.list();
+      FrameworkVulnerabilityScan vulnerabilityScan;
+      Map<String, String> releases;
+      try {
+        vulnerabilityScan = vulnerabilityPort.scan(frameworks);
+      } catch (RuntimeException exception) {
+        vulnerabilityScan = new FrameworkVulnerabilityScan(Map.of());
+      }
+      try {
+        releases = releasePort.latestVersions(frameworks);
+      } catch (RuntimeException exception) {
+        releases = Map.of();
+      }
       AdminFrameworkVersionsResponse refreshed = buildSnapshot(
           frameworks,
-          vulnerabilityPort.scan(frameworks),
+          vulnerabilityScan,
+          releases,
           snapshot.get());
       snapshot.set(refreshed);
       return refreshed;
@@ -84,6 +100,7 @@ public class FrameworkVersionMonitorService {
   private AdminFrameworkVersionsResponse buildSnapshot(
       List<MonitoredFramework> frameworks,
       FrameworkVulnerabilityScan scan,
+      Map<String, String> releases,
       AdminFrameworkVersionsResponse previous) {
     Instant now = clock.instant();
     Map<String, AdminFrameworkVersionsResponse.Component> previousComponents =
@@ -93,6 +110,10 @@ public class FrameworkVersionMonitorService {
     int completeCount = 0;
 
     for (MonitoredFramework framework : frameworks) {
+      AdminFrameworkVersionsResponse.Component previousComponent =
+          previousComponents.get(framework.key());
+      ReleaseCheck release = resolveReleaseCheck(
+          framework, releases.get(framework.key()), previousComponent);
       FrameworkVulnerabilityScan.ComponentScan componentScan =
           scan.components().get(framework.key());
       if (componentScan != null && componentScan.available()) {
@@ -103,14 +124,16 @@ public class FrameworkVersionMonitorService {
         components.add(toComponent(
             framework,
             componentScan.advisories(),
-            componentScan.complete() ? "current" : "partial"));
+            componentScan.complete() ? "current" : "partial",
+            release.latestVersion(),
+            release.status()));
       } else {
-        AdminFrameworkVersionsResponse.Component previousComponent =
-            previousComponents.get(framework.key());
         if (previousComponent == null) {
-          components.add(toComponent(framework, List.of(), "unavailable"));
+          components.add(toComponent(framework, List.of(), "unavailable",
+              release.latestVersion(), release.status()));
         } else {
-          components.add(copyAsStale(framework, previousComponent));
+          components.add(copyAsStale(framework, previousComponent,
+              release.latestVersion(), release.status()));
         }
       }
     }
@@ -126,6 +149,26 @@ public class FrameworkVersionMonitorService {
         scanStatus,
         statusMessage(scanStatus),
         components);
+  }
+
+  private ReleaseCheck resolveReleaseCheck(
+      MonitoredFramework framework,
+      String latestVersion,
+      AdminFrameworkVersionsResponse.Component previous) {
+    if (latestVersion == null) {
+      String previousVersion = previous == null ? null : previous.latestVersion();
+      return new ReleaseCheck(previousVersion,
+          previousVersion == null ? "unavailable" : "stale");
+    }
+    Integer order = FrameworkReleaseVersions.compare(
+        latestVersion, framework.currentVersion());
+    if (order == null || order < 0) {
+      return new ReleaseCheck(null, "unavailable");
+    }
+    return new ReleaseCheck(latestVersion, order > 0 ? "update_available" : "current");
+  }
+
+  private record ReleaseCheck(String latestVersion, String status) {
   }
 
   private Map<String, AdminFrameworkVersionsResponse.Component> indexPreviousComponents(
@@ -156,7 +199,9 @@ public class FrameworkVersionMonitorService {
   private AdminFrameworkVersionsResponse.Component toComponent(
       MonitoredFramework framework,
       List<FrameworkAdvisory> advisories,
-      String scanStatus) {
+      String scanStatus,
+      String latestVersion,
+      String releaseStatus) {
     List<AdminFrameworkVersionsResponse.Advisory> responseAdvisories = advisories.stream()
         .sorted(Comparator
             .comparing(FrameworkAdvisory::isCritical)
@@ -165,9 +210,9 @@ public class FrameworkVersionMonitorService {
         .map(this::toAdvisory)
         .toList();
     int criticalCount = (int) advisories.stream().filter(FrameworkAdvisory::isCritical).count();
-    String securityStatus = criticalCount > 0
-        ? "critical"
-        : advisories.isEmpty() ? "safe" : "attention";
+    String securityStatus = "unavailable".equals(scanStatus) || "disabled".equals(scanStatus)
+        ? "unknown"
+        : criticalCount > 0 ? "critical" : advisories.isEmpty() ? "safe" : "attention";
     return new AdminFrameworkVersionsResponse.Component(
         framework.key(),
         framework.displayName(),
@@ -177,6 +222,8 @@ public class FrameworkVersionMonitorService {
         framework.versionSource(),
         scanStatus,
         securityStatus,
+        latestVersion,
+        releaseStatus,
         advisories.size(),
         criticalCount,
         responseAdvisories);
@@ -184,7 +231,9 @@ public class FrameworkVersionMonitorService {
 
   private AdminFrameworkVersionsResponse.Component copyAsStale(
       MonitoredFramework framework,
-      AdminFrameworkVersionsResponse.Component previous) {
+      AdminFrameworkVersionsResponse.Component previous,
+      String latestVersion,
+      String releaseStatus) {
     return new AdminFrameworkVersionsResponse.Component(
         framework.key(),
         framework.displayName(),
@@ -194,6 +243,8 @@ public class FrameworkVersionMonitorService {
         framework.versionSource(),
         "stale",
         previous.securityStatus(),
+        latestVersion,
+        releaseStatus,
         previous.vulnerabilityCount(),
         previous.criticalVulnerabilityCount(),
         previous.advisories());
@@ -222,6 +273,11 @@ public class FrameworkVersionMonitorService {
     int criticalCount = components.stream()
         .mapToInt(AdminFrameworkVersionsResponse.Component::criticalVulnerabilityCount)
         .sum();
+    int updateAvailableCount = (int) components.stream()
+        .filter(component -> component.latestVersion() != null)
+        .filter(component -> Integer.valueOf(1).equals(FrameworkReleaseVersions.compare(
+            component.latestVersion(), component.currentVersion())))
+        .count();
     return new AdminFrameworkVersionsResponse(
         now,
         lastSuccessfulCheckAt,
@@ -231,13 +287,15 @@ public class FrameworkVersionMonitorService {
         criticalCount > 0,
         vulnerabilityCount,
         criticalCount,
+        updateAvailableCount,
         components);
   }
 
   private AdminFrameworkVersionsResponse unavailableSnapshot(String message) {
     Instant now = clock.instant();
     List<AdminFrameworkVersionsResponse.Component> components = inventory.list().stream()
-        .map(framework -> toComponent(framework, List.of(), "unavailable"))
+        .map(framework -> toComponent(framework, List.of(), "unavailable", null,
+            "unavailable"))
         .toList();
     return response(now, null, "unavailable", message, components);
   }
@@ -255,6 +313,8 @@ public class FrameworkVersionMonitorService {
             component.versionSource(),
             "stale",
             component.securityStatus(),
+            component.latestVersion(),
+            component.latestVersion() == null ? "unavailable" : "stale",
             component.vulnerabilityCount(),
             component.criticalVulnerabilityCount(),
             component.advisories()))
@@ -270,7 +330,7 @@ public class FrameworkVersionMonitorService {
   private AdminFrameworkVersionsResponse disabledSnapshot() {
     Instant now = clock.instant();
     List<AdminFrameworkVersionsResponse.Component> components = inventory.list().stream()
-        .map(framework -> toComponent(framework, List.of(), "disabled"))
+        .map(framework -> toComponent(framework, List.of(), "disabled", null, "disabled"))
         .toList();
     return response(
         now,

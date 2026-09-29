@@ -10,18 +10,25 @@ Modulith are included alongside the runtime Spring platform.
 
 1. The backend builds a fixed inventory. API callers cannot submit package
    names, versions or provider URLs.
-2. The OSV adapter queries `https://api.osv.dev/v1/query` with a five-second
-   request timeout, disabled redirects and a one-megabyte response limit.
+2. The OSV adapter queries `https://api.osv.dev/v1/query` for known
+   vulnerabilities. Independently, the release adapter checks Maven Central
+   metadata and npm distribution tags (`beta` for Qwik, `latest` for the other
+   npm packages). Both use a five-second request timeout, disabled redirects
+   and a one-megabyte response limit.
 3. Provider data is normalized to bounded plain text, known identifiers,
    matching fixed versions and HTTPS advisory links.
 4. The result is cached for six hours. A scheduled refresh runs every six
    hours; the first admin request also creates a snapshot when none exists.
-5. A failed refresh preserves the previous result as `stale`. It never clears
-   a previously known critical finding merely because the provider is down.
+5. A failed lookup preserves the previous result as `stale` for that signal.
+   It never clears a previously known critical finding or newer release merely
+   because a provider is down. Without a previous result the status is
+   `unavailable`, never "safe" or "current".
 
-The admin monitor answers “is the installed version affected by a known
-vulnerability?”. Security status and release freshness are intentionally
-separate signals: zero OSV findings must never be presented as “latest”.
+The admin monitor answers both “is the installed version affected by a known
+vulnerability?” and “is a newer release available?”. Security status and
+release freshness are separate signals: zero OSV findings must never be
+presented as “latest”. New releases appear on the component cards and in an
+admin-console banner, without implying that an upgrade is compatible or safe.
 
 `npm run stack:versions:audit` compares reviewed compatibility-group versions
 with fixed official Maven, Gradle and npm release channels. The command exits
@@ -30,6 +37,15 @@ the same online audit, while `npm run verify` runs the offline consistency check
 so a dependency bump cannot silently drift away from the reviewed baseline.
 Prerelease packages use an explicit channel (`beta` for Qwik); the audit never
 mistakes npm's older `latest` tag for a downgrade.
+
+## Release notification policy
+
+The server queries only fixed package names from its inventory. Production
+outbound HTTPS is restricted to OSV, Maven Central and the npm registry by the
+allowlist proxy. The portal never accepts a package URL from a caller. A newer
+version creates an informational update notification even when no CVE is
+reported. An unavailable or stale provider check is labelled explicitly.
+Release checks do not install dependencies or change the approved stack.
 
 ## Severity policy
 

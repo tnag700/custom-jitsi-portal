@@ -170,6 +170,8 @@ export {
   frameworkScanStatusLabel,
   frameworkSecurityStatusLabel,
   hasCriticalFrameworkAlert,
+  hasFrameworkReleaseAlert,
+  frameworkReleaseStatusLabel,
   resolveFrameworkStatusTone,
 } from "./admin-framework-versions.presentation";
 export {
