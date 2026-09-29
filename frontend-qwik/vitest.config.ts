@@ -1,10 +1,10 @@
 import { defineConfig } from "vitest/config";
 import { qwikVite } from "@qwik.dev/core/optimizer";
 import { qwikRouter } from "@qwik.dev/router/vite";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
-  plugins: [qwikRouter(), qwikVite(), tsconfigPaths()],
+  resolve: { tsconfigPaths: true },
+  plugins: [qwikRouter(), qwikVite()],
   test: {
     include: ["src/**/*.test.ts"],
     coverage: {

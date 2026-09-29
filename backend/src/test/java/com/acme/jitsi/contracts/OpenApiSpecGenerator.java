@@ -61,9 +61,8 @@ public final class OpenApiSpecGenerator {
         Map.entry("management.otlp.tracing.export.enabled", "false")
     ));
 
-      ConfigurableApplicationContext context = application.run();
-      int exitCode = 0;
-      try {
+    int exitCode;
+    try (ConfigurableApplicationContext context = application.run()) {
       OpenApiWebMvcResource openApiResource = context.getBean(OpenApiWebMvcResource.class);
       MockHttpServletRequest request = createOpenApiRequest();
       String body = new String(
@@ -75,7 +74,6 @@ public final class OpenApiSpecGenerator {
           outputPath,
           JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root) + System.lineSeparator(),
           StandardCharsets.UTF_8);
-    } finally {
       exitCode = SpringApplication.exit(context);
     }
     System.exit(exitCode);

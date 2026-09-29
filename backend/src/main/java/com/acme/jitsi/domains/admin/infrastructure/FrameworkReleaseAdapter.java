@@ -69,7 +69,7 @@ class FrameworkReleaseAdapter implements FrameworkReleasePort {
     }
   }
 
-  private URI releaseUri(MonitoredFramework framework) {
+  static URI releaseUri(MonitoredFramework framework) {
     if ("Maven".equals(framework.ecosystem())) {
       String[] coordinates = framework.packageName().split(":", -1);
       if (coordinates.length != 2
@@ -83,10 +83,8 @@ class FrameworkReleaseAdapter implements FrameworkReleasePort {
     }
     if ("npm".equals(framework.ecosystem())
         && NPM_NAME.matcher(framework.packageName()).matches()) {
-      String channel = ("qwik".equals(framework.key())
-          || "qwik-router".equals(framework.key())) ? "beta" : "latest";
       return URI.create("https://registry.npmjs.org/"
-          + framework.packageName().replace("/", "%2F") + "/" + channel);
+          + framework.packageName().replace("/", "%2F") + "/latest");
     }
     throw new IllegalArgumentException("Unsupported release source");
   }

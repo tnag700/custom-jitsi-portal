@@ -11,7 +11,7 @@ docker run --detach --rm --name "$NAME" --network none \
   -e POSTGRES_PASSWORD=test-bootstrap-password \
   -e APP_DB_USER=test_app -e APP_DB_PASSWORD=test-runtime-password \
   --mount "type=bind,src=$ROOT/deploy/postgres/init-runtime-role.sh,dst=/docker-entrypoint-initdb.d/10-runtime-role.sh,readonly" \
-  postgres:18.4 >/dev/null
+  postgres:18.6@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722 >/dev/null
 attempt=0
 until docker exec "$NAME" psql -X -U test_admin -d role_test -Atc "SELECT 1 FROM pg_roles WHERE rolname = 'test_app'" 2>/dev/null | grep -qx 1; do
   attempt=$((attempt + 1))

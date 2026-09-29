@@ -126,7 +126,7 @@ def main() -> None:
 
     assert_contains(
         nginx,
-        "image: nginx:1.30.4-alpine@sha256:97d490c12ba55b4946b01546d1c3ed324e8d41ab1c9fcb2a616aa470620e5b46",
+        "image: nginx:1.30.5-alpine@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94",
         "Production edge must use the reviewed stable nginx patch release and manifest digest.",
     )
     assert_contains(
@@ -153,13 +153,13 @@ def main() -> None:
         "jitsi-jvb": (jitsi_jvb, "image: ghcr.io/jitsi/jvb:stable-11146-1@sha256:6a7cec66c6a2fdd8ffd3a90101a0f8e3297aff29494f258caf1bcfbd418a17f3"),
     }
 
-    approved_alpine_image = "image: alpine:3.22.5@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce"
+    approved_alpine_image = "image: alpine:3.22.6@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
     if base_text.count(approved_alpine_image) != 2:
-        fail("Production one-shot services must use exactly two approved Alpine 3.22.5 image pins.")
+        fail("Production one-shot services must use exactly two approved Alpine 3.22.6 image pins.")
     assert_contains(
         redis,
-        "image: redis:8.4.5@sha256:efe6e2625e4601cd7119c4fb48b1c04cf3071f8b1729ede1216ceee8bc99742d",
-        "Production Redis must pin the approved 8.4 security patch and manifest digest.",
+        "image: redis:8.10.2@sha256:d5ac52db24d4e70566fe9944f22cf5bdc2bc739b05c0f426335161ea6c23f3b3",
+        "Production Redis must pin the approved Redis release and manifest digest.",
     )
     for service_name, (service_block, image) in approved_jitsi_images.items():
         assert_contains(
@@ -248,7 +248,7 @@ def main() -> None:
     assert_contains(nginx, "${NGINX_PORTAL_CONFIG_PATH:-./deploy/nginx/portal.conf.example}", "Nginx must default to deploy/nginx/portal.conf.example for production baseline.")
     assert_not_contains(nginx, "./deploy/nginx/portal-ip.conf.example", "IP-only bootstrap config must not become the production baseline mount target.")
     assert_contains(keycloak, "KC_HOSTNAME_STRICT=true", "Keycloak must keep strict hostname mode enabled in production baseline.")
-    assert_contains(keycloak, "image: jitsi-keycloak:26.7.0", "Production must use the locally optimized approved Keycloak patch.")
+    assert_contains(keycloak, "image: jitsi-keycloak:26.7.4", "Production must use the locally optimized approved Keycloak patch.")
     assert_contains(keycloak, "KC_DB=postgres", "Production Keycloak must use PostgreSQL rather than the development file store.")
     assert_contains(keycloak, "/health/ready", "Production Keycloak healthcheck must verify the management readiness endpoint.")
     assert_contains(keycloak, "KC_PROXY_HEADERS=xforwarded", "Keycloak must use xforwarded proxy headers mode in production baseline.")

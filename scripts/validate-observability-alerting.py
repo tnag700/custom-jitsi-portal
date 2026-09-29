@@ -15,9 +15,9 @@ from _python_guardrails import (
     write_step,
 )
 
-PROMETHEUS_IMAGE = "prom/prometheus:v3.13.2@sha256:508729e0e2d18e11fd742a5a5ca70e557b940a93948c3c95fd0123a6fd538b69"
-ALERTMANAGER_IMAGE = "prom/alertmanager:v0.33.1@sha256:9e082985f56f4c8c9f724e18f2288c6708f472e56a5286b8863d080434ea065d"
-GRAFANA_IMAGE = "grafana/grafana:11.6.14-security-04@sha256:723f80992528efabc8fb9b0d220c28cc21b503ee970d3f775860c5464fb4d52f"
+PROMETHEUS_IMAGE = "prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e"
+ALERTMANAGER_IMAGE = "prom/alertmanager:v0.34.1@sha256:e9733bafb1bdef9b00e25a21f8f99dc26a22224bf16641ad754d1649f4c3357a"
+GRAFANA_IMAGE = "grafana/grafana:13.2.2@sha256:ac461fb352abc50da10a51c7d02462e9c05488f11f53f14b3ad79a8145f638a0"
 
 
 def resolve_monitoring_annotation_value(value: str | None, default_value: str, name: str) -> str:
@@ -84,7 +84,7 @@ def main() -> None:
     for label, image in {
         "Prometheus": PROMETHEUS_IMAGE,
         "Alertmanager": ALERTMANAGER_IMAGE,
-        "Grafana security bridge": GRAFANA_IMAGE,
+        "Grafana": GRAFANA_IMAGE,
     }.items():
         for compose_label, compose_text in {
             "development": compose_config,

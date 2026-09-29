@@ -24,23 +24,23 @@ public class FrameworkVersionInventory {
   private final String eslintVersion;
 
   public FrameworkVersionInventory(
-      @Value("${app.version-monitor.components.qwik.version:2.0.0-beta.38}")
+      @Value("${app.version-monitor.components.qwik.version:2.0.0-beta.45}")
       String qwikVersion,
-      @Value("${app.version-monitor.components.qwik-router.version:2.0.0-beta.38}")
+      @Value("${app.version-monitor.components.qwik-router.version:2.0.0-beta.45}")
       String qwikRouterVersion,
       @Value("${app.version-monitor.components.express.version:5.2.1}")
       String expressVersion,
       @Value("${app.version-monitor.components.qwik-ui.version:0.7.7}")
       String qwikUiVersion,
-      @Value("${app.version-monitor.components.vite.version:7.3.6}")
+      @Value("${app.version-monitor.components.vite.version:8.3.1}")
       String viteVersion,
-      @Value("${app.version-monitor.components.typescript.version:5.9.3}")
+      @Value("${app.version-monitor.components.typescript.version:7.0.2}")
       String typescriptVersion,
       @Value("${app.version-monitor.components.tailwind.version:4.3.3}")
       String tailwindVersion,
       @Value("${app.version-monitor.components.vitest.version:4.1.11}")
       String vitestVersion,
-      @Value("${app.version-monitor.components.eslint.version:10.8.1}")
+      @Value("${app.version-monitor.components.eslint.version:10.11.0}")
       String eslintVersion) {
     this.qwikVersion = qwikVersion;
     this.qwikRouterVersion = qwikRouterVersion;

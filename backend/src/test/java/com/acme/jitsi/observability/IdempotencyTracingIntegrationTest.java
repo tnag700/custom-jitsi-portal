@@ -56,7 +56,7 @@ import org.springframework.web.client.RestTemplate;
 class IdempotencyTracingIntegrationTest extends PostgresRedisContainerIntegrationTestSupport {
 
     private static final String IDEMPOTENT_PATH = "/api/v1/test/idempotent";
-    private static final AttributeKey<String> DB_SYSTEM = AttributeKey.stringKey("db.system");
+    private static final AttributeKey<String> DB_SYSTEM_NAME = AttributeKey.stringKey("db.system.name");
     private static final AttributeKey<String> DB_OPERATION = AttributeKey.stringKey("db.operation");
     private static final AttributeKey<String> DB_OPERATION_NAME = AttributeKey.stringKey("db.operation.name");
     private static final AttributeKey<String> DB_QUERY_TEXT = AttributeKey.stringKey("db.query.text");
@@ -121,7 +121,7 @@ class IdempotencyTracingIntegrationTest extends PostgresRedisContainerIntegratio
   }
 
   private static boolean isDatabaseSpan(SpanData span) {
-    return "postgresql".equalsIgnoreCase(span.getAttributes().get(DB_SYSTEM));
+    return "postgresql".equalsIgnoreCase(span.getAttributes().get(DB_SYSTEM_NAME));
   }
 
     private static boolean matchesIdempotencyDatabaseMutation(SpanData span) {
@@ -155,7 +155,7 @@ class IdempotencyTracingIntegrationTest extends PostgresRedisContainerIntegratio
                                                 + "|dbQuery=" + span.getAttributes().get(DB_QUERY_TEXT)
                         + "|method=" + span.getAttributes().get(HTTP_REQUEST_METHOD)
                         + "|path=" + span.getAttributes().get(URL_PATH)
-                        + "|db=" + span.getAttributes().get(DB_SYSTEM)
+                        + "|db=" + span.getAttributes().get(DB_SYSTEM_NAME)
                         + "|trace=" + span.getTraceId())
                 .collect(Collectors.joining(", "));
     }

@@ -1,5 +1,8 @@
 package com.acme.jitsi.domains.auth.service;
 
+import com.github.dockerjava.api.model.ExposedPort;
+import com.github.dockerjava.api.model.PortBinding;
+import com.github.dockerjava.api.model.Ports;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -25,8 +28,10 @@ class RedisRefreshTokenStoreIntegrationTest {
 
   @Container
   @SuppressWarnings("resource")
-  private static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7-alpine")
-      .withExposedPorts(6379);
+  private static final GenericContainer<?> REDIS = new GenericContainer<>("redis@sha256:d5ac52db24d4e70566fe9944f22cf5bdc2bc739b05c0f426335161ea6c23f3b3")
+      .withExposedPorts(6379)
+      .withCreateContainerCmdModifier(cmd -> cmd.getHostConfig().withPortBindings(
+          new PortBinding(Ports.Binding.bindIp("127.0.0.1"), new ExposedPort(6379))));
 
   private LettuceConnectionFactory connectionFactory;
   private StringRedisTemplate redis;

@@ -1,6 +1,6 @@
 plugins {
   id 'java'
-  id 'org.springframework.boot' version '4.1.0'
+  id 'org.springframework.boot' version '4.1.1'
   id 'io.spring.dependency-management' version '1.1.7'
   id 'pmd'
   id 'jacoco'
@@ -21,13 +21,22 @@ repositories {
 
 dependencyManagement {
   imports {
-    mavenBom 'org.springframework.modulith:spring-modulith-bom:2.1.0'
+    mavenBom 'org.springframework.modulith:spring-modulith-bom:2.1.1'
   }
 }
 
-def pmdToolVersion = '6.55.0'
+def pmdToolVersion = '7.28.0'
+def pmdJavaPlatform = javaToolchains.launcherFor(java.toolchain)
+    .map { it.metadata.installationPath.file('lib/jrt-fs.jar') }
+
+configurations {
+  cpd
+}
 
 dependencies {
+  pmdAux files(pmdJavaPlatform)
+  cpd "net.sourceforge.pmd:pmd-java:${pmdToolVersion}"
+  cpd "net.sourceforge.pmd:pmd-cli:${pmdToolVersion}"
   implementation 'org.springframework.boot:spring-boot-starter-webmvc'
   implementation 'org.springframework.boot:spring-boot-starter-validation'
   implementation 'org.springframework.boot:spring-boot-starter-security'
@@ -43,9 +52,9 @@ dependencies {
   implementation 'org.springframework.modulith:spring-modulith-events-api'
   implementation 'org.springframework.modulith:spring-modulith-events-jdbc'
   implementation 'org.springframework.modulith:spring-modulith-events-jackson'
-  implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot:2.2.1'
-  implementation 'net.ttddyy.observation:datasource-micrometer-opentelemetry:2.2.1'
-  implementation 'org.springdoc:springdoc-openapi-starter-webmvc-api:3.1.0'
+  implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot:2.3.0'
+  implementation 'net.ttddyy.observation:datasource-micrometer-opentelemetry:2.3.0'
+  implementation 'org.springdoc:springdoc-openapi-starter-webmvc-api:3.1.1'
   implementation 'org.springframework.retry:spring-retry:2.0.13'
   // implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j:3.2.0'
   implementation 'org.flywaydb:flyway-database-postgresql'
@@ -56,9 +65,9 @@ dependencies {
   testImplementation 'org.springframework.boot:spring-boot-starter-test'
   testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
   testImplementation 'org.springframework.modulith:spring-modulith-starter-test'
-  testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.1'
-  testImplementation 'org.testcontainers:junit-jupiter:1.21.4'
-  testImplementation 'org.testcontainers:postgresql:1.21.4'
+  testImplementation 'com.tngtech.archunit:archunit-junit5:1.5.1'
+  testImplementation 'org.testcontainers:testcontainers-junit-jupiter:2.0.5'
+  testImplementation 'org.testcontainers:testcontainers-postgresql:2.0.5'
   testImplementation 'com.h2database:h2'
   testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
@@ -158,7 +167,7 @@ tasks.register('architectureTest', Test) {
 }
 
 jacoco {
-  toolVersion = '0.8.13'
+  toolVersion = '0.8.15'
 }
 
 tasks.named('jacocoTestReport') {
@@ -203,8 +212,6 @@ pmd {
 }
 
 tasks.withType(Pmd).configureEach {
-  classpath = files()
-
   reports {
     xml.required = true
     html.required = true
@@ -216,7 +223,7 @@ tasks.register('pmdFullAudit', Pmd) {
   description = 'Runs full PMD profile for audit reporting without failing the build.'
 
   source = sourceSets.main.allJava
-  classpath = files()
+  classpath = sourceSets.main.runtimeClasspath + files(pmdJavaPlatform)
   ignoreFailures = true
   ruleSetFiles = files(
       "$projectDir/config/pmd/ruleset.xml",
@@ -236,23 +243,23 @@ tasks.register('cpdCheck', JavaExec) {
   group = LifecycleBasePlugin.VERIFICATION_GROUP
   description = 'Runs PMD CPD duplicate code detection for Java sources.'
 
-  classpath = configurations.pmd
-  mainClass = 'net.sourceforge.pmd.cpd.CPD'
+  classpath = configurations.cpd
+  mainClass = 'net.sourceforge.pmd.cli.PmdCli'
+
+  def reportFile = layout.buildDirectory.file('reports/cpd/cpd.xml')
 
   args(
+    'cpd',
     '--language', 'java',
     '--minimum-tokens', '120',
     '--dir', file('src/main/java').absolutePath,
     '--format', 'xml',
-    '--skip-lexical-errors'
+    '--report-file', reportFile.get().asFile.absolutePath
   )
-
-  def reportFile = layout.buildDirectory.file('reports/cpd/cpd.xml')
 
   doFirst {
     def report = reportFile.get().asFile
     report.parentFile.mkdirs()
-    standardOutput = new FileOutputStream(report)
   }
 }
 

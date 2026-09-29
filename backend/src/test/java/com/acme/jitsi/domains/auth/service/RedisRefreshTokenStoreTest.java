@@ -45,6 +45,22 @@ class RedisRefreshTokenStoreTest {
 
   @SuppressWarnings("unchecked")
   @Test
+  void malformedExpiryPreservesParsingCause() {
+    StringRedisTemplate redis = mock(StringRedisTemplate.class);
+    HashOperations<String, Object, Object> hashes = mock(HashOperations.class);
+    when(redis.opsForHash()).thenReturn(hashes);
+    when(redis.execute(any(DefaultRedisScript.class), anyList(), any(Object[].class))).thenReturn("EXISTS");
+    when(hashes.entries("auth:refresh:root")).thenReturn(Map.of(
+        "tokenId", "root", "subject", "owner", "meetingId", "meeting",
+        "absoluteExpiresAt", "invalid", "idleExpiresAt", "invalid", "status", "ACTIVE"));
+
+    assertThatThrownBy(() -> store(redis).createIfAbsent(activeState()))
+        .isInstanceOf(AuthTokenException.class)
+        .hasCauseInstanceOf(NumberFormatException.class);
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
   void legacyStateWithoutFamilyIsRefused() {
     StringRedisTemplate redis = mock(StringRedisTemplate.class);
     HashOperations<String, Object, Object> hashes = mock(HashOperations.class);

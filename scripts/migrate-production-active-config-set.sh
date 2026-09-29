@@ -85,7 +85,7 @@ ENCRYPTED_SECRET="$(
   printf '%s\n%s\n' "$NEW_CONFIG_KEY" "$MEETINGS_SIGNING_SECRET" \
     | docker run --rm -i \
         -v "$REPOSITORY_DIR/scripts:/scripts:ro" \
-        node:24.18.0-alpine \
+        node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 \
         node /scripts/encrypt-config-set-secret.mjs
 )"
 test -n "$ENCRYPTED_SECRET"

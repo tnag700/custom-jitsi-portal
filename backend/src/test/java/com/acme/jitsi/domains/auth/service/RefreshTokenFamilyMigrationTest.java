@@ -15,8 +15,8 @@ class RefreshTokenFamilyMigrationTest {
   @ValueSource(booleans = {false, true})
   void migrationRevokesLegacyStatesAndAdvancesCutoverEvenForAnEmptyStore(boolean existingToken) throws Exception {
     String url = "jdbc:h2:mem:refresh-family-migration-" + UUID.randomUUID() + ";MODE=PostgreSQL";
-    try (var connection = DriverManager.getConnection(url, "sa", "")) {
-      var dataSource = new org.springframework.jdbc.datasource.SingleConnectionDataSource(connection, true);
+    try (var connection = DriverManager.getConnection(url, "sa", "");
+         var dataSource = new org.springframework.jdbc.datasource.SingleConnectionDataSource(connection, true)) {
       Flyway.configure().dataSource(dataSource).target("21").load().migrate();
       try (var statement = connection.createStatement()) {
         if (existingToken) {

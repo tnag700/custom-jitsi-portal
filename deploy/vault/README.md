@@ -65,10 +65,10 @@
 ## Approved source policy
 
 - Approved mirror root: `https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/`
-- Pinned stable variant для Linux amd64 baseline: `https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_linux_amd64.zip`
-- Independent checksum source: [official HashiCorp release](https://releases.hashicorp.com/vault/1.21.4/vault_1.21.4_SHA256SUMS), checked 2026-09-28. Repository pin: `vault_1.21.4_linux_amd64.sha256`, SHA-256 `889b681990fe221b884b7932fa9c9dd0ee9811b9349554f1aa287ab63c9f3dae`.
+- Pinned stable variant для Linux amd64 baseline: `https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/2.1.1/vault_2.1.1_linux_amd64.zip`
+- Independent checksum source: [official HashiCorp release](https://releases.hashicorp.com/vault/2.1.1/vault_2.1.1_SHA256SUMS), checked 2026-09-29. Repository pin: `vault_2.1.1_linux_amd64.sha256`, SHA-256 `8aa90f9cea46f541fc7baa3d0ec692fc06afde9a248cc1f2dcac46a567c6f56b`.
 - Container baseline собирается локально через `deploy/vault/Dockerfile` из exact approved mirror artifact path и проверяет его по закреплённому файлу из репозитория. Checksum не скачивается с зеркала; при обновлении версии сначала независимо проверить официальный checksum source.
-- Runtime image tag `jitsi-vault:1.21.4` допустим только как локальный результат этого build path, а не как отдельный source of truth.
+- Runtime image tag `jitsi-vault:2.1.1` допустим только как локальный результат этого build path, а не как отдельный source of truth.
 - Pre-release variants (`rc`, `beta`) не использовать для production baseline без отдельного решения.
 
 ## Audit and sensitive artifacts
