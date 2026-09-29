@@ -111,6 +111,7 @@ export const AdminFrameworkVersionsOverview = component$(
             const securityTone = resolveFrameworkStatusTone(
               framework.securityStatus,
             );
+            const hasUpdate = framework.releaseStatus === "update_available";
             return (
               <article
                 key={framework.key}
@@ -142,12 +143,23 @@ export const AdminFrameworkVersionsOverview = component$(
                       {framework.currentVersion}
                     </dd>
                   </div>
-                  <div>
+                  <div
+                    class={
+                      hasUpdate
+                        ? "rounded-xl border border-warning bg-warning/25 px-3 py-2"
+                        : undefined
+                    }
+                  >
                     <dt class="text-xs text-muted">Последний релиз</dt>
                     <dd class="mt-1 font-mono text-sm font-semibold text-text">
                       {framework.latestVersion ?? "Неизвестно"}
                     </dd>
-                    <dd class="mt-1 text-xs text-muted">
+                    <dd
+                      class={[
+                        "mt-1 text-xs",
+                        hasUpdate ? "font-semibold text-text" : "text-muted",
+                      ]}
+                    >
                       {frameworkReleaseStatusLabel(framework.releaseStatus)}
                     </dd>
                   </div>
