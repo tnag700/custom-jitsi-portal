@@ -212,6 +212,50 @@ describe("admin-config.service runtime", () => {
     expect(result.latestRollout?.actorId).toBe("alice.admin");
   });
 
+  it("loads an active config set when its environment has no rollout history", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(jsonResponse({
+        configSetId: "cfg-prod",
+        name: "Primary PROD",
+        tenantId: "tenant-1",
+        environmentType: "PROD",
+        issuer: "https://example.test",
+        audience: "jitsi-meet",
+        algorithm: "HS256",
+        roleClaim: "role",
+        signingSecret: "***",
+        jwksUri: null,
+        accessTtlMinutes: 20,
+        refreshTtlMinutes: 60,
+        meetingsServiceUrl: "https://example.test/api/v1",
+        status: "ACTIVE",
+        createdAt: "2026-07-29T10:00:00Z",
+        updatedAt: "2026-08-12T10:00:00Z",
+      }, 200))
+      .mockResolvedValueOnce(jsonResponse({
+        status: "COMPATIBLE",
+        mismatches: [],
+        checkedAt: "2026-09-29T04:00:00Z",
+        traceId: "trace-compat",
+      }, 200))
+      .mockResolvedValueOnce(jsonResponse({
+        title: "Конфиг-набор не найден",
+        detail: "No rollout found for tenant 'tenant-1' and environment 'PROD'",
+        errorCode: "CONFIG_SET_NOT_FOUND",
+        traceId: "trace-no-rollout",
+      }, 404));
+
+    const result = await fetchAdminConfigSet(
+      "sess-1",
+      "http://localhost:8080/api/v1",
+      { configSetId: "cfg-prod", tenantId: "tenant-1" },
+    );
+
+    expect(result.configSetId).toBe("cfg-prod");
+    expect(result.latestRollout).toBeNull();
+    expect(result.compatibility?.status).toBe("COMPATIBLE");
+  });
+
   it("create, update, compatibility, rollout and rollback reuse config-sets mutation endpoints with mutation headers", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

@@ -282,10 +282,17 @@ export async function fetchAdminConfigSet(
     "GET /api/v1/config-sets/{configSetId}",
   );
   const compatibility = await checkAdminConfigSetCompatibility(context, resolvedQuery);
-  const latestRollout = await fetchLatestAdminConfigSetRollout(context, {
-    tenantId: resolvedQuery.tenantId,
-    environmentType: normalizeEnvironment(detail.environmentType),
-  });
+  let latestRollout: AdminConfigSetRolloutSummary | null = null;
+  try {
+    latestRollout = await fetchLatestAdminConfigSetRollout(context, {
+      tenantId: resolvedQuery.tenantId,
+      environmentType: normalizeEnvironment(detail.environmentType),
+    });
+  } catch (error) {
+    if (!(error instanceof AdminConfigServiceError && error.payload.errorCode === "CONFIG_SET_NOT_FOUND")) {
+      throw error;
+    }
+  }
   return withDetail(detail, compatibility, latestRollout);
 }
 
