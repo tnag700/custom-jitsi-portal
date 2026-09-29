@@ -111,6 +111,8 @@ vi.mock("~/lib/shared", () => ({
 vi.mock("~/lib/domains/rooms", () => ({
   fetchRooms: mockFetchRooms,
   fetchRoom: mockFetchRoom,
+  createRoomSchema: {},
+  updateRoomSchema: { extend: () => ({}) },
 }));
 
 vi.mock("~/lib/domains/meetings", () => ({
@@ -182,7 +184,45 @@ describe("meetings route runtime", () => {
     vi.restoreAllMocks();
   });
 
-  it("useActiveRooms filters active rooms and preserves backend failures", async () => {
+  it("loads bounded previews including closed rooms without confusing failures with empty schedules", async () => {
+    mockFetchRooms.mockResolvedValueOnce({
+      content: [
+        { roomId: "r1", status: "active" },
+        { roomId: "r2", status: "closed" },
+      ],
+      page: 0,
+      pageSize: 6,
+      totalElements: 7,
+      totalPages: 2,
+    });
+    mockFetchMeetings.mockResolvedValueOnce({
+      content: [{ meetingId: "m1", roomId: "r1" }],
+      totalElements: 9,
+    });
+    mockFetchMeetings.mockRejectedValueOnce(new Error("unavailable"));
+    const mod = await import("~/routes/meetings/loaders");
+    const result = await mod.useWorkspaceRooms(createCtx());
+    expect(result.content).toHaveLength(2);
+    expect(result.previews.r1).toEqual({
+      content: [{ meetingId: "m1", roomId: "r1" }],
+      totalElements: 9,
+    });
+    expect(result.previews.r2).toEqual({ error: true });
+    expect(mockFetchRooms).toHaveBeenCalledWith(
+      expect.anything(),
+      "tenant-a",
+      0,
+      6,
+    );
+    expect(mockFetchMeetings).toHaveBeenCalledWith(
+      expect.anything(),
+      "r1",
+      0,
+      3,
+    );
+  });
+
+  it("useWorkspaceRooms includes closed rooms and preserves backend failures", async () => {
     mockFetchRooms.mockResolvedValueOnce({
       content: [
         { roomId: "r1", status: "active" },
@@ -198,14 +238,14 @@ describe("meetings route runtime", () => {
     const mod = await import("~/routes/meetings/index");
     const ctx = createCtx();
 
-    const filtered = await mod.useActiveRooms({
+    const filtered = await mod.useWorkspaceRooms({
       sharedMap: ctx.sharedMap,
       cookie: ctx.cookie,
     } as never);
-    expect(filtered.content).toHaveLength(1);
+    expect(filtered.content).toHaveLength(2);
     expect(filtered.content[0].roomId).toBe("r1");
     await expect(
-      mod.useActiveRooms({
+      mod.useWorkspaceRooms({
         sharedMap: ctx.sharedMap,
         cookie: ctx.cookie,
       } as never),
@@ -214,12 +254,20 @@ describe("meetings route runtime", () => {
 
   it("keeps a selected room available beyond the current room page", async () => {
     const roomId = "11111111-1111-4111-8111-111111111111";
-    mockFetchRooms.mockResolvedValue({ content: [], page: 0, pageSize: 20, totalElements: 21, totalPages: 2 });
+    mockFetchRooms.mockResolvedValue({
+      content: [],
+      page: 0,
+      pageSize: 20,
+      totalElements: 21,
+      totalPages: 2,
+    });
     mockFetchRoom.mockResolvedValue({ roomId, status: "active" });
     const mod = await import("~/routes/meetings/index");
-    const result = await mod.useActiveRooms(createCtx({
-      query: new URLSearchParams(`roomId=${roomId}`),
-    }) as never);
+    const result = await mod.useWorkspaceRooms(
+      createCtx({
+        query: new URLSearchParams(`roomId=${roomId}`),
+      }) as never,
+    );
 
     expect(result.content[0].roomId).toBe(roomId);
     expect(mockFetchRoom).toHaveBeenCalledWith(expect.anything(), roomId);
@@ -257,33 +305,56 @@ describe("meetings route runtime", () => {
   });
 
   it("loaders request independent rooms, meetings and invites pages", async () => {
-    const page = { content: [], page: 1, pageSize: 20, totalElements: 21, totalPages: 2 };
+    const page = {
+      content: [],
+      page: 1,
+      pageSize: 20,
+      totalElements: 21,
+      totalPages: 2,
+    };
     mockFetchRooms.mockResolvedValue(page);
     mockFetchMeetings.mockResolvedValue(page);
     mockFetchInvites.mockResolvedValue(page);
     const mod = await import("~/routes/meetings/index");
-    const ctx = createCtx({ query: new URLSearchParams(
-      "roomId=r1&invitesMeetingId=m1&roomsPage=1&meetingsPage=2&invitesPage=3",
-    ) });
+    const ctx = createCtx({
+      query: new URLSearchParams(
+        "roomId=r1&invitesMeetingId=m1&roomsPage=1&meetingsPage=2&invitesPage=3",
+      ),
+    });
 
-    await mod.useActiveRooms(ctx as never);
+    await mod.useWorkspaceRooms(ctx as never);
     await mod.useMeetings(ctx as never);
     await mod.useInvites(ctx as never);
 
-    expect(mockFetchRooms).toHaveBeenCalledWith(expect.anything(), "tenant-a", 1);
+    expect(mockFetchRooms).toHaveBeenCalledWith(
+      expect.anything(),
+      "tenant-a",
+      1,
+      6,
+    );
     expect(mockFetchMeetings).toHaveBeenCalledWith(expect.anything(), "r1", 2);
     expect(mockFetchInvites).toHaveBeenCalledWith(expect.anything(), "m1", 3);
   });
 
   it("loads selected meeting detail outside the current page", async () => {
-    mockFetchMeeting.mockResolvedValue({ meetingId: "11111111-1111-4111-8111-111111111111", roomId: "r1" });
+    mockFetchMeeting.mockResolvedValue({
+      meetingId: "11111111-1111-4111-8111-111111111111",
+      roomId: "r1",
+    });
     const mod = await import("~/routes/meetings/index");
-    const result = await mod.useSelectedMeeting(createCtx({ query: new URLSearchParams(
-      "roomId=r1&meetingId=11111111-1111-4111-8111-111111111111",
-    ) }) as never);
+    const result = await mod.useSelectedMeeting(
+      createCtx({
+        query: new URLSearchParams(
+          "roomId=r1&meetingId=11111111-1111-4111-8111-111111111111",
+        ),
+      }) as never,
+    );
 
     expect(result?.meetingId).toBe("11111111-1111-4111-8111-111111111111");
-    expect(mockFetchMeeting).toHaveBeenCalledWith(expect.anything(), "11111111-1111-4111-8111-111111111111");
+    expect(mockFetchMeeting).toHaveBeenCalledWith(
+      expect.anything(),
+      "11111111-1111-4111-8111-111111111111",
+    );
   });
 
   it("useMeetings preserves backend failures instead of rendering a false empty state", async () => {

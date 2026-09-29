@@ -138,7 +138,7 @@ export const RoomForm = component$<RoomFormProps>(
             form={formId}
             type="submit"
             class="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
-            disabled={isLoading}
+            disabled={isLoading || !configSetIdValue.value}
           >
             {isLoading ? "Сохранение..." : isEdit ? "Сохранить" : "Создать"}
           </button>

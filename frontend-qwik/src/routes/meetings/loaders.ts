@@ -12,6 +12,7 @@ import { fetchInvites } from "~/lib/domains/invites";
 import { fetchRoom, fetchRooms } from "~/lib/domains/rooms";
 import { buildServerRequestContext } from "~/lib/shared/routes/server-handlers";
 import { readPage } from "~/lib/shared/routes/page-query";
+import type { RoomMeetingPreview } from "./components/MeetingsOverview";
 
 const emptyPage = {
   content: [],
@@ -37,30 +38,67 @@ async function selectedMeeting(
   return isUuidLike(id) ? fetchMeeting(requestContext, id) : null;
 }
 
-export const useSelectedMeeting = routeLoader$(async ({ sharedMap, cookie, query }) =>
-  selectedMeeting(query, "meetingId", buildServerRequestContext({ sharedMap, cookie })),
+export const useSelectedMeeting = routeLoader$(
+  async ({ sharedMap, cookie, query }) =>
+    selectedMeeting(
+      query,
+      "meetingId",
+      buildServerRequestContext({ sharedMap, cookie }),
+    ),
 );
 
-export const useSelectedInviteMeeting = routeLoader$(async ({ sharedMap, cookie, query }) =>
-  selectedMeeting(query, "invitesMeetingId", buildServerRequestContext({ sharedMap, cookie })),
+export const useSelectedInviteMeeting = routeLoader$(
+  async ({ sharedMap, cookie, query }) =>
+    selectedMeeting(
+      query,
+      "invitesMeetingId",
+      buildServerRequestContext({ sharedMap, cookie }),
+    ),
 );
 
-export const useActiveRooms = routeLoader$(async ({ sharedMap, cookie, query }) => {
-  const user = sharedMap.get("user") as SafeUserProfile;
-  const requestContext = buildServerRequestContext({ sharedMap, cookie });
+export const useWorkspaceRooms = routeLoader$(
+  async ({ sharedMap, cookie, query }) => {
+    const user = sharedMap.get("user") as SafeUserProfile;
+    const requestContext = buildServerRequestContext({ sharedMap, cookie });
 
-  const rooms = await fetchRooms(requestContext, user.tenant, readPage(query, "roomsPage"));
-  const selectedRoomId = query?.get("roomId");
-  const activeRooms = rooms.content.filter((room) => room.status === "active");
-  if (isUuidLike(selectedRoomId) && !activeRooms.some((room) => room.roomId === selectedRoomId)) {
-    const selectedRoom = await fetchRoom(requestContext, selectedRoomId);
-    if (selectedRoom.status === "active") activeRooms.push(selectedRoom);
-  }
-  return {
-    ...rooms,
-    content: activeRooms,
-  };
-});
+    const rooms = await fetchRooms(
+      requestContext,
+      user.tenant,
+      readPage(query, "roomsPage"),
+      6,
+    );
+    const selectedRoomId = query?.get("roomId");
+    const content = [...rooms.content];
+    if (
+      isUuidLike(selectedRoomId) &&
+      !content.some((room) => room.roomId === selectedRoomId)
+    ) {
+      content.push(await fetchRoom(requestContext, selectedRoomId));
+    }
+    const previews: Record<string, RoomMeetingPreview> = {};
+    // ponytail: at most six preview requests per page; add a batch endpoint if room density grows.
+    await Promise.all(
+      content
+        .filter((room) => room.roomId !== selectedRoomId)
+        .map(async (room) => {
+          try {
+            const page = await fetchMeetings(requestContext, room.roomId, 0, 3);
+            previews[room.roomId] = {
+              content: page.content,
+              totalElements: page.totalElements,
+            };
+          } catch {
+            previews[room.roomId] = { error: true };
+          }
+        }),
+    );
+    return {
+      ...rooms,
+      content,
+      previews,
+    };
+  },
+);
 
 export const useMeetings = routeLoader$(
   async ({ sharedMap, cookie, query }) => {
@@ -71,7 +109,11 @@ export const useMeetings = routeLoader$(
       return emptyPage;
     }
 
-    return fetchMeetings(requestContext, roomId, readPage(query, "meetingsPage"));
+    return fetchMeetings(
+      requestContext,
+      roomId,
+      readPage(query, "meetingsPage"),
+    );
   },
 );
 
@@ -119,5 +161,9 @@ export const useInvites = routeLoader$(async ({ sharedMap, cookie, query }) => {
     return emptyPage;
   }
 
-  return fetchInvites(requestContext, meetingId, readPage(query, "invitesPage"));
+  return fetchInvites(
+    requestContext,
+    meetingId,
+    readPage(query, "invitesPage"),
+  );
 });

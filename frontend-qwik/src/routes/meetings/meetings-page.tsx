@@ -11,6 +11,10 @@ import { MeetingConfirmationDialogs } from "./components/MeetingConfirmationDial
 import { MeetingInvitesWorkspace } from "./components/MeetingInvitesWorkspace";
 import { MeetingsOverview } from "./components/MeetingsOverview";
 import {
+  RoomManagement,
+  type RoomManagementRequest,
+} from "../rooms/components/RoomManagement";
+import {
   buildMeetingsHref,
   getActionError,
   getActionValidationFeedback,
@@ -21,7 +25,7 @@ import {
 } from "./meetings-page-state";
 import { useCreateInvite, useRevokeInvite } from "./invite-actions";
 import {
-  useActiveRooms,
+  useWorkspaceRooms,
   useAssignableUsers,
   useInvites,
   useMeetings,
@@ -44,7 +48,7 @@ export default component$(() => {
   const authStore = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
-  const roomsData = useActiveRooms();
+  const roomsData = useWorkspaceRooms();
   const meetingsData = useMeetings();
   const selectedMeetingData = useSelectedMeeting();
   const selectedInviteMeetingData = useSelectedInviteMeeting();
@@ -60,6 +64,8 @@ export default component$(() => {
   const createInviteAction = useCreateInvite();
   const revokeInviteAction = useRevokeInvite();
   const showCreateForm = useSignal(false);
+  const createRoomId = useSignal("");
+  const roomRequest = useSignal<RoomManagementRequest | null>(null);
   const showEditForm = useSignal(false);
   const editingMeeting = useSignal<Meeting | null>(null);
   const confirmingCancel = useSignal<Meeting | null>(null);
@@ -71,10 +77,14 @@ export default component$(() => {
   const selectedRoomId = location.url.searchParams.get("roomId") ?? "";
   const roomsPage = roomsData.value.page;
   const meetingsPage = meetingsData.value.page;
-  const selectedMeeting = selectedMeetingData.value?.roomId === selectedRoomId
-    ? selectedMeetingData.value : null;
-  const selectedInviteMeeting = selectedInviteMeetingData.value?.roomId === selectedRoomId
-    ? selectedInviteMeetingData.value : null;
+  const selectedMeeting =
+    selectedMeetingData.value?.roomId === selectedRoomId
+      ? selectedMeetingData.value
+      : null;
+  const selectedInviteMeeting =
+    selectedInviteMeetingData.value?.roomId === selectedRoomId
+      ? selectedInviteMeetingData.value
+      : null;
   const createError = getActionError<MeetingErrorPayload>(createAction.value);
   const updateError = getActionError<MeetingErrorPayload>(updateAction.value);
   const createValidationFeedback = getActionValidationFeedback(
@@ -105,8 +115,8 @@ export default component$(() => {
     });
   });
 
-  const selectRoom$ = $((roomId: string) => {
-    void navigate(buildMeetingsHref(roomId, { roomsPage }));
+  const openRoomAction$ = $((request: RoomManagementRequest) => {
+    roomRequest.value = request;
   });
 
   const openParticipants$ = $((meeting: Meeting) => {
@@ -114,7 +124,7 @@ export default component$(() => {
       buildMeetingsHref(meeting.roomId, {
         meetingId: meeting.meetingId,
         roomsPage,
-        meetingsPage,
+        meetingsPage: meeting.roomId === selectedRoomId ? meetingsPage : 0,
       }),
     );
   });
@@ -124,13 +134,15 @@ export default component$(() => {
       buildMeetingsHref(meeting.roomId, {
         invitesMeetingId: meeting.meetingId,
         roomsPage,
-        meetingsPage,
+        meetingsPage: meeting.roomId === selectedRoomId ? meetingsPage : 0,
       }),
     );
   });
 
   const closeDetail$ = $(() => {
-    void navigate(buildMeetingsHref(selectedRoomId, { roomsPage, meetingsPage }));
+    void navigate(
+      buildMeetingsHref(selectedRoomId, { roomsPage, meetingsPage }),
+    );
   });
 
   const openEdit$ = $((meeting: Meeting) => {
@@ -143,7 +155,8 @@ export default component$(() => {
     void openOnNextFrame$(showCancelDialog);
   });
 
-  const openCreate$ = $(() => {
+  const openCreate$ = $((roomId: string) => {
+    createRoomId.value = roomId;
     showCreateForm.value = true;
   });
 
@@ -233,10 +246,15 @@ export default component$(() => {
       <MeetingsOverview
         rooms={roomsData.value.content}
         totalRooms={roomsData.value.totalElements}
+        roomPreviews={roomsData.value.previews}
         meetings={meetingsData.value.content}
         totalMeetings={meetingsData.value.totalElements}
         roomsPage={roomsPage}
         selectedRoomId={selectedRoomId}
+        createRoomId={createRoomId.value}
+        meetingsPage={meetingsPage}
+        meetingsTotalPages={meetingsData.value.totalPages}
+        currentUrl={location.url.href}
         editingMeeting={editingMeeting}
         showCreateForm={showCreateForm}
         showEditForm={showEditForm}
@@ -248,7 +266,7 @@ export default component$(() => {
         updateError={updateError}
         createValidationFeedback={createValidationFeedback}
         updateValidationFeedback={updateValidationFeedback}
-        onRoomChange$={selectRoom$}
+        onRoomAction$={openRoomAction$}
         onEdit$={openEdit$}
         onCancel$={openCancel$}
         onParticipants$={openParticipants$}
@@ -262,31 +280,25 @@ export default component$(() => {
         totalPages={roomsData.value.totalPages}
         label="Страницы комнат"
       />
-      {selectedRoomId && (
-        <PageNavigation
-          currentUrl={location.url.href}
-          parameter="meetingsPage"
-          page={meetingsData.value.page}
-          totalPages={meetingsData.value.totalPages}
-          label="Страницы встреч"
-        />
-      )}
+      <RoomManagement request={roomRequest} />
 
       {selectedMeeting && (
-        <ParticipantPanel
-          meeting={selectedMeeting}
-          currentUserId={authStore.profile?.id ?? ""}
-          currentUserDisplayName={
-            authStore.profile?.displayName ?? "Текущий пользователь"
-          }
-          participants={participantsData.value}
-          assignableUsers={assignableUsersData.value}
-          bulkAssignAction={bulkAssignAction}
-          updateRoleAction={updateRoleAction}
-          unassignAction={unassignAction}
-          error={participantError}
-          onClose$={closeDetail$}
-        />
+        <div id="meeting-details" class="scroll-mt-4">
+          <ParticipantPanel
+            meeting={selectedMeeting}
+            currentUserId={authStore.profile?.id ?? ""}
+            currentUserDisplayName={
+              authStore.profile?.displayName ?? "Текущий пользователь"
+            }
+            participants={participantsData.value}
+            assignableUsers={assignableUsersData.value}
+            bulkAssignAction={bulkAssignAction}
+            updateRoleAction={updateRoleAction}
+            unassignAction={unassignAction}
+            error={participantError}
+            onClose$={closeDetail$}
+          />
+        </div>
       )}
 
       {selectedInviteMeeting && (

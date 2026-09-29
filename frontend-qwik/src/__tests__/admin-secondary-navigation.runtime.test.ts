@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildAdminSecondaryNavItems,
+  buildAdminNavGroups,
   buildAdminSecondaryHref,
   resolveIncidentReturnTo,
 } from "~/lib/domains/admin";
@@ -58,12 +58,12 @@ describe("admin secondary navigation runtime", () => {
     );
 
     expect(
-      buildAdminSecondaryNavItems(currentUrl, "dev", false).some(
-        (item) => item.match === "/admin/users",
-      ),
+      buildAdminNavGroups(currentUrl, false)
+        .flatMap((group) => group.items)
+        .some((item) => item.match === "/admin/users"),
     ).toBe(false);
     expect(
-      buildAdminSecondaryNavItems(currentUrl, "dev", true),
+      buildAdminNavGroups(currentUrl, true).flatMap((group) => group.items),
     ).toContainEqual(
       expect.objectContaining({
         match: "/admin/users",

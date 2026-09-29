@@ -30,22 +30,24 @@ export const MeetingCard = component$<MeetingCardProps>(
           : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
 
     return (
-      <article class="relative overflow-visible rounded border border-border bg-surface p-4 pt-5 text-text">
+      <article class="flex min-w-0 flex-col rounded-xl border border-border bg-surface p-4 text-text">
         <span
           class={[
-            "absolute -top-2 right-3 inline-block rounded-full px-2 py-0.5 text-xs font-medium shadow-sm",
+            "mb-3 w-fit rounded-full px-2 py-0.5 text-xs font-medium",
             statusClass,
           ]}
         >
           {statusLabel}
         </span>
 
-        <div class="mb-2 pr-16">
-          <h3 class="text-lg font-semibold">{meeting.title}</h3>
+        <div class="mb-2">
+          <h3 class="break-words text-lg font-semibold">{meeting.title}</h3>
         </div>
 
         {meeting.description && (
-          <p class="mb-2 line-clamp-2 text-sm text-muted">{meeting.description}</p>
+          <p class="mb-2 line-clamp-2 text-sm text-muted">
+            {meeting.description}
+          </p>
         )}
 
         <div class="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted">
@@ -65,7 +67,7 @@ export const MeetingCard = component$<MeetingCardProps>(
           </span>
         </div>
 
-        <div class="flex flex-wrap gap-2">
+        <div class="mt-auto flex flex-wrap gap-2 pt-2">
           {isScheduled && (
             <button
               type="button"
@@ -100,10 +102,10 @@ export const MeetingCard = component$<MeetingCardProps>(
           <button
             type="button"
             class="rounded border border-border px-3 py-1 text-sm hover:bg-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            aria-label={`Инвайты встречи ${meeting.title}`}
+            aria-label={`Приглашения на встречу ${meeting.title}`}
             onClick$={() => onInvites$(meeting)}
           >
-            Инвайты
+            Приглашения
           </button>
         </div>
       </article>

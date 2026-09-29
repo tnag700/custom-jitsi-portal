@@ -64,8 +64,7 @@ export {
   AdminFrameworkVersionsOverview,
 } from "./components";
 export {
-  buildAdminPrimaryNavItems,
-  buildAdminSecondaryNavItems,
+  buildAdminNavGroups,
   hasAdminCabinetAccess,
   isActiveAdminNavItem,
   withAdminEnvironment,

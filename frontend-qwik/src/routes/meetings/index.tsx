@@ -1,9 +1,6 @@
+export { useCreateInvite, useRevokeInvite } from "./invite-actions";
 export {
-  useCreateInvite,
-  useRevokeInvite,
-} from "./invite-actions";
-export {
-  useActiveRooms,
+  useWorkspaceRooms,
   useAssignableUsers,
   useInvites,
   useMeetings,
@@ -24,3 +21,11 @@ export {
 } from "./participant-actions";
 
 export { default } from "./meetings-page";
+
+export {
+  useRoomConfigSets,
+  useCreateRoom,
+  useUpdateRoom,
+  useCloseRoom,
+  useDeleteRoom,
+} from "../rooms/route-handlers";
