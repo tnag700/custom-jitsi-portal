@@ -75,12 +75,12 @@ describe("Story 14.1 Guard: framework and infrastructure baseline", () => {
       "utf-8",
     );
 
-    expect(nvmrc).toBe("24.18.0");
-    expect(packageJson).toContain('"node": ">=24.18.0 <25"');
-    expect(serverPackageJson).toContain('"node": ">=24.18.0 <25"');
-    expect(dockerfile.match(/FROM node:24\.18\.0-alpine/g)).toHaveLength(2);
-    expect(devMonitoring).toContain("image: node:24.18.0-alpine");
-    expect(productionMonitoring).toContain("image: node:24.18.0-alpine");
+    expect(nvmrc).toBe("24.21.0");
+    expect(packageJson).toContain('"node": ">=24.21.0 <25"');
+    expect(serverPackageJson).toContain('"node": ">=24.21.0 <25"');
+    expect(dockerfile.match(/FROM node:24\.21\.0-alpine/g)).toHaveLength(2);
+    expect(devMonitoring).toContain("image: node:24.21.0-alpine");
+    expect(productionMonitoring).toContain("image: node:24.21.0-alpine");
   });
 
   it("pins one supported Keycloak patch across development and production", () => {
@@ -92,10 +92,10 @@ describe("Story 14.1 Guard: framework and infrastructure baseline", () => {
       join(REPOSITORY_DIR, "docker-compose.production.yml"),
       "utf-8",
     );
-    const expectedImage = "image: quay.io/keycloak/keycloak:26.7.0";
+    const expectedImage = "image: quay.io/keycloak/keycloak:26.7.4";
 
     expect(devCompose.split(expectedImage)).toHaveLength(2);
-    expect(productionCompose).toContain("image: jitsi-keycloak:26.7.0");
+    expect(productionCompose).toContain("image: jitsi-keycloak:26.7.4");
     expect(productionCompose).toContain("context: ./deploy/keycloak");
     expect(devCompose).not.toContain("keycloak:26.1.2");
     expect(productionCompose).not.toContain("keycloak:26.1.2");

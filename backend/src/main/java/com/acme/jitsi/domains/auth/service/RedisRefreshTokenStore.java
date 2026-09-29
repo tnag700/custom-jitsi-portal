@@ -218,7 +218,9 @@ class RedisRefreshTokenStore implements RefreshTokenStore {
         throw invalidState();
       }
     } catch (IllegalArgumentException ex) {
-      throw invalidState();
+      AuthTokenException failure = invalidState();
+      failure.initCause(ex);
+      throw failure;
     }
     String familyId = stringValue(map.get(FIELD_FAMILY_ID));
     if (familyId.isBlank()) {

@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.utility.DockerImageName;
 
 class TestcontainersBaselineSourceGuardTest {
 
@@ -25,6 +26,14 @@ class TestcontainersBaselineSourceGuardTest {
   private static final Path README_FILE = Path.of("..", "README.md");
 
   @Test
+  void pinnedImageNamesInitializeWithoutDockerAndRetainOfficialCompatibility() {
+    PostgresRedisContainerIntegrationTestSupport.POSTGRES_IMAGE.assertValid();
+    PostgresRedisContainerIntegrationTestSupport.POSTGRES_IMAGE.assertCompatibleWith(DockerImageName.parse("postgres"));
+    PostgresRedisContainerIntegrationTestSupport.REDIS_IMAGE.assertValid();
+    PostgresRedisContainerIntegrationTestSupport.REDIS_IMAGE.assertCompatibleWith(DockerImageName.parse("redis"));
+  }
+
+  @Test
   void canonicalContainerBaselineIsDocumentedInCodeAndDocs() throws IOException {
     String buildGradle = Files.readString(BUILD_FILE);
     String sharedSupport = Files.readString(SHARED_SUPPORT_FILE);
@@ -36,8 +45,8 @@ class TestcontainersBaselineSourceGuardTest {
     String readme = Files.readString(README_FILE);
 
     assertThat(buildGradle)
-        .contains("org.testcontainers:junit-jupiter:1.21.4")
-        .contains("org.testcontainers:postgresql:1.21.4");
+        .contains("org.testcontainers:testcontainers-junit-jupiter:2.0.5")
+        .contains("org.testcontainers:testcontainers-postgresql:2.0.5");
 
     assertThat(sharedSupport)
         .contains("@Testcontainers")
@@ -45,8 +54,8 @@ class TestcontainersBaselineSourceGuardTest {
         .contains("@DynamicPropertySource")
         .contains("PostgreSQLContainer")
         .contains("getJdbcUrl")
-        .contains("postgres:18.4-alpine")
-        .contains("redis:7-alpine")
+        .contains("postgres@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722")
+        .contains("redis@sha256:d5ac52db24d4e70566fe9944f22cf5bdc2bc739b05c0f426335161ea6c23f3b3")
         .contains("spring.datasource.url")
         .contains("spring.data.redis.host");
 

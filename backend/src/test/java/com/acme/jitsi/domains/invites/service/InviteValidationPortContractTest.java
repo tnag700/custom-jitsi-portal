@@ -219,7 +219,7 @@ class InviteValidationPortContractTest {
             assertThat(exception.errorCode()).isEqualTo(ErrorCode.INVITE_EXHAUSTED.code());
             assertThat(exception.getCause()).isInstanceOf(InviteExhaustedException.class);
             assertThat(exception.getCause())
-                .hasCauseInstanceOf(ObjectOptimisticLockingFailureException.class);
+                .hasRootCauseInstanceOf(ObjectOptimisticLockingFailureException.class);
           });
     }
   }
@@ -262,9 +262,7 @@ class InviteValidationPortContractTest {
 
   private void assertForFixtures(List<PortFixture> fixtures, FixtureAssertion assertion) {
     try {
-      for (PortFixture fixture : fixtures) {
-        assertion.accept(fixture);
-      }
+      fixtures.forEach(assertion::accept);
     } finally {
       fixtures.forEach(PortFixture::close);
     }

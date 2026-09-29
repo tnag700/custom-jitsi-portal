@@ -20,8 +20,7 @@ public class ConsumeInviteUseCase implements UseCase<ConsumeInviteCommand, Meeti
     try {
       return concurrencyBoundary.execute(command);
     } catch (RetryableConsumeInviteContentionException exception) {
-      Throwable cause = exception.getCause();
-      throw new InviteExhaustedException(command.token(), cause == null ? exception : cause);
+      throw new InviteExhaustedException(command.token(), exception);
     } catch (ObjectOptimisticLockingFailureException exception) {
       throw new InviteExhaustedException(command.token(), exception);
     }

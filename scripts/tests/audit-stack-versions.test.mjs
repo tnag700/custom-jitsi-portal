@@ -12,33 +12,33 @@ test("offline audit fails closed on drift and reports the reviewed baseline", as
   );
   assert.equal(
     result.components.find((component) => component.key === "spring-boot")?.currentVersion,
-    "4.1.0",
+    "4.1.1",
   );
   assert.equal(
     result.components.find((component) => component.key === "qwik")?.channel,
-    "beta",
+    "latest",
   );
 });
 
-test("release lookup uses the configured prerelease channel document", async () => {
+test("release lookup uses the publisher latest channel document", async () => {
   const requested = [];
   const latest = await resolveLatest(
     {
       key: "qwik",
-      channel: "beta",
-      sourceUrl: "https://registry.npmjs.org/@qwik.dev%2fcore/beta",
+      channel: "latest",
+      sourceUrl: "https://registry.npmjs.org/@qwik.dev%2fcore/latest",
     },
     async (url, options) => {
       requested.push({ url: String(url), redirect: options.redirect });
-      return new Response(JSON.stringify({ version: "2.0.0-beta.39" }), {
+      return new Response(JSON.stringify({ version: "2.0.0-beta.45" }), {
         status: 200,
       });
     },
   );
-  assert.equal(latest, "2.0.0-beta.39");
+  assert.equal(latest, "2.0.0-beta.45");
   assert.deepEqual(requested, [
     {
-      url: "https://registry.npmjs.org/@qwik.dev%2fcore/beta",
+      url: "https://registry.npmjs.org/@qwik.dev%2fcore/latest",
       redirect: "error",
     },
   ]);

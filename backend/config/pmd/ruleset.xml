@@ -13,7 +13,10 @@
 
   <!-- Core quality categories -->
   <rule ref="category/java/bestpractices.xml" />
-  <rule ref="category/java/design.xml" />
+  <rule ref="category/java/design.xml">
+    <!-- Requires a package whitelist; module boundaries are enforced by architectureTest. -->
+    <exclude name="LoosePackageCoupling" />
+  </rule>
   <!-- Keep the audit readable: codestyle/documentation dominated findings with low actionability. -->
   <rule ref="category/java/errorprone.xml" />
   <rule ref="category/java/multithreading.xml" />

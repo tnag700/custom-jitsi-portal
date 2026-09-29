@@ -1,35 +1,35 @@
 {
-  "checkedAt": "2026-08-13",
+  "checkedAt": "2026-09-29",
   "components": [
     {
       "key": "spring-boot",
       "displayName": "Spring Boot",
-      "currentVersion": "4.1.0",
-      "latestVersion": "4.1.0",
+      "currentVersion": "4.1.1",
+      "latestVersion": "4.1.1",
       "channel": "stable",
       "sourceUrl": "https://repo.maven.apache.org/maven2/org/springframework/boot/spring-boot/maven-metadata.xml"
     },
     {
       "key": "spring-framework",
       "displayName": "Spring Framework",
-      "currentVersion": "7.0.8",
-      "latestVersion": "7.0.8",
+      "currentVersion": "7.0.9",
+      "latestVersion": "7.0.9",
       "channel": "spring-boot-managed",
       "sourceUrl": "https://docs.spring.io/spring-boot/appendix/dependency-versions/coordinates.html"
     },
     {
       "key": "spring-security",
       "displayName": "Spring Security",
-      "currentVersion": "7.1.0",
-      "latestVersion": "7.1.0",
+      "currentVersion": "7.1.1",
+      "latestVersion": "7.1.1",
       "channel": "spring-boot-managed",
       "sourceUrl": "https://docs.spring.io/spring-boot/appendix/dependency-versions/coordinates.html"
     },
     {
       "key": "spring-modulith",
       "displayName": "Spring Modulith",
-      "currentVersion": "2.1.0",
-      "latestVersion": "2.1.0",
+      "currentVersion": "2.1.1",
+      "latestVersion": "2.1.1",
       "channel": "stable",
       "sourceUrl": "https://repo.maven.apache.org/maven2/org/springframework/modulith/spring-modulith-bom/maven-metadata.xml"
     },
@@ -44,34 +44,34 @@
     {
       "key": "springdoc",
       "displayName": "springdoc-openapi",
-      "currentVersion": "3.1.0",
-      "latestVersion": "3.1.0",
+      "currentVersion": "3.1.1",
+      "latestVersion": "3.1.1",
       "channel": "stable",
       "sourceUrl": "https://repo.maven.apache.org/maven2/org/springdoc/springdoc-openapi-starter-webmvc-api/maven-metadata.xml"
     },
     {
       "key": "gradle",
       "displayName": "Gradle",
-      "currentVersion": "9.7.0",
-      "latestVersion": "9.7.0",
+      "currentVersion": "9.8.0",
+      "latestVersion": "9.8.0",
       "channel": "current",
       "sourceUrl": "https://services.gradle.org/versions/current"
     },
     {
       "key": "qwik",
       "displayName": "Qwik",
-      "currentVersion": "2.0.0-beta.38",
-      "latestVersion": "2.0.0-beta.38",
-      "channel": "beta",
-      "sourceUrl": "https://registry.npmjs.org/@qwik.dev%2fcore/beta"
+      "currentVersion": "2.0.0-beta.45",
+      "latestVersion": "2.0.0-beta.45",
+      "channel": "latest",
+      "sourceUrl": "https://registry.npmjs.org/@qwik.dev%2fcore/latest"
     },
     {
       "key": "qwik-router",
       "displayName": "Qwik Router",
-      "currentVersion": "2.0.0-beta.38",
-      "latestVersion": "2.0.0-beta.38",
-      "channel": "beta",
-      "sourceUrl": "https://registry.npmjs.org/@qwik.dev%2frouter/beta"
+      "currentVersion": "2.0.0-beta.45",
+      "latestVersion": "2.0.0-beta.45",
+      "channel": "latest",
+      "sourceUrl": "https://registry.npmjs.org/@qwik.dev%2frouter/latest"
     },
     {
       "key": "express",

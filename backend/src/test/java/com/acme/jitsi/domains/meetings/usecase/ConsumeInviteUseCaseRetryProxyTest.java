@@ -72,7 +72,8 @@ class ConsumeInviteUseCaseRetryProxyTest {
 
     assertThatThrownBy(() -> useCase.execute(new ConsumeInviteCommand(TOKEN)))
         .isInstanceOf(InviteExhaustedException.class)
-        .hasCauseInstanceOf(ObjectOptimisticLockingFailureException.class);
+        .hasCauseInstanceOf(RetryableConsumeInviteContentionException.class)
+        .hasRootCauseInstanceOf(ObjectOptimisticLockingFailureException.class);
 
     assertThat(inviteRepository.findAttempts()).isEqualTo(3);
     assertThat(inviteRepository.saveAttempts()).isEqualTo(3);

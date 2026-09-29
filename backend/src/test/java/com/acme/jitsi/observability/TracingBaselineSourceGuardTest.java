@@ -74,8 +74,8 @@ class TracingBaselineSourceGuardTest {
         .contains("@DynamicPropertySource")
         .contains("PostgreSQLContainer")
         .contains("GenericContainer")
-        .contains("postgres:18.4-alpine")
-        .contains("redis:7-alpine");
+        .contains("postgres@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722")
+        .contains("redis@sha256:d5ac52db24d4e70566fe9944f22cf5bdc2bc739b05c0f426335161ea6c23f3b3");
 
     assertThat(redisTracingWiringTest)
         .contains("LettuceConnectionFactory")
