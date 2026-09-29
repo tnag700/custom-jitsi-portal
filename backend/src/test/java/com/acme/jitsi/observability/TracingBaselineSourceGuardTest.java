@@ -50,6 +50,7 @@ class TracingBaselineSourceGuardTest {
                 .contains("transport:")
                 .doesNotContain("http/protobuf")
         .contains("logging:")
+        .contains("console: ecs")
         .contains("pattern:")
         .contains("correlation:");
 

@@ -185,5 +185,8 @@ management:
         include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info}
 
 logging:
+  structured:
+    format:
+      console: ecs
   pattern:
     correlation: "[traceId=%X{traceId:-}, spanId=%X{spanId:-}] "

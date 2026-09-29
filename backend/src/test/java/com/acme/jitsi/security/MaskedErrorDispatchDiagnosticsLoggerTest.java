@@ -38,7 +38,7 @@ class MaskedErrorDispatchDiagnosticsLoggerTest {
         .extracting(ILoggingEvent::getLevel, ILoggingEvent::getFormattedMessage)
         .containsExactly(
             Level.ERROR,
-            "masked_error_dispatch path=/error traceId=trace-logger-1 originalStatus=500 originalPath=/api/v1/rooms originalExceptionType=IllegalStateException originalException=java.lang.IllegalStateException: boom securityExceptionType=AccessDeniedException");
+            "masked_error_dispatch path=/error traceId=trace-logger-1 originalStatus=500 originalPath=/api/v1/rooms originalExceptionType=IllegalStateException securityExceptionType=AccessDeniedException");
   }
 
   @Test
@@ -56,5 +56,27 @@ class MaskedErrorDispatchDiagnosticsLoggerTest {
     }
 
     assertThat(appender.list).isEmpty();
+  }
+
+  @Test
+  void redactsRetiredInviteTokenFromMaskedErrorDiagnostics() {
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/error");
+    request.setAttribute("jakarta.servlet.error.request_uri", "/api/v1/invites/secret-token/validate");
+    request.setAttribute("jakarta.servlet.error.exception", new IllegalStateException("secret-token"));
+
+    Logger targetLogger = (Logger) LoggerFactory.getLogger(MaskedErrorDispatchDiagnosticsLogger.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    targetLogger.addAppender(appender);
+    try {
+      logger.logIfPresent(request, "trace-logger-token", new AccessDeniedException("denied"));
+    } finally {
+      targetLogger.detachAppender(appender);
+    }
+
+    assertThat(appender.list).hasSize(1);
+    assertThat(appender.list.getFirst().getFormattedMessage())
+        .contains("originalPath=/api/v1/invites/[redacted]/validate")
+        .doesNotContain("secret-token");
   }
 }

@@ -19,16 +19,14 @@ final class MaskedErrorDispatchDiagnosticsLogger {
     Object originUri = request.getAttribute("jakarta.servlet.error.request_uri");
     Object originException = request.getAttribute("jakarta.servlet.error.exception");
     String originExceptionType = resolveExceptionType(originException);
-    String originExceptionMessage = originException == null ? "" : String.valueOf(originException);
     String securityExceptionType = resolveExceptionType(accessDeniedException);
     if (log.isErrorEnabled()) {
       log.error(
-          "masked_error_dispatch path=/error traceId={} originalStatus={} originalPath={} originalExceptionType={} originalException={} securityExceptionType={}",
+          "masked_error_dispatch path=/error traceId={} originalStatus={} originalPath={} originalExceptionType={} securityExceptionType={}",
           traceId,
           statusCode,
-          originUri,
+          SensitiveRequestPathSanitizer.sanitize(originUri == null ? null : String.valueOf(originUri)),
           originExceptionType,
-          originExceptionMessage,
           securityExceptionType);
     }
   }

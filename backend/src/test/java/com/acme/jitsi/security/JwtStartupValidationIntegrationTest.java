@@ -7,6 +7,8 @@ import com.acme.jitsi.Application;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.test.system.CapturedOutput;
@@ -53,7 +55,7 @@ class JwtStartupValidationIntegrationTest {
   }
 
   @Test
-  void startsAndLogsValidationSuccessEvent(CapturedOutput output) throws Exception {
+  void startsLogsValidationAndEscapesUntrustedLineBreaks(CapturedOutput output) throws Exception {
     String[] args = baseJwtArgs();
 
     try (ConfigurableApplicationContext context = new SpringApplicationBuilder(Application.class)
@@ -67,6 +69,23 @@ class JwtStartupValidationIntegrationTest {
       String statusCode = (String) status.getClass().getMethod("getCode").invoke(status);
       assertThat(statusCode).isEqualTo("UP");
       assertThat(output.getOut()).contains("CONFIG_VALIDATION_PASSED");
+      assertThat(context.getEnvironment().getProperty("logging.structured.format.console"))
+          .isEqualTo("ecs");
+
+      MDC.put("traceId", "trace-log-injection-test");
+      try {
+        LoggerFactory.getLogger(getClass()).warn("log_injection_probe value=first\r\nforged_event=true");
+      } finally {
+        MDC.remove("traceId");
+      }
+      String probeLine = output.getOut().lines()
+          .filter(line -> line.contains("log_injection_probe"))
+          .findFirst()
+          .orElseThrow();
+      assertThat(probeLine).startsWith("{")
+          .contains("\\r\\nforged_event=true")
+          .contains("\"traceId\":\"trace-log-injection-test\"");
+      assertThat(output.getOut()).doesNotContain("\nforged_event=true");
     }
   }
 
@@ -76,6 +95,7 @@ class JwtStartupValidationIntegrationTest {
       "spring.datasource.driver-class-name=org.h2.Driver",
       "spring.jpa.hibernate.ddl-auto=validate",
       "spring.flyway.enabled=true",
+      "logging.structured.format.console=ecs",
       "server.port=0",
       "management.health.redis.enabled=false"
     };
