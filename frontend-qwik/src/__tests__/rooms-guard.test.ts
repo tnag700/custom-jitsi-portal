@@ -92,8 +92,8 @@ describe("Rooms Guard: route (AC: 1-7)", () => {
     expect(ts).toContain("const roomIdSchema = z.object");
   });
 
-  it("routes/rooms/rooms-page.tsx should wire RoomForm actions and confirmation slots with ApiErrorAlert", () => {
-    const tsx = readSrc("routes/rooms/rooms-page.tsx");
+  it("RoomManagement should wire RoomForm actions and confirmation slots with ApiErrorAlert", () => {
+    const tsx = readSrc("routes/rooms/components/RoomManagement.tsx");
     expect(tsx).toContain('<Form q:slot="actions" action={closeAction}>');
     expect(tsx).toContain('<Form q:slot="actions" action={deleteAction}>');
     expect(tsx).toContain("action={createAction}");

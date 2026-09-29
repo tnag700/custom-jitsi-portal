@@ -27,9 +27,9 @@ describe("Admin Role History Guard: domain service", () => {
 });
 
 describe("Admin Role History Guard: routes", () => {
-  it("admin-layout.route-helpers.ts should expose История ролей entry inside secondary admin nav helper", () => {
+  it("admin-layout.route-helpers.ts should expose История ролей entry inside grouped admin navigation", () => {
     const ts = readSrc("lib/domains/admin/admin-layout.route-helpers.ts");
-    expect(ts).toContain("buildAdminSecondaryNavItems");
+    expect(ts).toContain("buildAdminNavGroups");
     expect(ts).toContain('label: "История ролей"');
     expect(ts).toContain('"/admin/role-history"');
   });

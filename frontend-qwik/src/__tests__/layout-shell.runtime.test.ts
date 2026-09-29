@@ -58,16 +58,14 @@ function classText(node: { props: Record<string, unknown> }): string {
 
 describe("layout shell runtime", () => {
   it("defines stable navigation and segment-safe active matching", async () => {
-    const { isNavItemActive, navItems } = await import(
-      "~/lib/shared/components/sidebar-nav-items"
-    );
+    const { isNavItemActive, navItems } =
+      await import("~/lib/shared/components/sidebar-nav-items");
 
     expect(navItems.map((item) => [item.label, item.href])).toEqual([
       ["Кабинет", "/"],
-      ["Комнаты", "/rooms"],
-      ["Встречи", "/meetings"],
+      ["Комнаты и встречи", "/meetings"],
       ["Профиль", "/profile"],
-      ["Админ", "/admin"],
+      ["Администрирование", "/admin"],
     ]);
     expect(isNavItemActive("/", "/")).toBe(true);
     expect(isNavItemActive("/rooms", "/rooms")).toBe(true);
@@ -88,7 +86,7 @@ describe("layout shell runtime", () => {
     const nav = findNode(tree, (node) => node.type === "nav");
     const links = findNodes(tree, (node) => node.type === "a");
     const roomsLink = links.find(
-      (node) => node.props["aria-label"] === "Комнаты",
+      (node) => node.props["aria-label"] === "Комнаты и встречи",
     );
     const toggle = findNode(
       tree,
@@ -104,7 +102,7 @@ describe("layout shell runtime", () => {
     expect(nav?.props["aria-label"]).toBe("Основная навигация");
     expect(roomsLink?.props["aria-current"]).toBe("page");
     expect(roomsLink?.props.prefetch).toBe("js");
-    expect(roomsLink?.props.title).toBe("Комнаты");
+    expect(roomsLink?.props.title).toBe("Комнаты и встречи");
     expect(toggle).toBeDefined();
   });
 

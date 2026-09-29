@@ -1,8 +1,7 @@
 import { component$, Slot } from "@qwik.dev/core";
 import { routeLoader$, useLocation } from "@qwik.dev/router";
 import {
-  buildAdminPrimaryNavItems,
-  buildAdminSecondaryNavItems,
+  buildAdminNavGroups,
   fetchAdminFrameworkVersions,
   hasAdminCabinetAccess,
   hasCriticalFrameworkAlert,
@@ -59,131 +58,125 @@ export default component$(() => {
   const location = useLocation();
   const environment = location.url.searchParams.get("environment");
 
-  const primaryNavItems = buildAdminPrimaryNavItems(environment);
-  const secondaryNavItems = buildAdminSecondaryNavItems(
+  const navGroups = buildAdminNavGroups(
     location.url,
-    environment ?? "",
     hasPlatformAdminAccess(adminUser.value.claims),
   );
+  const currentSection = navGroups
+    .flatMap((group) => group.items)
+    .find((item) => isActiveAdminNavItem(location.url.pathname, item.match));
 
   return (
     <section class="space-y-4 md:space-y-5">
-      <header class="rounded-3xl border border-border bg-surface px-4 py-4 shadow-sm md:px-5">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p class="text-xs uppercase tracking-[0.22em] text-muted">
-              Административная консоль
-            </p>
-            <h1 class="mt-1 text-2xl font-semibold text-text">
-              Управление платформой
-            </h1>
-            <p class="mt-1 hidden max-w-2xl text-sm text-muted sm:block">
-              Состояние сервисов, инциденты и административные инструменты.
-            </p>
-          </div>
-          <nav
-            aria-label="Основные разделы администрирования"
-            class="flex flex-wrap gap-2"
-          >
-            {primaryNavItems.map((item) => {
-              const active = isActiveAdminNavItem(
-                location.url.pathname,
-                item.match,
-              );
-              return (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  class={[
-                    "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
-                    active
-                      ? "border-text bg-text text-bg"
-                      : "border-border bg-bg text-text hover:bg-surface-alt",
-                  ]}
-                >
-                  {item.label}
-                </a>
-              );
-            })}
-          </nav>
-        </div>
-        <div class="mt-4 flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
-          <span class="text-xs uppercase tracking-[0.18em] text-muted">
-            Инструменты
-          </span>
-          <nav
-            aria-label="Административные инструменты"
-            class="flex flex-wrap gap-2"
-          >
-            {secondaryNavItems.map((item) => {
-              const active = isActiveAdminNavItem(
-                location.url.pathname,
-                item.match,
-              );
-              return (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  class={[
-                    "rounded-full border px-3 py-1.5 text-sm transition-colors",
-                    active
-                      ? "border-text bg-surface-alt font-medium text-text"
-                      : "border-transparent text-muted hover:border-border hover:bg-bg hover:text-text",
-                  ]}
-                >
-                  {item.label}
-                </a>
-              );
-            })}
-          </nav>
-        </div>
+      <header class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+        <h1 class="font-semibold text-text">Администрирование</h1>
+        {currentSection ? (
+          <span class="text-muted">/ {currentSection.label}</span>
+        ) : null}
       </header>
-      {hasCriticalFrameworkAlert(versionAlert.value) ? (
-        <aside
-          role="alert"
-          class="flex flex-col gap-3 rounded-3xl border border-danger/30 bg-danger/10 px-4 py-4 text-danger shadow-sm sm:flex-row sm:items-center sm:justify-between"
+      <div class="grid items-start gap-5 xl:grid-cols-[14rem_minmax(0,1fr)]">
+        <nav
+          aria-label="Разделы администрирования"
+          class="grid gap-4 rounded-2xl border border-border bg-surface p-3 md:grid-cols-3 xl:sticky xl:top-0 xl:block xl:space-y-5"
         >
-          <div>
-            <p class="font-semibold">Обнаружены критические уязвимости</p>
-            <p class="mt-1 text-sm">
-              Требуется обновить затронутые фреймворки. Критических записей:{" "}
-              {versionAlert.value?.criticalVulnerabilityCount ?? 0}.
-            </p>
-          </div>
           <a
-            href={withAdminEnvironment(
-              "/admin/framework-versions",
-              environment,
-            )}
-            class="w-fit rounded-full bg-danger px-4 py-2 text-sm font-medium text-white"
+            href="#admin-content"
+            class="sr-only focus:not-sr-only focus:rounded focus:p-2 focus:text-primary"
           >
-            Открыть отчёт
+            Перейти к содержимому раздела
           </a>
-        </aside>
-      ) : null}
-      {hasFrameworkReleaseAlert(versionAlert.value) ? (
-        <aside
-          role="alert"
-          class="flex flex-col gap-3 rounded-3xl border border-warning/30 bg-warning/10 px-4 py-4 text-warning shadow-sm sm:flex-row sm:items-center sm:justify-between"
+          {navGroups.map((group) => (
+            <section key={group.label}>
+              <h2 class="mb-2 px-2 text-xs font-semibold text-muted">
+                {group.label}
+              </h2>
+              <ul class="grid grid-cols-2 gap-1 md:grid-cols-1">
+                {group.items.map((item) => {
+                  const active = isActiveAdminNavItem(
+                    location.url.pathname,
+                    item.match,
+                  );
+                  return (
+                    <li key={item.match}>
+                      <a
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        class={[
+                          "block h-full rounded-xl border px-3 py-2.5 transition-colors focus-visible:outline focus-visible:outline-3 focus-visible:outline-primary focus-visible:outline-offset-2",
+                          active
+                            ? "border-primary/30 bg-primary/10 text-primary"
+                            : "border-transparent text-text hover:border-border hover:bg-surface-alt",
+                        ]}
+                      >
+                        <span class="block text-sm font-semibold">
+                          {item.label}
+                        </span>
+                        <span class="mt-1 hidden text-xs leading-4 text-muted sm:block">
+                          {item.description}
+                        </span>
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </nav>
+        <div
+          id="admin-content"
+          tabIndex={-1}
+          class="min-w-0 space-y-4 md:space-y-5"
         >
-          <div>
-            <p class="font-semibold">Доступны новые версии компонентов</p>
-            <p class="mt-1 text-sm">
-              По последней проверке обновлений: {versionAlert.value?.updateAvailableCount ?? 0}.
-              Проверьте совместимость перед установкой.
-            </p>
-          </div>
-          <a
-            href={withAdminEnvironment("/admin/framework-versions", environment)}
-            class="w-fit rounded-full bg-warning px-4 py-2 text-sm font-medium text-white"
-          >
-            Открыть версии
-          </a>
-        </aside>
-      ) : null}
-      <Slot />
+          {hasCriticalFrameworkAlert(versionAlert.value) ? (
+            <aside
+              role="alert"
+              class="flex flex-col gap-3 rounded-3xl border border-danger/30 bg-danger/10 px-4 py-4 text-danger shadow-sm sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <p class="font-semibold">Обнаружены критические уязвимости</p>
+                <p class="mt-1 text-sm">
+                  Требуется обновить затронутые фреймворки. Критических записей:{" "}
+                  {versionAlert.value?.criticalVulnerabilityCount ?? 0}.
+                </p>
+              </div>
+              <a
+                href={withAdminEnvironment(
+                  "/admin/framework-versions",
+                  environment,
+                )}
+                class="w-fit rounded-full bg-danger px-4 py-2 text-sm font-medium text-white"
+              >
+                Открыть отчёт
+              </a>
+            </aside>
+          ) : null}
+          {hasFrameworkReleaseAlert(versionAlert.value) ? (
+            <aside
+              role="alert"
+              class="flex flex-col gap-3 rounded-3xl border border-warning/30 bg-warning/10 px-4 py-4 text-warning shadow-sm sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <p class="font-semibold">Доступны новые версии компонентов</p>
+                <p class="mt-1 text-sm">
+                  По последней проверке обновлений:{" "}
+                  {versionAlert.value?.updateAvailableCount ?? 0}. Проверьте
+                  совместимость перед установкой.
+                </p>
+              </div>
+              <a
+                href={withAdminEnvironment(
+                  "/admin/framework-versions",
+                  environment,
+                )}
+                class="w-fit rounded-full bg-warning px-4 py-2 text-sm font-medium text-white"
+              >
+                Открыть версии
+              </a>
+            </aside>
+          ) : null}
+          <Slot />
+        </div>
+      </div>
     </section>
   );
 });

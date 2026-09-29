@@ -7,6 +7,7 @@ import type { Room } from "~/lib/domains/rooms";
 import {
   findNode,
   findNodes,
+  eventHandler,
   renderNode,
   textContent,
 } from "./support/jsx-tree";
@@ -15,14 +16,14 @@ vi.mock("@qwik.dev/core", async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
+    get _captures() {
+      return actual._captures;
+    },
     component$:
       <TProps extends object>(render: (props: TProps) => unknown) =>
       (props: TProps) =>
         actual.jsx(render as never, props as never),
     componentQrl: <T>(value: T): T => value,
-    inlinedQrl: <T>(value: T): T => value,
-    inlinedQrlDEV: <T>(value: T): T => value,
-    qrl: <T>(value: T): T => value,
   };
 });
 
@@ -96,38 +97,108 @@ function overviewProps(overrides: Record<string, unknown> = {}) {
     updateAction: {},
     createRunning: false,
     updateRunning: false,
-    onRoomChange$: vi.fn(),
-    onEdit$: vi.fn(),
-    onCancel$: vi.fn(),
-    onParticipants$: vi.fn(),
-    onInvites$: vi.fn(),
-    onCreate$: vi.fn(),
+    onEdit$: noSerialize(vi.fn()),
+    onCancel$: noSerialize(vi.fn()),
+    onParticipants$: noSerialize(vi.fn()),
+    onInvites$: noSerialize(vi.fn()),
+    onCreate$: noSerialize(vi.fn()),
+    onRoomAction$: noSerialize(vi.fn()),
+    roomPreviews: {},
     ...overrides,
   };
 }
 
 describe("meetings presentation", () => {
-  it("renders one actionable empty state when there are no active rooms", async () => {
-    const { MeetingsOverview } = await import(
-      "~/routes/meetings/components/MeetingsOverview"
+  it("nests previews in their own room and creates a meeting in that room", async () => {
+    const { MeetingsOverview } =
+      await import("~/routes/meetings/components/MeetingsOverview");
+    const onCreate = vi.fn();
+    const tree = await renderNode(
+      MeetingsOverview(
+        overviewProps({
+          rooms: [
+            createRoom(),
+            createRoom({ roomId: "room-2", name: "Терапия", status: "closed" }),
+          ],
+          roomPreviews: {
+            "room-1": { content: [createMeeting()], totalElements: 5 },
+            "room-2": { content: [], totalElements: 0 },
+          },
+          onCreate$: noSerialize(onCreate),
+        }),
+      ),
     );
+    const rooms = findNodes(
+      tree,
+      (node) => node.type === "article" && Boolean(node.props["data-room-id"]),
+    );
+    expect(rooms).toHaveLength(2);
+    expect(textContent(rooms[0])).toContain("Консилиум");
+    expect(textContent(rooms[1])).not.toContain("Консилиум");
+    const create = findNode(
+      rooms[0],
+      (node) =>
+        node.type === "button" && textContent(node).includes("Создать встречу"),
+    );
+    // Qwik passes optimized loop items from q:p as the third event argument.
+    await eventHandler(create, "click")(
+      undefined,
+      undefined,
+      create.props["q:p"],
+    );
+    expect(onCreate).toHaveBeenCalledWith("room-1");
+    expect(
+      findNode(
+        rooms[1],
+        (node) =>
+          node.type === "button" &&
+          textContent(node).includes("Создать встречу"),
+      ),
+    ).toBeUndefined();
+    expect(
+      findNode(
+        rooms[0],
+        (node) =>
+          node.type === "a" && node.props.href.includes("meetingId=meeting-1"),
+      ),
+    ).toBeDefined();
+  });
+
+  it("does not describe a failed preview as an empty room", async () => {
+    const { MeetingsOverview } =
+      await import("~/routes/meetings/components/MeetingsOverview");
+    const tree = await renderNode(
+      MeetingsOverview(
+        overviewProps({
+          rooms: [createRoom()],
+          roomPreviews: { "room-1": { error: true } },
+        }),
+      ),
+    );
+    expect(textContent(tree)).toContain("Не удалось загрузить встречи");
+    expect(textContent(tree)).not.toContain("В этой комнате пока нет встреч");
+  });
+
+  it("creates the first room without leaving the workspace", async () => {
+    const { MeetingsOverview } =
+      await import("~/routes/meetings/components/MeetingsOverview");
     const tree = await renderNode(MeetingsOverview(overviewProps()));
     const content = textContent(tree);
     const roomLink = findNode(
       tree,
-      (node) => node.type === "a" && node.props.href === "/rooms",
+      (node) =>
+        node.type === "button" && textContent(node).includes("Создать комнату"),
     );
 
-    expect(content).toContain("Пока нет активных комнат");
-    expect(content).toContain("Перейти к комнатам");
+    expect(content).toContain("Начните с комнаты");
+    expect(content).toContain("Создать комнату");
     expect(content).not.toContain("Выберите комнату");
     expect(roomLink).toBeDefined();
   });
 
   it("keeps room context visible and renders the schedule once selected", async () => {
-    const { MeetingsOverview } = await import(
-      "~/routes/meetings/components/MeetingsOverview"
-    );
+    const { MeetingsOverview } =
+      await import("~/routes/meetings/components/MeetingsOverview");
     const tree = await renderNode(
       MeetingsOverview(
         overviewProps({
@@ -147,15 +218,12 @@ describe("meetings presentation", () => {
     expect(content).toContain("Кардиология");
     expect(content).toContain("meetings:1");
     expect(meetingList).toBeDefined();
-    expect(
-      findNode(tree, (node) => node.type === "select"),
-    ).toBeUndefined();
+    expect(findNode(tree, (node) => node.type === "select")).toBeUndefined();
   });
 
   it("offers one explicit action instead of duplicate controls for a single room", async () => {
-    const { MeetingsOverview } = await import(
-      "~/routes/meetings/components/MeetingsOverview"
-    );
+    const { MeetingsOverview } =
+      await import("~/routes/meetings/components/MeetingsOverview");
     const tree = await renderNode(
       MeetingsOverview(
         overviewProps({
@@ -168,21 +236,18 @@ describe("meetings presentation", () => {
       tree,
       (node) =>
         node.type === "a" &&
-        node.props.href === "/meetings?roomId=room-1",
+        node.props.href === "/meetings?roomId=room-1#room-room-1",
     );
 
-    expect(content).toContain("Активная комната");
+    expect(content).toContain("Кардиология");
     expect(content).toContain("Открыть расписание");
     expect(openScheduleLink).toBeDefined();
-    expect(
-      findNode(tree, (node) => node.type === "select"),
-    ).toBeUndefined();
+    expect(findNode(tree, (node) => node.type === "select")).toBeUndefined();
   });
 
   it("submits only selected participant ids and uses localized roles", async () => {
-    const { ParticipantDirectory } = await import(
-      "~/lib/domains/meetings/components/ParticipantDirectory"
-    );
+    const { ParticipantDirectory } =
+      await import("~/lib/domains/meetings/components/ParticipantDirectory");
     const selectedIds = { value: ["u-1"] };
     const tree = await renderNode(
       ParticipantDirectory({
@@ -242,9 +307,8 @@ describe("meetings presentation", () => {
   });
 
   it("offers a dedicated self-assignment action without requiring directory selection", async () => {
-    const { ParticipantSelfAssignment } = await import(
-      "~/lib/domains/meetings/components/ParticipantSelfAssignment"
-    );
+    const { ParticipantSelfAssignment } =
+      await import("~/lib/domains/meetings/components/ParticipantSelfAssignment");
     const tree = await renderNode(
       ParticipantSelfAssignment({
         meetingId: "meeting-1",
@@ -292,9 +356,8 @@ describe("meetings presentation", () => {
   });
 
   it("shows a participant full name before the technical subject id", async () => {
-    const { ParticipantCurrentList } = await import(
-      "~/lib/domains/meetings/components/ParticipantCurrentList"
-    );
+    const { ParticipantCurrentList } =
+      await import("~/lib/domains/meetings/components/ParticipantCurrentList");
     const participant: ParticipantAssignment = {
       assignmentId: "assignment-1",
       meetingId: "meeting-1",
@@ -315,7 +378,7 @@ describe("meetings presentation", () => {
         participants: [participant],
         updateRoleAction: {},
         unassignAction: {},
-        onDeleteConfirm$: vi.fn(),
+        onDeleteConfirm$: noSerialize(vi.fn()),
       }),
     );
     const content = textContent(tree);

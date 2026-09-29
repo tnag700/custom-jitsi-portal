@@ -20,20 +20,41 @@ import {
 } from "~/lib/shared/routes/server-handlers";
 import { readPage } from "~/lib/shared/routes/page-query";
 
-export const useRoomConfigSets = routeLoader$(async ({ sharedMap, cookie, env }) => {
-  const user = sharedMap.get("user") as SafeUserProfile;
-  const requestContext = buildServerRequestContext({ sharedMap, cookie });
-  const environment = env?.get("PORTAL_CONFIG_ENVIRONMENT") || "DEV";
-  if (environment !== "DEV" && environment !== "TEST" && environment !== "PROD") {
-    throw new Error("Invalid PORTAL_CONFIG_ENVIRONMENT");
-  }
-  const activeConfigSetId = await fetchActiveRoomConfigSetId(
-    requestContext,
-    user.tenant,
-    environment,
-  );
-  return [activeConfigSetId];
-});
+export const useRoomConfigSets = routeLoader$(
+  async ({ sharedMap, cookie, env }) => {
+    const user = sharedMap.get("user") as SafeUserProfile;
+    const requestContext = buildServerRequestContext({ sharedMap, cookie });
+    const environment = env?.get("PORTAL_CONFIG_ENVIRONMENT") || "DEV";
+    if (
+      environment !== "DEV" &&
+      environment !== "TEST" &&
+      environment !== "PROD"
+    ) {
+      throw new Error("Invalid PORTAL_CONFIG_ENVIRONMENT");
+    }
+    try {
+      const activeConfigSetId = await fetchActiveRoomConfigSetId(
+        requestContext,
+        user.tenant,
+        environment,
+      );
+      return { configSets: [activeConfigSetId], error: undefined };
+    } catch (error) {
+      return {
+        configSets: [],
+        error:
+          error instanceof RoomServiceError
+            ? error.payload
+            : {
+                title: "Конфигурация недоступна",
+                detail:
+                  "Не удалось загрузить конфигурацию комнаты. Попробуйте позже.",
+                errorCode: "ROOM_CONFIG_UNAVAILABLE",
+              },
+      };
+    }
+  },
+);
 
 export const useRooms = routeLoader$(async ({ sharedMap, cookie, query }) => {
   const user = sharedMap.get("user") as SafeUserProfile;
@@ -104,7 +125,7 @@ export const useCloseRoom = routeAction$(
 );
 
 export const useDeleteRoom = routeAction$(
-  async (data, { sharedMap, cookie, fail }) => {
+  async (data, { sharedMap, cookie, fail, url, redirect }) => {
     const requestContext = await buildMutationRequestContext({
       sharedMap,
       cookie,
@@ -112,10 +133,17 @@ export const useDeleteRoom = routeAction$(
 
     try {
       await deleteRoom(requestContext, data.roomId);
-      return { success: true as const };
     } catch (error) {
       return mapRouteActionError(error, RoomServiceError, fail, "ROOM_UNKNOWN");
     }
+    if (
+      url.pathname.replace(/\/$/, "") === "/meetings" &&
+      url.searchParams.get("roomId") === data.roomId
+    ) {
+      const page = readPage(url.searchParams, "roomsPage");
+      throw redirect(303, page ? `/meetings?roomsPage=${page}` : "/meetings");
+    }
+    return { success: true as const };
   },
   zod$(roomIdSchema),
 );

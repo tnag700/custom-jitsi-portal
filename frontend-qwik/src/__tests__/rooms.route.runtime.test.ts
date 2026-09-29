@@ -84,6 +84,7 @@ vi.mock("~/lib/domains/rooms", () => ({
 }));
 
 interface RouteCtx {
+  url: URL;
   sharedMap: Map<string, unknown>;
   cookie: { get: (name: string) => { value?: string } | undefined };
   fail: (status: number, payload: unknown) => unknown;
@@ -91,6 +92,7 @@ interface RouteCtx {
 
 function createCtx(overrides?: Partial<RouteCtx>): RouteCtx {
   return {
+    url: new URL("http://localhost/rooms"),
     sharedMap: new Map<string, unknown>([
       ["user", { tenant: "tenant-a" }],
       ["apiUrl", "http://localhost:8080/api/v1"],
@@ -162,15 +164,37 @@ describe("rooms route runtime", () => {
   });
 
   it("useRooms loads the requested page and rejects malformed page numbers", async () => {
-    mockFetchRooms.mockResolvedValue({ content: [], page: 1, pageSize: 20, totalElements: 21, totalPages: 2 });
+    mockFetchRooms.mockResolvedValue({
+      content: [],
+      page: 1,
+      pageSize: 20,
+      totalElements: 21,
+      totalPages: 2,
+    });
     const mod = await import("~/routes/rooms/index");
     const ctx = createCtx();
 
-    await mod.useRooms({ ...ctx, query: new URLSearchParams("roomsPage=1") } as never);
-    await mod.useRooms({ ...ctx, query: new URLSearchParams("roomsPage=-2") } as never);
+    await mod.useRooms({
+      ...ctx,
+      query: new URLSearchParams("roomsPage=1"),
+    } as never);
+    await mod.useRooms({
+      ...ctx,
+      query: new URLSearchParams("roomsPage=-2"),
+    } as never);
 
-    expect(mockFetchRooms).toHaveBeenNthCalledWith(1, expect.anything(), "tenant-a", 1);
-    expect(mockFetchRooms).toHaveBeenNthCalledWith(2, expect.anything(), "tenant-a", 0);
+    expect(mockFetchRooms).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      "tenant-a",
+      1,
+    );
+    expect(mockFetchRooms).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      "tenant-a",
+      0,
+    );
   });
 
   it("useRoomConfigSets exposes the active DEV config set", async () => {
@@ -190,7 +214,7 @@ describe("rooms route runtime", () => {
       "tenant-a",
       "DEV",
     );
-    expect(result).toEqual(["cfg-active"]);
+    expect(result).toEqual({ configSets: ["cfg-active"], error: undefined });
   });
 
   it("useRoomConfigSets selects the configured PROD environment", async () => {
@@ -201,13 +225,63 @@ describe("rooms route runtime", () => {
     const result = await mod.useRoomConfigSets({
       sharedMap: ctx.sharedMap,
       cookie: ctx.cookie,
-      env: { get: (name: string) => name === "PORTAL_CONFIG_ENVIRONMENT" ? "PROD" : undefined },
+      env: {
+        get: (name: string) =>
+          name === "PORTAL_CONFIG_ENVIRONMENT" ? "PROD" : undefined,
+      },
     } as never);
 
     expect(mockFetchActiveRoomConfigSetId).toHaveBeenCalledWith(
-      expect.anything(), "tenant-a", "PROD",
+      expect.anything(),
+      "tenant-a",
+      "PROD",
     );
-    expect(result).toEqual(["cfg-prod"]);
+    expect(result).toEqual({ configSets: ["cfg-prod"], error: undefined });
+  });
+
+  it("keeps the workspace readable when its active config set is missing", async () => {
+    const error = {
+      title: "Конфигурация не найдена",
+      detail: "Нет активной конфигурации",
+      errorCode: "CONFIG_SET_NOT_FOUND",
+      traceId: "config-trace-1",
+    };
+    mockFetchActiveRoomConfigSetId.mockRejectedValueOnce(
+      new MockRoomServiceError(error),
+    );
+    const mod = await import("~/routes/rooms/index");
+
+    await expect(mod.useRoomConfigSets(createCtx())).resolves.toEqual({
+      configSets: [],
+      error,
+    });
+  });
+
+  it("returns a safe config load error when the service is unavailable", async () => {
+    mockFetchActiveRoomConfigSetId.mockRejectedValueOnce(
+      new Error("internal endpoint details"),
+    );
+    const mod = await import("~/routes/rooms/index");
+
+    await expect(mod.useRoomConfigSets(createCtx())).resolves.toEqual({
+      configSets: [],
+      error: {
+        title: "Конфигурация недоступна",
+        detail: "Не удалось загрузить конфигурацию комнаты. Попробуйте позже.",
+        errorCode: "ROOM_CONFIG_UNAVAILABLE",
+      },
+    });
+  });
+
+  it("still rejects a misconfigured environment before loading config sets", async () => {
+    const mod = await import("~/routes/rooms/index");
+    await expect(
+      mod.useRoomConfigSets({
+        ...createCtx(),
+        env: { get: () => "INVALID" },
+      }),
+    ).rejects.toThrow("Invalid PORTAL_CONFIG_ENVIRONMENT");
+    expect(mockFetchActiveRoomConfigSetId).not.toHaveBeenCalled();
   });
 
   it("useCreateRoom returns success payload", async () => {
@@ -359,6 +433,28 @@ describe("rooms route runtime", () => {
       "r1",
     );
     expect(result).toEqual({ success: true });
+  });
+
+  it("leaves a deleted room before the workspace loaders run again", async () => {
+    mockCsrfBootstrap();
+    mockDeleteRoom.mockResolvedValue(undefined);
+    const { useDeleteRoom: deleteRoomAction } = await import("~/routes/rooms/index");
+    const redirectResult = {
+      type: "redirect",
+      status: 303,
+      location: "/meetings?roomsPage=1",
+    };
+    const redirect = vi.fn(() => redirectResult);
+    await expect(
+      deleteRoomAction({ roomId: "r1" }, {
+        ...createCtx(),
+        url: new URL(
+          "http://localhost/meetings?roomId=r1&meetingId=m1&roomsPage=1",
+        ),
+        redirect,
+      } as never),
+    ).rejects.toEqual(redirectResult);
+    expect(redirect).toHaveBeenCalledWith(303, "/meetings?roomsPage=1");
   });
 
   it("useDeleteRoom maps RoomServiceError to fail(400)", async () => {

@@ -22,7 +22,6 @@ describe("navigation permissions", () => {
 
     expect(visibleHrefs).toEqual([
       "/",
-      "/rooms",
       "/meetings",
       "/profile",
       "/admin",
