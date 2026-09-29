@@ -53,14 +53,16 @@ Backend, Keycloak, PostgreSQL, Redis, Vault и monitoring-интерфейсы �
 
 | Контур | Технологии |
 | --- | --- |
-| Backend | Java 25, Spring Boot 4.1.0, Spring Modulith 2.1.0, Gradle 9.7 |
-| Frontend | Qwik/Qwik Router 2.0.0-beta.38, Qwik UI 0.7.7, TypeScript 5.9, Vite 7, Tailwind CSS 4 |
-| Данные | PostgreSQL 18.4, Redis 8.4.5, Flyway |
-| Identity | Keycloak 26.7.0, OAuth 2.0/OIDC, Spring Security |
+| Backend | Java 25, Spring Boot 4.1.1, Spring Modulith 2.1.1, Gradle 9.8 |
+| Frontend | Qwik/Qwik Router 2.0.0-beta.45, Qwik UI 0.7.7, TypeScript 7.0.2, Vite 8.3.1, Tailwind CSS 4 |
+| Данные | PostgreSQL 18.6, Redis 8.10.2, Flyway |
+| Identity | Keycloak 26.7.4, OAuth 2.0/OIDC, Spring Security |
 | Видеосвязь | Jitsi Web, Prosody, Jicofo и JVB |
-| Секреты | Vault 1.21.4, response-wrapped AppRole, service-specific delivery |
-| Edge и observability | Nginx 1.30.4, OpenTelemetry, Prometheus 3.13.2 LTS, Alertmanager 0.33.1, Grafana 11.6.14-security-04 |
+| Секреты | Vault 2.1.1, response-wrapped AppRole, service-specific delivery |
+| Edge и observability | Nginx 1.30.5, OpenTelemetry, Prometheus 3.15.0, Alertmanager 0.34.1, Grafana 13.2.2 |
 | Quality gates | JUnit, Vitest, ArchUnit, Spring Modulith, PMD, CPD, ESLint |
+
+Проверку типов запускает `npm --prefix frontend-qwik run build.types`: это нативный TypeScript 7.0.2 (`@typescript/native`). Пакет `typescript` 5.9.3 сохраняется только как JavaScript API для ESLint и OpenAPI; скрипт сборки явно выбирает компилятор 7, независимо от npm-ссылки `tsc`.
 
 Dev и production используют одну rootless-группу Jitsi `stable-11146-1` из GHCR с digest pinning. Все четыре образа обновляются только синхронно; web-контейнер слушает непривилегированные порты `8000/8443`, а внешний UDP-порт JVB остаётся настраиваемым.
 
@@ -85,7 +87,7 @@ docker-compose.production.monitoring.yml  private monitoring overlay для prod
 Для локальной разработки:
 
 - Docker Engine и Docker Compose plugin;
-- Node.js `>=24.18.0 <25` и npm;
+- Node.js `>=24.21.0 <25` и npm;
 - Python 3, доступный как `python`;
 - JDK 25 для локальной сборки backend и полного `npm run verify`.
 

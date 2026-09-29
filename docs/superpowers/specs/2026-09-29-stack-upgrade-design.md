@@ -30,12 +30,12 @@ uses Shamir unseal keys.
 | Spring | Boot 4.1.0, Framework 7.0.8, Security 7.1.0, Modulith 2.1.0, springdoc 3.1.0 | Boot 4.1.1, Boot-managed Framework 7.0.9 and Security 7.1.1, Modulith 2.1.1, springdoc 3.1.1 | Keep the Boot BOM authoritative; verify generated API and persistent event handling. |
 | Java build | Gradle 9.7.0, datasource-micrometer 2.2.1, ArchUnit 1.4.1, JaCoCo 0.8.13, PMD 6.55.0 | Gradle 9.8.0, datasource-micrometer 2.3.0, ArchUnit 1.5.1, JaCoCo 0.8.15, PMD 7.28.0 if its rule set and CPD task can be migrated | Keep Java 25; update wrapper checksum and guards. PMD 7 is conditional on equivalent quality checks. |
 | Qwik frontend | Core, Router and ESLint plugin beta.38; Vite 7.3.6 | Matching beta.45 trio and Vite 8.3.1 | Qwik beta.40+ requires Vite 8; test SSR, browser hydration and routes together. |
-| Frontend tools | TypeScript 5.9.3, ESLint 10.8.1, TypeScript-ESLint 8.67.0, Vitest 4.1.11 | TypeScript 6.0.3, ESLint 10.11.0, TypeScript-ESLint 8.71.0; retain Vitest 4.1.11 | TypeScript-ESLint 8.71 excludes TypeScript 7; Qwik beta.45 excludes Vitest 5. Refresh other direct patch/minor tools and lockfile within their peer ranges. |
+| Frontend tools | TypeScript 5.9.3, ESLint 10.8.1, TypeScript-ESLint 8.67.0, Vitest 4.1.11 | TypeScript 7.0.2 native compiler, ESLint 10.11.0, TypeScript-ESLint 8.71.0; retain Vitest 4.1.11 | User explicitly requested TypeScript 7 on 2026-09-29. Use the native compiler for typechecking and retain a compatible JavaScript API package for ESLint/OpenAPI; never bypass peer checks. Qwik beta.45 excludes Vitest 5. |
 | Conference | Jitsi stable-11146-1 (four images) | stable-11248 (four images) | Keep web, Prosody, Jicofo and JVB on one release with immutable digests. |
 | Identity and data | Keycloak 26.7.0; PostgreSQL 18.4; Redis 8.4.5 | Keycloak 26.7.4; PostgreSQL 18.6; Redis 8.10.2 | Preserve volumes and test restore before each stateful cutover. Check PostgreSQL 18.6's documented follow-up actions. |
 | Edge and build runtime | Nginx 1.30.4, Node 24.18.0, Alpine 3.22.5; Temurin 25 floating tags | Nginx stable 1.30.5, Node 24.21.0, Alpine 3.22.6; resolve reviewed Temurin 25 digests | Pin reviewed multi-architecture manifests and verify TLS, HTTP/3 and proxy behavior. |
 | Monitoring and dev UI | Prometheus 3.13.2, Alertmanager 0.33.1, Grafana 11.6.14-security-04, Swagger UI 5.32.13 | Prometheus 3.15.0, Alertmanager 0.34.1, Grafana 13.2.2, Swagger UI 5.33.0 | Grafana's major migration needs a copy of its database and isolated dashboard check. |
-| Secrets | Vault 1.21.4 | Vault 2.1.1 only after isolated recovery rehearsal and operator unseal readiness | Vault 1.21.4 is already the latest 1.21 patch. Never restart production Vault without an available unseal quorum. |
+| Secrets | Vault 1.21.4 | Vault Community 2.1.1 after the completed isolated recovery rehearsal | The announced 1.21.11 patch is Enterprise. Direct Community 1.21.4 → 2.1.1, restart and rollback passed using the existing authorized server-only workflow and original Shamir 2-of-3 shares. |
 
 The latest advertised release is a candidate, not automatic evidence of
 compatibility. Redis, Grafana, Vault, Jitsi and build-tool major/minor changes
@@ -65,8 +65,10 @@ version and publish the reason for any failed candidate.
    Verify backup restoration in isolation, then application login, database
    migrations, Redis-backed sessions and health after each cutover. Upgrade
    Grafana only after a copy of its dashboard database survives its major
-   migration. Vault is last and requires an isolated snapshot/restore test
-   plus an operator with enough Shamir shares to unseal it after restart.
+   migration. Vault is last and uses the verified server-only recovery
+   workflow: a fresh snapshot and automated unseal with the original Shamir
+   2-of-3 shares. The isolated upgrade, restart and rollback rehearsal passed;
+   no manual key entry or custody change is required for this authorized stage.
 
 Each group has its own reviewable commit and server candidate. Only a group
 that passes local verification and the matching server smoke is promoted to
@@ -96,7 +98,7 @@ stay deployed. Record deployed Git SHA, image digests and any held version.
 
 Production deployment is gated by observed health, application-specific
 smoke tests, backup/restore evidence, available disk space and, for Vault,
-operator unseal readiness. The existing browser security restriction is not
+the verified private recovery workflow. The existing browser security restriction is not
 a substitute for user-facing acceptance evidence.
 
 ## Primary release references
