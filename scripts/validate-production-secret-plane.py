@@ -65,10 +65,10 @@ def main() -> None:
 
     assert_regex(vault_service, r"^    build:\s*$", "Vault must use a repo-kept build path instead of pulling an unmanaged runtime image directly.")
     assert_contains(vault_service, "context: ./deploy/vault", "Vault build must use deploy/vault as build context.")
-    assert_contains(vault_service, "VAULT_VERSION: 1.21.4", "Vault build must pin the expected stable release version.")
-    assert_contains(vault_service, "VAULT_ZIP_URL: https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_linux_amd64.zip", "Vault build must pull the binary from the approved Yandex mirror artifact path.")
+    assert_contains(vault_service, "VAULT_VERSION: 2.1.1", "Vault build must pin the expected stable release version.")
+    assert_contains(vault_service, "VAULT_ZIP_URL: https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/2.1.1/vault_2.1.1_linux_amd64.zip", "Vault build must pull the binary from the approved Yandex mirror artifact path.")
     assert_not_contains(vault_service, "VAULT_SHA256SUMS_URL", "Checksums must come from the reviewed repository pin, not the download mirror.")
-    assert_contains(vault_service, "image: jitsi-vault:1.21.4", "Vault runtime image tag must stay aligned with the committed stable release.")
+    assert_contains(vault_service, "image: jitsi-vault:2.1.1", "Vault runtime image tag must stay aligned with the committed stable release.")
 
     assert_list_has_regex(vault_volumes, r"deploy/vault/config/vault\.hcl\.example:/vault/config/vault\.hcl:ro$", "Vault compose baseline must mount the committed Vault config template read-only.")
     assert_list_has_regex(vault_volumes, r"deploy/vault/bootstrap:/vault/bootstrap:ro$", "Vault compose baseline must mount the committed audit/bootstrap directory read-only.")
@@ -101,7 +101,7 @@ def main() -> None:
 
     for needle, message in [
         ("https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/", "Vault baseline must document the approved Yandex mirror path."),
-        ("vault_1.21.4_SHA256SUMS", "Vault baseline must document the checksum source for the pinned release."),
+        ("vault_2.1.1_SHA256SUMS", "Vault baseline must document the checksum source for the pinned release."),
         ("audit device", "Vault baseline must require audit devices."),
         ("private path, bastion or VPN", "Vault baseline must document operator access through a private path, bastion or VPN only."),
         ("non-HA", "Vault baseline must document the single-node non-HA compromise for this stage."),
@@ -143,15 +143,16 @@ def main() -> None:
     assert_contains(vault_config_text, 'storage "raft"', "Vault baseline config must use integrated Raft storage for the single-node stage.")
     assert_contains(vault_config_text, 'listener "tcp"', "Vault baseline config must declare a TCP listener.")
     assert_contains(vault_config_text, "telemetry {", "Vault baseline config must expose a telemetry block for ops path integration.")
-    approved_alpine_base = "FROM alpine:3.22.5@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce"
-    if vault_dockerfile.count(approved_alpine_base) != 2:
-        fail("Vault Dockerfile must pin both build stages to the approved Alpine 3.22.5 manifest digest.")
-    assert_contains(vault_dockerfile, "VAULT_ZIP_URL=https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_linux_amd64.zip", "Vault Dockerfile must default to the approved mirror artifact path.")
-    checksum = read_text(root / "deploy/vault/vault_1.21.4_linux_amd64.sha256").strip()
-    if checksum != "889b681990fe221b884b7932fa9c9dd0ee9811b9349554f1aa287ab63c9f3dae  vault_1.21.4_linux_amd64.zip":
+    approved_alpine_base = "FROM alpine:3.22.6@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
+    if vault_dockerfile.count(approved_alpine_base) != 1:
+        fail("Vault Dockerfile must pin its build stage to the approved Alpine 3.22.6 manifest digest.")
+    assert_contains(vault_dockerfile, "VAULT_ZIP_URL=https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/2.1.1/vault_2.1.1_linux_amd64.zip", "Vault Dockerfile must default to the approved mirror artifact path.")
+    checksum = read_text(root / "deploy/vault/vault_2.1.1_linux_amd64.sha256").strip()
+    if checksum != "8aa90f9cea46f541fc7baa3d0ec692fc06afde9a248cc1f2dcac46a567c6f56b  vault_2.1.1_linux_amd64.zip":
         fail("Vault archive digest must match the independently verified official release.")
-    assert_contains(vault_dockerfile, "COPY vault_1.21.4_linux_amd64.sha256 /tmp/vault.sha256", "Vault build must copy the reviewed digest.")
+    assert_contains(vault_dockerfile, "COPY vault_2.1.1_linux_amd64.sha256 /tmp/vault.sha256", "Vault build must copy the reviewed digest.")
     assert_contains(vault_dockerfile, "sha256sum -c /tmp/vault.sha256", "Vault build must verify the archive against the repository digest.")
+    assert_contains(vault_dockerfile, "apk del .vault-fetch", "Vault runtime must remove the temporary download and extraction packages.")
     assert_not_contains(vault_dockerfile, "VAULT_SHA256SUMS_URL", "Vault build must not trust checksums served by the binary mirror.")
     assert_contains(vault_audit_bootstrap, "vault audit enable file", "Vault audit bootstrap must enable a dedicated file audit device.")
     assert_contains(vault_audit_bootstrap, "/vault/audit/vault-audit.log", "Vault audit bootstrap must write audit events into a dedicated audit path.")

@@ -81,7 +81,7 @@ def main() -> None:
             "APP_VERSION_MONITOR_VITE_VERSION",
         ),
         "TypeScript": (
-            locked_packages["node_modules/typescript"]["version"],
+            locked_packages["node_modules/@typescript/native"]["version"],
             "APP_VERSION_MONITOR_TYPESCRIPT_VERSION",
         ),
         "Tailwind CSS": (
@@ -122,9 +122,9 @@ def main() -> None:
         "postgres vault env file": "${POSTGRES_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/postgres.env}",
         "redis vault env file": "${REDIS_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/redis.env}",
         "keycloak vault env file": "${KEYCLOAK_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/keycloak.env}",
-        "supported Swagger UI image": "image: swaggerapi/swagger-ui:v5.32.13@sha256:8f9f47436478cd8520191148a8afb7f934826d95bead1ae00898a0aa44dcdf41",
-        "supported Redis image": "image: redis:8.4.5@sha256:efe6e2625e4601cd7119c4fb48b1c04cf3071f8b1729ede1216ceee8bc99742d",
-        "supported Keycloak image": "image: quay.io/keycloak/keycloak:26.7.0",
+        "supported Swagger UI image": "image: swaggerapi/swagger-ui:v5.33.0@sha256:f9b8432be04e320406157e26c3ff52a7e9a4bea7eabe5477e9636791737eb119",
+        "supported Redis image": "image: redis:8.10.2@sha256:d5ac52db24d4e70566fe9944f22cf5bdc2bc739b05c0f426335161ea6c23f3b3",
+        "supported Keycloak image": "image: quay.io/keycloak/keycloak:26.7.4@sha256:82a77884f3af238beab1e7afd63b5f530e1b5c0590bd7aa60b40a40463e29b2c",
         "supported Jitsi web image": "image: ghcr.io/jitsi/web:stable-11146-1@sha256:ff81559621732d3dfc4815f261d41fd826566833016ea772f4d43a77aa88fe9a",
         "supported Jitsi Prosody image": "image: ghcr.io/jitsi/prosody:stable-11146-1@sha256:0e3d9ada40c03e6eef151348e0872dce7b4b1c16c173ff4a67afeae60aba2404",
         "supported Jitsi Jicofo image": "image: ghcr.io/jitsi/jicofo:stable-11146-1@sha256:a5da296923010dcc2daf6a02e6a183181906cb969a088ae90b97516bdeb9737f",

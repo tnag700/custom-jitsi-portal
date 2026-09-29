@@ -75,7 +75,7 @@ services:
       retries: 5
 
   swagger-ui:
-    image: swaggerapi/swagger-ui:v5.32.13@sha256:8f9f47436478cd8520191148a8afb7f934826d95bead1ae00898a0aa44dcdf41
+    image: swaggerapi/swagger-ui:v5.33.0@sha256:f9b8432be04e320406157e26c3ff52a7e9a4bea7eabe5477e9636791737eb119
     environment:
       - SWAGGER_JSON=/tmp/openapi.json
     volumes:
@@ -87,9 +87,9 @@ services:
     build:
       context: ./deploy/vault
       args:
-        VAULT_VERSION: 1.21.4
-        VAULT_ZIP_URL: https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/1.21.4/vault_1.21.4_linux_amd64.zip
-    image: jitsi-vault:1.21.4
+        VAULT_VERSION: 2.1.1
+        VAULT_ZIP_URL: https://mirror.yandex.ru/mirrors/releases.hashicorp.com/vault/2.1.1/vault_2.1.1_linux_amd64.zip
+    image: jitsi-vault:2.1.1
     command: ["server", "-config=/vault/config/vault.hcl"]
     environment:
       - VAULT_ADDR=http://127.0.0.1:8200
@@ -104,7 +104,7 @@ services:
       retries: 10
 
   vault-dev-bootstrap:
-    image: jitsi-vault:1.21.4
+    image: jitsi-vault:2.1.1
     entrypoint: ["sh", "/vault/auth/dev/bootstrap-dev-vault.sh"]
     environment:
       - VAULT_ADDR=http://vault:8200
@@ -128,7 +128,7 @@ services:
       - ./deploy/vault/local/dev:/vault/local/dev
 
   backend-vault-bootstrap:
-    image: jitsi-vault:1.21.4
+    image: jitsi-vault:2.1.1
     entrypoint: ["sh", "/vault/auth/backend/startup-fetch.sh.example"]
     environment:
       - VAULT_ADDR=http://vault:8200
@@ -152,7 +152,7 @@ services:
       - backend-vault-runtime:/vault/runtime
 
   db:
-    image: postgres:18.4
+    image: postgres:18.6@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
     env_file:
       - ${POSTGRES_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/postgres.env}
     environment:
@@ -169,7 +169,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:8.4.5@sha256:efe6e2625e4601cd7119c4fb48b1c04cf3071f8b1729ede1216ceee8bc99742d
+    image: redis:8.10.2@sha256:d5ac52db24d4e70566fe9944f22cf5bdc2bc739b05c0f426335161ea6c23f3b3
     env_file:
       - ${REDIS_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/redis.env}
     command: ["sh", "-ec", "exec redis-server --save '' --appendonly no --requirepass \"$$REDIS_PASSWORD\""]
@@ -180,7 +180,7 @@ services:
       retries: 5
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.7.0
+    image: quay.io/keycloak/keycloak:26.7.4@sha256:82a77884f3af238beab1e7afd63b5f530e1b5c0590bd7aa60b40a40463e29b2c
     command: ["start-dev", "--import-realm"]
     env_file:
       - ${KEYCLOAK_VAULT_ENV_FILE_PATH:-./deploy/vault/local/dev/runtime/keycloak.env}
