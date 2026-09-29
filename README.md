@@ -173,6 +173,8 @@ npm run verify
 
 Гейт проверяет backend tests, архитектурные границы, статический анализ, OpenAPI-контракт, frontend tests, TypeScript, SSR/client builds, ESLint и dev/production guardrails. Он не заменяет health checks и browser/WebRTC smoke на реальном стенде.
 
+Для аудита зависимостей модулей и путей потока данных см. [графы аудита кода](docs/code-graph-audit.md).
+
 ## Production
 
 Production — отдельный контур. Не используйте `.env.example`, dev realm, seeded users или локальные секреты в production.
