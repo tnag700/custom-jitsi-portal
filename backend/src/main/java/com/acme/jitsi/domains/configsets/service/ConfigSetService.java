@@ -3,6 +3,7 @@ package com.acme.jitsi.domains.configsets.service;
 import org.springframework.stereotype.Service;
 
 @Service
+@org.springframework.modulith.NamedInterface(value = "service", propagate = false)
 public class ConfigSetService {
 
   private final ConfigSetRepository configSetRepository;

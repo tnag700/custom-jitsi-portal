@@ -1,26 +1,9 @@
-export interface Meeting {
-  meetingId: string;
-  roomId: string;
-  title: string;
-  description: string | null;
-  meetingType: string;
-  configSetId: string;
-  status: "scheduled" | "canceled" | "ended";
-  startsAt: string;
-  endsAt: string;
-  allowGuests: boolean;
-  recordingEnabled: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PagedMeetingResponse {
-  content: Meeting[];
-  page: number;
-  pageSize: number;
-  totalElements: number;
-  totalPages: number;
-}
+export type {
+  MeetingResponse as Meeting,
+  PagedMeetingResponse,
+  ParticipantAssignmentResponse as ParticipantAssignment,
+  UserProfileSummaryResponse as UserProfileSummary,
+} from "../../shared/api";
 
 export interface CreateMeetingRequest {
   title: string;
@@ -42,20 +25,6 @@ export interface UpdateMeetingRequest {
   recordingEnabled?: boolean;
 }
 
-export interface ParticipantAssignment {
-  assignmentId: string;
-  meetingId: string;
-  subjectId: string;
-  role: "host" | "moderator" | "participant";
-  assignedBy: string;
-  assignedAt: string;
-  createdAt: string;
-  updatedAt: string;
-  fullName: string | null;
-  organization: string | null;
-  position: string | null;
-}
-
 export interface AssignParticipantRequest {
   subjectId: string;
   role: "host" | "moderator" | "participant";
@@ -71,13 +40,6 @@ export interface BulkAssignParticipantsRequest {
 
 export interface UpdateParticipantRoleRequest {
   role: "host" | "moderator" | "participant";
-}
-
-export interface UserProfileSummary {
-  subjectId: string;
-  fullName: string;
-  organization: string;
-  position: string;
 }
 
 export interface MeetingErrorPayload {

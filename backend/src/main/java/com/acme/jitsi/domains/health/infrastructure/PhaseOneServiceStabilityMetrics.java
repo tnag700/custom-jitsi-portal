@@ -1,4 +1,4 @@
-package com.acme.jitsi.shared.observability;
+package com.acme.jitsi.domains.health.infrastructure;
 
 import com.acme.jitsi.domains.configsets.service.ConfigSetCompatibilityStateService;
 import com.acme.jitsi.domains.health.service.HealthService;

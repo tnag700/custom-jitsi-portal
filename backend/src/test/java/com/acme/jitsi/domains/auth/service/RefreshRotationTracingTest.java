@@ -6,7 +6,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
 import com.acme.jitsi.security.DefaultJwtAlgorithmPolicy;
-import com.acme.jitsi.security.TokenIssuanceCompatibilityPolicy;
+import com.acme.jitsi.domains.configsets.service.TokenIssuanceCompatibilityPolicy;
 import com.acme.jitsi.security.TokenIssuancePolicyException;
 import com.acme.jitsi.shared.ErrorCode;
 import com.acme.jitsi.shared.observability.FlowObservationFacade;

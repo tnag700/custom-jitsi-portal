@@ -14,7 +14,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.argThat;
 
 import com.acme.jitsi.security.DefaultJwtAlgorithmPolicy;
-import com.acme.jitsi.security.TokenIssuanceCompatibilityPolicy;
+import com.acme.jitsi.domains.configsets.service.TokenIssuanceCompatibilityPolicy;
 import com.acme.jitsi.security.TokenIssuancePolicyException;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JOSEObjectType;

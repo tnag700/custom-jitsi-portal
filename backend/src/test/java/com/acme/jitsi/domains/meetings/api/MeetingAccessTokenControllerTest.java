@@ -3,6 +3,9 @@ package com.acme.jitsi.domains.meetings.api;
 import com.acme.jitsi.shared.ErrorCode;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,6 +14,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.acme.jitsi.shared.JwtTestProperties;
+import com.acme.jitsi.domains.meetings.event.MeetingJoinObservedEvent;
+import com.acme.jitsi.domains.meetings.service.Meeting;
+import com.acme.jitsi.domains.meetings.service.MeetingJoinObservabilityPublisher;
+import com.acme.jitsi.domains.meetings.service.MeetingService;
+import com.acme.jitsi.domains.meetings.service.MeetingStatus;
+import com.acme.jitsi.domains.meetings.service.MeetingTokenException;
+import com.acme.jitsi.domains.meetings.service.MeetingTokenIssuer;
+import com.acme.jitsi.security.ProblemResponseFacade;
 import com.jayway.jsonpath.JsonPath;
 import com.nimbusds.jwt.SignedJWT;
 import java.net.URI;
@@ -20,12 +31,16 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.system.CapturedOutput;
@@ -34,6 +49,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -107,6 +124,9 @@ class MeetingAccessTokenControllerTest {
 
   @Autowired
   private JdbcTemplate jdbcTemplate;
+
+  @Autowired
+  private ProblemResponseFacade problemResponseFacade;
 
   @org.junit.jupiter.api.BeforeEach
   void setUp() {
@@ -289,6 +309,78 @@ class MeetingAccessTokenControllerTest {
     assertThat(output.getOut()).contains("reasonCategory=ROLE");
     assertThat(output.getOut()).contains("join_failed status=409 code=" + ErrorCode.ROLE_MISMATCH.code());
     assertThat(output.getOut()).contains("traceId=");
+  }
+
+  @ParameterizedTest
+  @CsvSource(value = {
+      "ROLE_MISMATCH, ROLE", "ROLE_CONFLICT, ROLE", "MEETING_ROLE_CONFLICT, ROLE",
+      "CONFIG_INCOMPATIBLE, CONFIG", "TOKEN_INVALID, TOKEN", "TOKEN_REVOKED, TOKEN",
+      "AUTH_REQUIRED, TOKEN", "ACCESS_DENIED, SSO", "UNRECOGNIZED, UNKNOWN", "NULL, UNKNOWN"
+  }, nullValues = "NULL")
+  void joinFailureEventAndLogUseTheSameCategory(String errorCode, String category, CapturedOutput output) {
+    MeetingService meetings = mock(MeetingService.class);
+    when(meetings.getMeeting("classifier-meeting")).thenReturn(observedMeeting("classifier-room"));
+    List<MeetingJoinObservedEvent> events = new ArrayList<>();
+    MeetingJoinObservabilityPublisher publisher = new MeetingJoinObservabilityPublisher(
+        event -> events.add((MeetingJoinObservedEvent) event), meetings, Clock.fixed(TEST_NOW, ZoneOffset.UTC));
+    MeetingTokenIssuer issuer = mock(MeetingTokenIssuer.class);
+    MeetingTokenException failure = new MeetingTokenException(HttpStatus.CONFLICT, errorCode, "Join failure");
+    when(issuer.issueToken("classifier-meeting", "classifier-subject")).thenThrow(failure);
+    MeetingAccessTokenController controller = new MeetingAccessTokenController(issuer, publisher, problemResponseFacade);
+    OAuth2User principal = mock(OAuth2User.class);
+    when(principal.getName()).thenReturn("classifier-subject");
+    MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/meetings/classifier-meeting/access-token");
+    request.addHeader("X-Trace-Id", "trace-classifier");
+
+    assertThatThrownBy(() -> controller.issueAccessToken("classifier-meeting", principal, request)).isSameAs(failure);
+
+    assertThat(events).hasSize(1);
+    MeetingJoinObservedEvent event = events.get(0);
+    assertThat(event).isEqualTo(new MeetingJoinObservedEvent(
+        "MEETING_JOIN_FAILED", "fail", "classifier-meeting", "classifier-room", "classifier-subject",
+        null, errorCode, category, "trace-classifier", event.durationMs(), TEST_NOW));
+    assertThat(event.durationMs()).isGreaterThanOrEqualTo(0L);
+    assertThat(output.getOut()).contains(
+        "meeting_join_event eventType=MEETING_JOIN_FAILED result=fail meetingId=classifier-meeting"
+            + " subjectId=classifier-subject errorCode=" + errorCode + " reasonCategory=" + event.reasonCategory()
+            + " durationMs=" + event.durationMs() + " traceId=trace-classifier requestId=trace-classifier");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"lookup-failure", "missing-meeting", "null-room", "blank-room"})
+  void failurePublicationSurvivesMissingMeetingMetadata(String metadata) {
+    MeetingService meetings = mock(MeetingService.class);
+    switch (metadata) {
+      case "lookup-failure" -> when(meetings.getMeeting("classifier-meeting")).thenThrow(new IllegalStateException("Lookup failed"));
+      case "missing-meeting" -> when(meetings.getMeeting("classifier-meeting")).thenReturn(null);
+      case "null-room" -> when(meetings.getMeeting("classifier-meeting")).thenReturn(observedMeeting(null));
+      case "blank-room" -> when(meetings.getMeeting("classifier-meeting")).thenReturn(observedMeeting(" "));
+      default -> throw new IllegalArgumentException(metadata);
+    }
+    List<MeetingJoinObservedEvent> events = new ArrayList<>();
+    MeetingJoinObservabilityPublisher publisher = new MeetingJoinObservabilityPublisher(
+        event -> events.add((MeetingJoinObservedEvent) event), meetings, Clock.fixed(TEST_NOW, ZoneOffset.UTC));
+
+    publisher.publishFailure("classifier-meeting", "classifier-subject", "trace-classifier", 812L, "TOKEN_INVALID");
+
+    assertThat(events).containsExactly(new MeetingJoinObservedEvent(
+        "MEETING_JOIN_FAILED", "fail", "classifier-meeting", null, "classifier-subject",
+        null, "TOKEN_INVALID", "TOKEN", "trace-classifier", 812L, TEST_NOW));
+  }
+
+  @Test
+  void failurePublicationPropagatesPublisherException() {
+    IllegalStateException failure = new IllegalStateException("Publication failed");
+    MeetingJoinObservabilityPublisher publisher = new MeetingJoinObservabilityPublisher(
+        event -> { throw failure; }, mock(MeetingService.class), Clock.fixed(TEST_NOW, ZoneOffset.UTC));
+
+    assertThatThrownBy(() -> publisher.publishFailure(
+        "classifier-meeting", "classifier-subject", "trace-classifier", 812L, "TOKEN_INVALID")).isSameAs(failure);
+  }
+
+  private Meeting observedMeeting(String roomId) {
+    return new Meeting("classifier-meeting", roomId, "Classifier meeting", null, "scheduled", "config-1",
+        MeetingStatus.SCHEDULED, TEST_NOW, TEST_NOW.plusSeconds(3600), true, false, TEST_NOW, TEST_NOW);
   }
 
   @Test

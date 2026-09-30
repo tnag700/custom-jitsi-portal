@@ -1,15 +1,15 @@
 package com.acme.jitsi.security;
 
-class JwtStartupValidationException extends RuntimeException {
+public class JwtStartupValidationException extends RuntimeException {
 
   private final JwtStartupValidationErrorCode errorCode;
 
-  JwtStartupValidationException(JwtStartupValidationErrorCode errorCode, String message) {
+  public JwtStartupValidationException(JwtStartupValidationErrorCode errorCode, String message) {
     super(message);
     this.errorCode = errorCode;
   }
 
-  String errorCode() {
+  public String errorCode() {
     return errorCode.name();
   }
 

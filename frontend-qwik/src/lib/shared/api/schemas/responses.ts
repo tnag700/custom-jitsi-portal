@@ -59,6 +59,20 @@ export const pagedMeetingResponseSchema = z.object({
   totalPages: z.number(),
 });
 
+export const participantAssignmentResponseSchema = z.object({
+  assignmentId: z.string(),
+  meetingId: z.string(),
+  subjectId: z.string(),
+  role: z.enum(["host", "moderator", "participant"]),
+  assignedBy: z.string(),
+  assignedAt: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  fullName: z.string().nullable().optional().transform((value) => value ?? null),
+  organization: z.string().nullable().optional().transform((value) => value ?? null),
+  position: z.string().nullable().optional().transform((value) => value ?? null),
+});
+
 export const inviteResponseSchema = z.object({
   id: z.string(),
   meetingId: z.string(),
@@ -97,6 +111,13 @@ export const userProfileResponseSchema = z.object({
   position: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
+});
+
+export const userProfileSummaryResponseSchema = userProfileResponseSchema.pick({
+  subjectId: true,
+  fullName: true,
+  organization: true,
+  position: true,
 });
 
 export const upsertProfileRequestSchema = z.object({
@@ -186,9 +207,11 @@ export type RoomResponse = z.infer<typeof roomResponseSchema>;
 export type PagedRoomResponse = z.infer<typeof pagedRoomResponseSchema>;
 export type MeetingResponse = z.infer<typeof meetingResponseSchema>;
 export type PagedMeetingResponse = z.infer<typeof pagedMeetingResponseSchema>;
+export type ParticipantAssignmentResponse = z.infer<typeof participantAssignmentResponseSchema>;
 export type InviteResponse = z.infer<typeof inviteResponseSchema>;
 export type PagedInviteResponse = z.infer<typeof pagedInviteResponseSchema>;
 export type UserProfileResponse = z.infer<typeof userProfileResponseSchema>;
+export type UserProfileSummaryResponse = z.infer<typeof userProfileSummaryResponseSchema>;
 export type UpsertProfileRequest = z.infer<typeof upsertProfileRequestSchema>;
 export type UpcomingMeetingCard = z.infer<typeof upcomingMeetingCardSchema>;
 export type MeetingAccessTokenResponse = z.infer<typeof meetingAccessTokenResponseSchema>;

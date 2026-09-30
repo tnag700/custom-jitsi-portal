@@ -6,7 +6,7 @@ import {
   useTask$,
   type QRL,
 } from "@qwik.dev/core";
-import { useLocation, useNavigate } from "@qwik.dev/router";
+import { useLocation, useNavigate, type ActionStore } from "@qwik.dev/router";
 import { ApiErrorAlert } from "~/lib/shared";
 import type {
   Meeting,
@@ -30,18 +30,11 @@ interface ParticipantPanelProps {
   currentUserDisplayName: string;
   participants: ParticipantAssignment[];
   assignableUsers: UserProfileSummary[];
-  bulkAssignAction: unknown;
-  updateRoleAction: unknown;
-  unassignAction: unknown;
+  bulkAssignAction: ActionStore<{ success?: boolean; failed?: boolean }, never, false>;
+  updateRoleAction: ActionStore<unknown, never, false>;
+  unassignAction: ActionStore<unknown, never, false>;
   onClose$: QRL<() => void>;
   error?: MeetingErrorPayload;
-}
-
-interface BulkAssignActionLike {
-  isRunning?: boolean;
-  value?: {
-    success?: boolean;
-  };
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -80,7 +73,6 @@ export const ParticipantPanel = component$<ParticipantPanelProps>(
         location.url.searchParams.get("participantSort"),
       ),
     );
-    const bulkActionState = bulkAssignAction as BulkAssignActionLike;
     const directoryState = buildParticipantDirectoryState(
       participants,
       assignableUsers,
@@ -93,7 +85,7 @@ export const ParticipantPanel = component$<ParticipantPanelProps>(
 
     useTask$(({ track }) => {
       const isSuccess = track(
-        () => bulkActionState.value?.success === true,
+        () => bulkAssignAction.value?.success === true,
       );
       if (isSuccess) {
         selectedIds.value = [];
@@ -220,7 +212,7 @@ export const ParticipantPanel = component$<ParticipantPanelProps>(
                   currentUserId,
                 )}
                 bulkAssignAction={bulkAssignAction}
-                isAssigning={!!bulkActionState.isRunning}
+                isAssigning={bulkAssignAction.isRunning}
               />
             )}
             <ParticipantCurrentList
@@ -248,7 +240,7 @@ export const ParticipantPanel = component$<ParticipantPanelProps>(
               sortMode={sortMode}
               bulkRole={bulkRole}
               bulkAssignAction={bulkAssignAction}
-              isAssigning={!!bulkActionState.isRunning}
+              isAssigning={bulkAssignAction.isRunning}
               onApplyFilters$={applyFilters$}
               onResetFilters$={resetFilters$}
             />

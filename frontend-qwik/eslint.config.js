@@ -127,18 +127,6 @@ export default tseslint.config(
   {
     files: ["src/routes/**/*.{ts,tsx}"],
     rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              regex: "^~\\/lib\\/domains\\/[^/]+\\/.+",
-              message:
-                "Routes must import domains only via public API barrel: ~/lib/domains/<domain>",
-            },
-          ],
-        },
-      ],
       "no-restricted-syntax": [
         "error",
         {
@@ -163,39 +151,10 @@ export default tseslint.config(
                 "Domain layer must not declare route/server APIs. Keep routeLoader$/routeAction$/server$ inside src/routes.",
             },
           ],
-          patterns: [
-            {
-              regex: "^~\\/routes\\/.+",
-              message: "Domain layer must not import route files",
-            },
-            {
-              regex: "^~\\/lib\\/shared\\/(?!security$).+",
-              message:
-                "Domain layer must import shared via a public API barrel: ~/lib/shared or ~/lib/shared/security",
-            },
-          ],
         },
       ],
     },
   },
-  {
-    files: ["src/lib/shared/**/*.{ts,tsx}"],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              regex: "^~\\/lib\\/domains\\/.+",
-              message: "Shared layer must not depend on domain layer",
-            },
-            {
-              regex: "^~\\/routes\\/.+",
-              message: "Shared layer must not depend on route layer",
-            },
-          ],
-        },
-      ],
-    },
-  },
+  // File dependencies are resolved against tsconfig by architecture-import-guard.test.ts.
+  // Run verify:architecture for both syntax rules and layer boundaries.
 );

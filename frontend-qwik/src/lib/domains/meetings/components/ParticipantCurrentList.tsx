@@ -1,5 +1,5 @@
 import { component$, type QRL } from "@qwik.dev/core";
-import { Form } from "@qwik.dev/router";
+import { Form, type ActionStore } from "@qwik.dev/router";
 import { formatDateTime } from "~/lib/shared";
 import type { ParticipantAssignment } from "../types";
 
@@ -7,8 +7,8 @@ interface ParticipantCurrentListProps {
   meetingId: string;
   currentUserId: string;
   participants: ParticipantAssignment[];
-  updateRoleAction: unknown;
-  unassignAction: unknown;
+  updateRoleAction: ActionStore<unknown, never, false>;
+  unassignAction: ActionStore<unknown, never, false>;
   onDeleteConfirm$: QRL<(event: Event) => void>;
 }
 
@@ -102,7 +102,7 @@ export const ParticipantCurrentList =
 
                   <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                     <Form
-                      action={updateRoleAction as never}
+                      action={updateRoleAction}
                       class="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] gap-2"
                     >
                       <input
@@ -156,7 +156,7 @@ export const ParticipantCurrentList =
                     </Form>
 
                     <Form
-                      action={unassignAction as never}
+                      action={unassignAction}
                       onSubmit$={onDeleteConfirm$}
                     >
                       <input

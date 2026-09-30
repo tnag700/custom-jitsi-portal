@@ -9,5 +9,7 @@ public interface MeetingRoomsPort {
 
   MeetingRoomSnapshot getRequiredRoomForUpdate(String roomId);
 
+  boolean isConfigSetValid(MeetingRoomSnapshot room);
+
   Map<String, String> getRoomNames(Set<String> roomIds);
 }

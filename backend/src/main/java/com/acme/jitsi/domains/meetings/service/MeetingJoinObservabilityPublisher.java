@@ -43,13 +43,14 @@ public class MeetingJoinObservabilityPublisher {
         clock.instant()));
   }
 
-  public void publishFailure(
+  public String publishFailure(
       String meetingId,
       String subjectId,
       String traceId,
       long durationMs,
       String errorCode) {
     String roomId = resolveRoomId(meetingId);
+    String reasonCategory = classifyReasonCategory(errorCode);
     eventPublisher.publishEvent(new MeetingJoinObservedEvent(
         "MEETING_JOIN_FAILED",
         "fail",
@@ -58,10 +59,11 @@ public class MeetingJoinObservabilityPublisher {
         subjectId,
         null,
         errorCode,
-        classifyReasonCategory(errorCode),
+        reasonCategory,
         traceId,
         durationMs,
         clock.instant()));
+    return reasonCategory;
   }
 
   private String resolveRoomId(String meetingId) {

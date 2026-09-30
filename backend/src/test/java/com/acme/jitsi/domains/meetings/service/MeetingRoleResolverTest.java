@@ -6,13 +6,11 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.acme.jitsi.shared.pipeline.OrderedPipelineConfigurationException;
 import com.acme.jitsi.shared.ErrorCode;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.http.HttpStatus;
 
 class MeetingRoleResolverTest {
@@ -27,19 +25,12 @@ class MeetingRoleResolverTest {
         .isEqualTo(MeetingTokenProperties.UnknownRolePolicy.DENY_ACCESS);
   }
 
-  private static final List<MeetingRoleResolutionPolicy> DEFAULT_POLICIES = List.of(
-      new BlockedSubjectMeetingRoleResolutionPolicy(),
-      unknownMeetingPolicy(),
-      dbAssignmentPolicy(),
-      new ExplicitAssignmentMeetingRoleResolutionPolicy(),
-      new UnknownRolePolicyMeetingRoleResolutionPolicy());
-
   @Test
   void defaultPolicyRejectsJoinWhenAssignmentMissing() {
     MeetingTokenProperties properties = new MeetingTokenProperties();
     properties.setKnownMeetingIds(List.of("meeting-a"));
 
-    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, DEFAULT_POLICIES);
+    MeetingRoleResolver resolver = resolver(properties);
 
     assertThatThrownBy(() -> resolver.resolve("meeting-a", "u-participant"))
         .isInstanceOf(MeetingTokenException.class)
@@ -56,7 +47,7 @@ class MeetingRoleResolverTest {
     properties.setUnknownRolePolicy("fallback-participant");
     properties.setKnownMeetingIds(List.of("meeting-a"));
 
-    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, DEFAULT_POLICIES);
+    MeetingRoleResolver resolver = resolver(properties);
 
     MeetingRole resolvedRole = resolver.resolve("meeting-a", "u-participant");
 
@@ -69,7 +60,7 @@ class MeetingRoleResolverTest {
     properties.setUnknownRolePolicy("deny-access");
     properties.setKnownMeetingIds(List.of("meeting-a"));
 
-    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, DEFAULT_POLICIES);
+    MeetingRoleResolver resolver = resolver(properties);
 
     assertThatThrownBy(() -> resolver.resolve("meeting-a", "u-participant"))
         .isInstanceOf(MeetingTokenException.class)
@@ -92,7 +83,7 @@ class MeetingRoleResolverTest {
     assignment.setRole("admin");
     properties.setAssignments(List.of(assignment));
 
-    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, DEFAULT_POLICIES);
+    MeetingRoleResolver resolver = resolver(properties);
 
     assertThatThrownBy(() -> resolver.resolve("meeting-a", "u-host"))
         .isInstanceOf(MeetingTokenException.class)
@@ -109,7 +100,7 @@ class MeetingRoleResolverTest {
     properties.setKnownMeetingIds(List.of("meeting-a"));
     properties.setBlockedSubjects(Set.of("u-blocked"));
 
-    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, DEFAULT_POLICIES);
+    MeetingRoleResolver resolver = resolver(properties);
 
     assertThatThrownBy(() -> resolver.resolve("meeting-a", "u-blocked"))
         .isInstanceOf(MeetingTokenException.class)
@@ -125,7 +116,7 @@ class MeetingRoleResolverTest {
     MeetingTokenProperties properties = new MeetingTokenProperties();
     properties.setKnownMeetingIds(List.of("meeting-a"));
 
-    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, DEFAULT_POLICIES);
+    MeetingRoleResolver resolver = resolver(properties);
 
     assertThatThrownBy(() -> resolver.resolve("meeting-missing", "u-participant"))
         .isInstanceOf(MeetingTokenException.class)
@@ -154,7 +145,7 @@ class MeetingRoleResolverTest {
 
     properties.setAssignments(List.of(host, moderator));
 
-    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, DEFAULT_POLICIES);
+    MeetingRoleResolver resolver = resolver(properties);
 
     assertThatThrownBy(() -> resolver.resolve("meeting-a", "u-conflict"))
         .isInstanceOf(MeetingTokenException.class)
@@ -166,17 +157,100 @@ class MeetingRoleResolverTest {
   }
 
   @Test
-  void executesPoliciesInProvidedOrderUntilDecision() {
+  void persistedRoleWinsOverConflictingConfiguredAssignments() {
+    MeetingTokenProperties properties = new MeetingTokenProperties();
+    properties.setKnownMeetingIds(List.of("meeting-a"));
+    properties.setAssignments(List.of(
+        assignment("meeting-a", "u-host", "admin"),
+        assignment("meeting-a", "u-host", "moderator")));
+    MeetingParticipantAssignmentRepository assignments = mock(MeetingParticipantAssignmentRepository.class);
+    when(assignments.findByMeetingIdAndSubjectId("meeting-a", "u-host"))
+        .thenReturn(Optional.of(persistedAssignment(MeetingRole.HOST)));
+    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, mock(MeetingRepository.class), assignments);
+
+    assertThat(resolver.resolve("meeting-a", "u-host")).isEqualTo(MeetingRole.HOST);
+  }
+
+  @Test
+  void unknownMeetingRejectsPersistedAssignment() {
+    MeetingTokenProperties properties = new MeetingTokenProperties();
+    properties.setKnownMeetingIds(List.of("meeting-known"));
+    MeetingParticipantAssignmentRepository assignments = mock(MeetingParticipantAssignmentRepository.class);
+    when(assignments.findByMeetingIdAndSubjectId("meeting-a", "u-host"))
+        .thenReturn(Optional.of(persistedAssignment(MeetingRole.HOST)));
+    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, mock(MeetingRepository.class), assignments);
+
+    assertThatThrownBy(() -> resolver.resolve("meeting-a", "u-host"))
+        .isInstanceOf(MeetingTokenException.class)
+        .satisfies(ex -> {
+          MeetingTokenException error = (MeetingTokenException) ex;
+          assertThat(error.status()).isEqualTo(HttpStatus.NOT_FOUND);
+          assertThat(error.errorCode()).isEqualTo(ErrorCode.MEETING_NOT_FOUND.code());
+        });
+  }
+
+  @Test
+  void persistedMeetingOutsideConfiguredIdsCanResolveRole() {
+    MeetingTokenProperties properties = new MeetingTokenProperties();
+    properties.setKnownMeetingIds(List.of("meeting-configured"));
+    MeetingRepository meetings = mock(MeetingRepository.class);
+    when(meetings.existsById("meeting-a")).thenReturn(true);
+    MeetingParticipantAssignmentRepository assignments = mock(MeetingParticipantAssignmentRepository.class);
+    when(assignments.findByMeetingIdAndSubjectId("meeting-a", "u-host"))
+        .thenReturn(Optional.of(persistedAssignment(MeetingRole.HOST)));
+    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, meetings, assignments);
+
+    assertThat(resolver.resolve("meeting-a", "u-host")).isEqualTo(MeetingRole.HOST);
+  }
+
+  @Test
+  void emptyConfiguredIdsDoNotRequireMeetingLookup() {
+    MeetingTokenProperties properties = new MeetingTokenProperties();
+    properties.setAssignments(List.of(assignment("meeting-a", "u-host", " HOST ")));
+    MeetingRepository meetings = mock(MeetingRepository.class);
+    when(meetings.existsById(anyString())).thenThrow(new IllegalStateException("Meeting lookup unavailable"));
+    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, meetings, mock(MeetingParticipantAssignmentRepository.class));
+
+    assertThat(resolver.resolve("meeting-a", "u-host")).isEqualTo(MeetingRole.HOST);
+  }
+
+  @Test
+  void configuredRoleMatchesBothMeetingAndSubjectWhenPersistedRoleIsNull() {
+    MeetingTokenProperties properties = new MeetingTokenProperties();
+    properties.setKnownMeetingIds(List.of("meeting-a"));
+    properties.setAssignments(List.of(
+        assignment("meeting-other", "u-host", "moderator"),
+        assignment("meeting-a", "u-other", "participant"),
+        assignment("meeting-a", "u-host", "host")));
+    MeetingParticipantAssignmentRepository assignments = mock(MeetingParticipantAssignmentRepository.class);
+    when(assignments.findByMeetingIdAndSubjectId("meeting-a", "u-host"))
+        .thenReturn(Optional.of(persistedAssignment(null)));
+    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, mock(MeetingRepository.class), assignments);
+
+    assertThat(resolver.resolve("meeting-a", "u-host")).isEqualTo(MeetingRole.HOST);
+  }
+
+  private static MeetingTokenProperties.RoleAssignment assignment(String meetingId, String subject, String role) {
+    MeetingTokenProperties.RoleAssignment assignment = new MeetingTokenProperties.RoleAssignment();
+    assignment.setMeetingId(meetingId);
+    assignment.setSubject(subject);
+    assignment.setRole(role);
+    return assignment;
+  }
+
+  private static MeetingParticipantAssignment persistedAssignment(MeetingRole role) {
+    java.time.Instant now = java.time.Instant.parse("2026-09-30T00:00:00Z");
+    return new MeetingParticipantAssignment("assignment-1", "meeting-a", "u-host", role,
+        now, "admin", now, now);
+  }
+
+  @Test
+  void blockedSubjectWinsOverUnknownMeeting() {
     MeetingTokenProperties properties = new MeetingTokenProperties();
     properties.setKnownMeetingIds(List.of("meeting-a"));
     properties.setBlockedSubjects(Set.of("u-blocked"));
 
-    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, List.of(
-        new UnknownRolePolicyMeetingRoleResolutionPolicy(),
-        new ExplicitAssignmentMeetingRoleResolutionPolicy(),
-        dbAssignmentPolicy(),
-        unknownMeetingPolicy(),
-        new BlockedSubjectMeetingRoleResolutionPolicy()));
+    MeetingRoleResolver resolver = resolver(properties);
 
     assertThatThrownBy(() -> resolver.resolve("meeting-missing", "u-blocked"))
         .isInstanceOf(MeetingTokenException.class)
@@ -187,76 +261,11 @@ class MeetingRoleResolverTest {
         });
   }
 
-  @Test
-  void productionPoliciesHaveStableExecutionOrder() {
-    List<MeetingRoleResolutionPolicy> policies = new java.util.ArrayList<>(List.of(
-        new UnknownRolePolicyMeetingRoleResolutionPolicy(),
-        new ExplicitAssignmentMeetingRoleResolutionPolicy(),
-        dbAssignmentPolicy(),
-        unknownMeetingPolicy(),
-        new BlockedSubjectMeetingRoleResolutionPolicy()));
-
-    AnnotationAwareOrderComparator.sort(policies);
-
-    assertThat(policies)
-        .extracting(policy -> policy.getClass().getSimpleName())
-        .containsExactly(
-            "BlockedSubjectMeetingRoleResolutionPolicy",
-            "UnknownMeetingMeetingRoleResolutionPolicy",
-            "DbParticipantAssignmentMeetingRoleResolutionPolicy",
-            "ExplicitAssignmentMeetingRoleResolutionPolicy",
-            "UnknownRolePolicyMeetingRoleResolutionPolicy");
-  }
-
-  @Test
-  void failsFastWhenPipelineHasNoTerminalPolicy() {
-    MeetingTokenProperties properties = new MeetingTokenProperties();
-    properties.setKnownMeetingIds(List.of("meeting-a"));
-
-    assertThatThrownBy(() -> new MeetingRoleResolver(properties, List.of(
-        new BlockedSubjectMeetingRoleResolutionPolicy(),
-        unknownMeetingPolicy(),
-        dbAssignmentPolicy(),
-        new ExplicitAssignmentMeetingRoleResolutionPolicy())))
-      .isInstanceOf(OrderedPipelineConfigurationException.class)
-        .hasMessageContaining("terminal")
-        .hasMessageContaining("MeetingRoleResolver");
-  }
-
-  @Test
-  void failsFastWhenTerminalPolicyIsNotOrderedLast() {
-    MeetingTokenProperties properties = new MeetingTokenProperties();
-    properties.setKnownMeetingIds(List.of("meeting-a"));
-
-    assertThatThrownBy(() -> new MeetingRoleResolver(properties, List.of(
-        new BlockedSubjectMeetingRoleResolutionPolicy(),
-        unknownMeetingPolicy(),
-      dbAssignmentPolicy(),
-        new ExplicitAssignmentMeetingRoleResolutionPolicy(),
-        new UnknownRolePolicyMeetingRoleResolutionPolicy(),
-        new LatePassThroughPolicy())))
-      .isInstanceOf(OrderedPipelineConfigurationException.class)
-      .hasMessageContaining("terminal step must be ordered last");
-  }
-
-  private static MeetingRoleResolutionPolicy unknownMeetingPolicy() {
-    MeetingRepository meetingRepository = mock(MeetingRepository.class);
-    when(meetingRepository.existsById(anyString())).thenReturn(false);
-    return new UnknownMeetingMeetingRoleResolutionPolicy(meetingRepository);
-  }
-
-  private static MeetingRoleResolutionPolicy dbAssignmentPolicy() {
-    MeetingParticipantAssignmentRepository assignmentRepository = mock(MeetingParticipantAssignmentRepository.class);
-    when(assignmentRepository.findByMeetingIdAndSubjectId(anyString(), anyString())).thenReturn(Optional.empty());
-    return new DbParticipantAssignmentMeetingRoleResolutionPolicy(assignmentRepository);
-  }
-
-  @org.springframework.core.annotation.Order(500)
-  private static final class LatePassThroughPolicy implements MeetingRoleResolutionPolicy {
-
-    @Override
-    public java.util.Optional<MeetingRole> resolve(MeetingRoleResolutionContext context) {
-      return java.util.Optional.empty();
-    }
+  private static MeetingRoleResolver resolver(MeetingTokenProperties properties) {
+    MeetingRepository meetings = mock(MeetingRepository.class);
+    when(meetings.existsById(anyString())).thenReturn(false);
+    MeetingParticipantAssignmentRepository assignments = mock(MeetingParticipantAssignmentRepository.class);
+    when(assignments.findByMeetingIdAndSubjectId(anyString(), anyString())).thenReturn(Optional.empty());
+    return new MeetingRoleResolver(properties, meetings, assignments);
   }
 }

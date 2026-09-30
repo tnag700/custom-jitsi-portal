@@ -1,10 +1,10 @@
 import { component$, useSignal, useTask$, type Signal } from "@qwik.dev/core";
-import { Form } from "@qwik.dev/router";
+import { Form, type ActionStore } from "@qwik.dev/router";
 import { ApiErrorAlert, AppDialog } from "~/lib/shared";
 import type { Room, RoomErrorPayload } from "../types";
 
 interface RoomFormProps {
-  action: unknown;
+  action: ActionStore<unknown, never, false>;
   room?: Room;
   configSets: string[];
   isLoading: boolean;
@@ -66,7 +66,7 @@ export const RoomForm = component$<RoomFormProps>(
             </div>
           )}
 
-          <Form id={formId} action={action as never}>
+          <Form id={formId} action={action}>
             <div class="space-y-4">
             <div>
               <label class="mb-1 block text-sm font-medium text-text" for="room-name">

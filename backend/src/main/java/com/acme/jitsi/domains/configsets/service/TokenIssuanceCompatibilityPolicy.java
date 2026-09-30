@@ -1,11 +1,12 @@
-package com.acme.jitsi.security;
+package com.acme.jitsi.domains.configsets.service;
 
-import com.acme.jitsi.domains.configsets.service.ConfigSetCompatibilityStateService;
+import com.acme.jitsi.security.TokenIssuancePolicyException;
 import com.acme.jitsi.shared.ErrorCode;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 @Component
+@org.springframework.modulith.NamedInterface(value = "service", propagate = false)
 public class TokenIssuanceCompatibilityPolicy {
 
   private final ConfigSetCompatibilityStateService compatibilityStateService;

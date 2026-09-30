@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
+@org.springframework.modulith.NamedInterface(value = "service", propagate = false)
 public class ConfigSetCompatibilityStateService {
 
   private final ConfigSetCompatibilityCheckRepository compatibilityCheckRepository;

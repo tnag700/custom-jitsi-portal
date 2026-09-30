@@ -36,6 +36,11 @@ public class RoomServiceMeetingRoomsAdapter implements MeetingRoomsPort {
   }
 
   @Override
+  public boolean isConfigSetValid(MeetingRoomSnapshot room) {
+    return configSetValidator.isValid(room.configSetId(), room.tenantId());
+  }
+
+  @Override
   public Map<String, String> getRoomNames(Set<String> roomIds) {
     return roomService.getRoomNames(roomIds);
   }
@@ -52,7 +57,6 @@ public class RoomServiceMeetingRoomsAdapter implements MeetingRoomsPort {
         room.name(),
         room.tenantId(),
         room.configSetId(),
-        room.status() == RoomStatus.ACTIVE,
-        configSetValidator.isValid(room.configSetId(), room.tenantId()));
+        room.status() == RoomStatus.ACTIVE);
   }
 }

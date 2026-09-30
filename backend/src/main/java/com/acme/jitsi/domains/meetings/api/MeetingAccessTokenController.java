@@ -77,8 +77,7 @@ class MeetingAccessTokenController {
       return new MeetingAccessTokenResponse(token.joinUrl(), token.expiresAt(), token.role());
     } catch (MeetingTokenException ex) {
       long durationMs = (System.nanoTime() - startedAt) / 1_000_000L;
-      String reasonCategory = classifyReasonCategory(ex.errorCode());
-      meetingJoinObservabilityPublisher.publishFailure(
+      String reasonCategory = meetingJoinObservabilityPublisher.publishFailure(
           meetingId,
           subject,
           traceId,
@@ -99,23 +98,4 @@ class MeetingAccessTokenController {
     }
   }
 
-  private String classifyReasonCategory(String errorCode) {
-    if ("ROLE_MISMATCH".equals(errorCode)
-        || "ROLE_CONFLICT".equals(errorCode)
-        || "MEETING_ROLE_CONFLICT".equals(errorCode)) {
-      return "ROLE";
-    }
-    if ("CONFIG_INCOMPATIBLE".equals(errorCode)) {
-      return "CONFIG";
-    }
-    if ("TOKEN_INVALID".equals(errorCode)
-        || "TOKEN_REVOKED".equals(errorCode)
-        || "AUTH_REQUIRED".equals(errorCode)) {
-      return "TOKEN";
-    }
-    if ("ACCESS_DENIED".equals(errorCode)) {
-      return "SSO";
-    }
-    return "UNKNOWN";
-  }
 }

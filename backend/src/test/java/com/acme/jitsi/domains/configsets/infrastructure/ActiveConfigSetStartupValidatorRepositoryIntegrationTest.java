@@ -1,4 +1,4 @@
-package com.acme.jitsi.security;
+package com.acme.jitsi.domains.configsets.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,6 +18,8 @@ import com.acme.jitsi.domains.configsets.service.ConfigSetDryRunValidator;
 import com.acme.jitsi.domains.configsets.service.ConfigSetEnvironmentType;
 import com.acme.jitsi.domains.configsets.service.ConfigSetRepository;
 import com.acme.jitsi.domains.configsets.service.ConfigSetStatus;
+import com.acme.jitsi.security.JwtStartupValidationErrorCode;
+import com.acme.jitsi.security.JwtStartupValidationException;
 import com.acme.jitsi.shared.JwtTestProperties;
 import java.time.Instant;
 import java.util.List;

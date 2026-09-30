@@ -1,7 +1,7 @@
 package com.acme.jitsi.domains.auth.service;
 
 import com.acme.jitsi.security.JwtAlgorithmPolicy;
-import com.acme.jitsi.security.TokenIssuanceCompatibilityPolicy;
+import com.acme.jitsi.domains.configsets.service.TokenIssuanceCompatibilityPolicy;
 import com.acme.jitsi.security.TokenIssuancePolicyException;
 import com.acme.jitsi.shared.ErrorCode;
 import com.acme.jitsi.shared.observability.FlowObservationFacade;

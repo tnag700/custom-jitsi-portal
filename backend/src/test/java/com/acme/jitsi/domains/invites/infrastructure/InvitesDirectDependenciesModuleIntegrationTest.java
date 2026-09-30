@@ -18,7 +18,7 @@ import com.acme.jitsi.security.JwtAlgorithmPolicy;
 import com.acme.jitsi.security.ProblemDetailsMappingPolicy;
 import com.acme.jitsi.security.ProblemResponseFacade;
 import com.acme.jitsi.security.TenantAccessGuard;
-import com.acme.jitsi.security.TokenIssuanceCompatibilityPolicy;
+import com.acme.jitsi.domains.configsets.service.TokenIssuanceCompatibilityPolicy;
 import com.acme.jitsi.support.MeetingsModuleScaffoldingMocksSupport;
 import com.acme.jitsi.shared.observability.FlowObservationFacade;
 import java.time.Clock;

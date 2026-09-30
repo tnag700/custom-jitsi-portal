@@ -2,13 +2,14 @@ import { component$, type QRL } from "@qwik.dev/core";
 import type { Invite, InviteErrorPayload } from "~/lib/domains/invites";
 import { InviteForm, InviteList } from "~/lib/domains/invites";
 import type { Meeting } from "~/lib/domains/meetings";
+import type { useCreateInvite } from "../invite-actions";
 
 interface MeetingInvitesWorkspaceProps {
   meeting: Meeting;
   invites: Invite[];
   totalInvites: number;
   showCreateForm: boolean;
-  createAction: unknown;
+  createAction: ReturnType<typeof useCreateInvite>;
   createRunning: boolean;
   error?: InviteErrorPayload;
   onClose$: QRL<() => void>;

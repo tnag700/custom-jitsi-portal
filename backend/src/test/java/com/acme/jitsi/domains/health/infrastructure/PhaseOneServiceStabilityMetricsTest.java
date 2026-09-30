@@ -1,4 +1,4 @@
-package com.acme.jitsi.shared.observability;
+package com.acme.jitsi.domains.health.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;

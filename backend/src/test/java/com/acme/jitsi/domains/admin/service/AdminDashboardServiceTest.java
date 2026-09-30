@@ -12,6 +12,7 @@ import com.acme.jitsi.domains.configsets.service.ConfigSetCompatibilityCheck;
 import com.acme.jitsi.domains.configsets.service.ConfigSetCompatibilityStateService;
 import com.acme.jitsi.domains.configsets.service.ConfigSetEnvironmentType;
 import com.acme.jitsi.domains.configsets.service.ConfigSetRepository;
+import com.acme.jitsi.domains.configsets.service.ConfigSetService;
 import com.acme.jitsi.domains.configsets.service.ConfigSetStatus;
 import com.acme.jitsi.domains.health.dto.HealthResponse;
 import com.acme.jitsi.domains.health.dto.JoinReadinessCheckResponse;
@@ -51,7 +52,7 @@ class AdminDashboardServiceTest {
     Clock clock = Clock.fixed(Instant.parse("2026-03-18T10:00:00Z"), ZoneOffset.UTC);
     service = new AdminDashboardService(
         healthService,
-        configSetRepository,
+        new ConfigSetService(configSetRepository),
         compatibilityStateService,
         readModel,
         clock,

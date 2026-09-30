@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
 
 import com.acme.jitsi.security.DefaultJwtAlgorithmPolicy;
-import com.acme.jitsi.security.TokenIssuanceCompatibilityPolicy;
+import com.acme.jitsi.domains.configsets.service.TokenIssuanceCompatibilityPolicy;
 import com.acme.jitsi.security.TokenIssuancePolicyException;
 import com.acme.jitsi.shared.ErrorCode;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;

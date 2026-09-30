@@ -1,5 +1,6 @@
 import { parseDateTimeLocalInput } from "~/lib/shared";
 import { createMeetingSchema, updateMeetingSchema } from "../meetings.zod";
+import type { CreateMeetingRequest } from "../types";
 
 export interface MeetingFormValues {
   title: string;
@@ -11,22 +12,10 @@ export interface MeetingFormValues {
   recordingEnabled: boolean;
 }
 
-interface MeetingFormContext {
-  roomId: string;
-  meetingId?: string;
-}
-
-export interface MeetingFormSubmissionPayload {
-  title: string;
-  description?: string;
-  meetingType: string;
-  startsAt: string;
-  endsAt: string;
+export type MeetingFormSubmissionPayload = CreateMeetingRequest & {
   allowGuests: boolean;
   recordingEnabled: boolean;
-  roomId?: string;
-  meetingId?: string;
-}
+};
 
 type MeetingFormSubmission =
   | {
@@ -40,7 +29,7 @@ type MeetingFormSubmission =
 
 export function buildMeetingFormSubmission(
   values: MeetingFormValues,
-  context: MeetingFormContext,
+  isEdit = false,
 ): MeetingFormSubmission {
   const startsAt = parseDateTimeLocalInput(values.startsAtLocal);
   const endsAt = parseDateTimeLocalInput(values.endsAtLocal);
@@ -62,9 +51,7 @@ export function buildMeetingFormSubmission(
     allowGuests: values.allowGuests,
     recordingEnabled: values.recordingEnabled,
   };
-  const schema = context.meetingId
-    ? updateMeetingSchema
-    : createMeetingSchema;
+  const schema = isEdit ? updateMeetingSchema : createMeetingSchema;
   const result = schema.safeParse(candidate);
 
   if (!result.success) {
@@ -85,11 +72,6 @@ export function buildMeetingFormSubmission(
 
   return {
     success: true,
-    payload: {
-      ...candidate,
-      ...(context.meetingId
-        ? { meetingId: context.meetingId }
-        : { roomId: context.roomId }),
-    },
+    payload: candidate,
   };
 }

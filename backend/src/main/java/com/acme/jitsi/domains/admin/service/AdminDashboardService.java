@@ -6,7 +6,8 @@ import com.acme.jitsi.domains.configsets.service.ConfigSet;
 import com.acme.jitsi.domains.configsets.service.ConfigSetCompatibilityCheck;
 import com.acme.jitsi.domains.configsets.service.ConfigSetCompatibilityStateService;
 import com.acme.jitsi.domains.configsets.service.ConfigSetEnvironmentType;
-import com.acme.jitsi.domains.configsets.service.ConfigSetRepository;
+import com.acme.jitsi.domains.configsets.service.ConfigSetNotFoundException;
+import com.acme.jitsi.domains.configsets.service.ConfigSetService;
 import com.acme.jitsi.domains.health.dto.HealthResponse;
 import com.acme.jitsi.domains.health.dto.JoinReadinessResponse;
 import com.acme.jitsi.domains.health.service.HealthService;
@@ -24,7 +25,7 @@ public class AdminDashboardService {
   private static final int SAMPLE_LIMIT = 500;
 
   private final HealthService healthService;
-  private final ConfigSetRepository configSets;
+  private final ConfigSetService configSets;
   private final ConfigSetCompatibilityStateService compatState;
   private final AdminDashboardReadModel readModel;
   private final Clock clock;
@@ -33,7 +34,7 @@ public class AdminDashboardService {
 
   public AdminDashboardService(
       HealthService healthService,
-      ConfigSetRepository configSets,
+      ConfigSetService configSets,
       ConfigSetCompatibilityStateService compatState,
       AdminDashboardReadModel readModel,
       Clock clock,
@@ -158,7 +159,11 @@ public class AdminDashboardService {
   }
 
   private Optional<ConfigSet> resolveActiveConfigSet(String tenantId, ConfigSetEnvironmentType environmentType) {
-    return configSets.findActiveByTenantIdAndEnvironmentType(tenantId, environmentType);
+    try {
+      return Optional.of(configSets.getActiveForEnvironment(tenantId, environmentType));
+    } catch (ConfigSetNotFoundException exception) {
+      return Optional.empty();
+    }
   }
 
   private ConfigSetEnvironmentType resolveEnvironment(String tenantId, String environmentToken) {
@@ -174,7 +179,7 @@ public class AdminDashboardService {
       }
     } else {
       for (ConfigSetEnvironmentType candidate : ConfigSetEnvironmentType.values()) {
-        if (configSets.findActiveByTenantIdAndEnvironmentType(tenantId, candidate).isPresent()) {
+        if (resolveActiveConfigSet(tenantId, candidate).isPresent()) {
           environmentType = candidate;
           break;
         }

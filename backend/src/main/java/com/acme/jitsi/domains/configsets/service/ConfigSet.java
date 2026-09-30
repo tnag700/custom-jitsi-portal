@@ -2,6 +2,7 @@ package com.acme.jitsi.domains.configsets.service;
 
 import java.time.Instant;
 
+@org.springframework.modulith.NamedInterface(value = "service", propagate = false)
 public record ConfigSet(
     String configSetId,
     String name,

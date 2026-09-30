@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.acme.jitsi.security.TokenIssuanceCompatibilityPolicy;
+import com.acme.jitsi.domains.configsets.service.TokenIssuanceCompatibilityPolicy;
 import com.acme.jitsi.security.TokenIssuancePolicyException;
 import com.acme.jitsi.shared.JwtTestProperties;
 import com.nimbusds.jose.JOSEException;
@@ -382,4 +382,3 @@ class AuthRefreshControllerTest {
     return jwt.serialize();
   }
 }
-
