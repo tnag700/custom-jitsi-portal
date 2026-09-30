@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import com.acme.jitsi.domains.configsets.service.ConfigSet;
 import com.acme.jitsi.domains.configsets.service.ConfigSetEnvironmentType;
 import com.acme.jitsi.domains.configsets.service.ConfigSetRepository;
+import com.acme.jitsi.domains.configsets.service.ConfigSetService;
 import com.acme.jitsi.domains.configsets.service.ConfigSetStatus;
 import java.time.Instant;
 import java.util.Optional;
@@ -25,7 +26,7 @@ class DatabaseConfigSetValidatorTest {
 
   @BeforeEach
   void setUp() {
-    validator = new DatabaseConfigSetValidator(repository);
+    validator = new DatabaseConfigSetValidator(new ConfigSetService(repository));
   }
 
   @Test

@@ -8,7 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.acme.jitsi.security.DefaultJwtAlgorithmPolicy;
-import com.acme.jitsi.security.TokenIssuanceCompatibilityPolicy;
+import com.acme.jitsi.domains.configsets.service.TokenIssuanceCompatibilityPolicy;
 import com.acme.jitsi.security.TokenIssuancePolicyException;
 import com.acme.jitsi.shared.ErrorCode;
 import com.nimbusds.jwt.SignedJWT;
@@ -28,12 +28,6 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 
 @ExtendWith(OutputCaptureExtension.class)
 class MeetingAccessTokenServiceTest {
-  private static final java.util.List<MeetingRoleResolutionPolicy> DEFAULT_POLICIES = java.util.List.of(
-      new BlockedSubjectMeetingRoleResolutionPolicy(),
-      unknownMeetingPolicy(),
-      dbAssignmentPolicy(),
-      new ExplicitAssignmentMeetingRoleResolutionPolicy(),
-      new UnknownRolePolicyMeetingRoleResolutionPolicy());
   private static final DefaultJwtAlgorithmPolicy DEFAULT_JWT_ALGORITHM_POLICY = new DefaultJwtAlgorithmPolicy();
 
   @Test
@@ -62,7 +56,7 @@ class MeetingAccessTokenServiceTest {
     assignment.setRole("host");
     properties.setAssignments(java.util.List.of(assignment));
 
-    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, DEFAULT_POLICIES);
+    MeetingRoleResolver resolver = roleResolver(properties);
     JwtEncoder encoder = new MeetingTokenConfig(DEFAULT_JWT_ALGORITHM_POLICY).meetingJwtEncoder(properties);
       MeetingAccessTokenService service = new MeetingAccessTokenService(
           resolver,
@@ -100,7 +94,7 @@ class MeetingAccessTokenServiceTest {
     assignment.setRole("host");
     properties.setAssignments(java.util.List.of(assignment));
 
-    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, DEFAULT_POLICIES);
+    MeetingRoleResolver resolver = roleResolver(properties);
     JwtEncoder encoder = new MeetingTokenConfig(DEFAULT_JWT_ALGORITHM_POLICY).meetingJwtEncoder(properties);
     MeetingAccessTokenService service = new MeetingAccessTokenService(
         resolver,
@@ -138,7 +132,7 @@ class MeetingAccessTokenServiceTest {
     assignment.setRole("participant");
     properties.setAssignments(java.util.List.of(assignment));
 
-    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, DEFAULT_POLICIES);
+    MeetingRoleResolver resolver = roleResolver(properties);
     JwtEncoder encoder = new MeetingTokenConfig(DEFAULT_JWT_ALGORITHM_POLICY).meetingJwtEncoder(properties);
       MeetingAccessTokenService service = new MeetingAccessTokenService(
           resolver,
@@ -172,7 +166,7 @@ class MeetingAccessTokenServiceTest {
     properties.setJoinUrlTemplate("https://meet.example/%s#jwt=%s");
     properties.setKnownMeetingIds(java.util.List.of("meeting-a"));
 
-    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, DEFAULT_POLICIES);
+    MeetingRoleResolver resolver = roleResolver(properties);
     JwtEncoder encoder = new MeetingTokenConfig(DEFAULT_JWT_ALGORITHM_POLICY).meetingJwtEncoder(properties);
       MeetingAccessTokenService service = new MeetingAccessTokenService(
           resolver,
@@ -212,7 +206,7 @@ class MeetingAccessTokenServiceTest {
     assignment.setRole("host");
     properties.setAssignments(java.util.List.of(assignment));
 
-    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, DEFAULT_POLICIES);
+    MeetingRoleResolver resolver = roleResolver(properties);
     JwtEncoder encoder = new MeetingTokenConfig(DEFAULT_JWT_ALGORITHM_POLICY).meetingJwtEncoder(properties);
     MeetingService meetingService = Mockito.mock(MeetingService.class);
     MeetingProfilesPort meetingProfilesPort = Mockito.mock(MeetingProfilesPort.class);
@@ -350,7 +344,7 @@ class MeetingAccessTokenServiceTest {
     assignment.setRole("host");
     properties.setAssignments(java.util.List.of(assignment));
 
-    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, DEFAULT_POLICIES);
+    MeetingRoleResolver resolver = roleResolver(properties);
     JwtEncoder encoder = Mockito.mock(JwtEncoder.class);
     MeetingAccessTokenService service = new MeetingAccessTokenService(
       resolver,
@@ -389,7 +383,7 @@ class MeetingAccessTokenServiceTest {
     assignment.setRole("host");
     properties.setAssignments(java.util.List.of(assignment));
 
-    MeetingRoleResolver resolver = new MeetingRoleResolver(properties, DEFAULT_POLICIES);
+    MeetingRoleResolver resolver = roleResolver(properties);
     JwtEncoder encoder = new MeetingTokenConfig(DEFAULT_JWT_ALGORITHM_POLICY).meetingJwtEncoder(properties);
     MeetingService meetingService = Mockito.mock(MeetingService.class);
     MeetingProfilesPort meetingProfilesPort = Mockito.mock(MeetingProfilesPort.class);
@@ -448,18 +442,13 @@ class MeetingAccessTokenServiceTest {
     return null;
   }
 
-    private static MeetingRoleResolutionPolicy unknownMeetingPolicy() {
-      MeetingRepository meetingRepository = Mockito.mock(MeetingRepository.class);
-      Mockito.when(meetingRepository.existsById(anyString())).thenReturn(false);
-      return new UnknownMeetingMeetingRoleResolutionPolicy(meetingRepository);
-    }
-
-    private static MeetingRoleResolutionPolicy dbAssignmentPolicy() {
-      MeetingParticipantAssignmentRepository assignmentRepository = Mockito.mock(MeetingParticipantAssignmentRepository.class);
-      Mockito.when(assignmentRepository.findByMeetingIdAndSubjectId(anyString(), anyString()))
-          .thenReturn(Optional.empty());
-      return new DbParticipantAssignmentMeetingRoleResolutionPolicy(assignmentRepository);
-    }
+  private static MeetingRoleResolver roleResolver(MeetingTokenProperties properties) {
+    MeetingRepository meetings = Mockito.mock(MeetingRepository.class);
+    Mockito.when(meetings.existsById(anyString())).thenReturn(false);
+    MeetingParticipantAssignmentRepository assignments = Mockito.mock(MeetingParticipantAssignmentRepository.class);
+    Mockito.when(assignments.findByMeetingIdAndSubjectId(anyString(), anyString())).thenReturn(Optional.empty());
+    return new MeetingRoleResolver(properties, meetings, assignments);
+  }
 
     private static MeetingStateGuard allowAllMeetingStateGuard() {
       return Mockito.mock(MeetingStateGuard.class);

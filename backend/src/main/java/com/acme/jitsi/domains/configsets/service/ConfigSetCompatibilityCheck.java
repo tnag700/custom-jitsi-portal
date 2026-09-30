@@ -3,6 +3,7 @@ package com.acme.jitsi.domains.configsets.service;
 import java.time.Instant;
 import java.util.List;
 
+@org.springframework.modulith.NamedInterface(value = "service", propagate = false)
 public record ConfigSetCompatibilityCheck(
     String checkId,
     String configSetId,

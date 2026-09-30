@@ -1,12 +1,12 @@
 import { component$ } from "@qwik.dev/core";
-import { Form } from "@qwik.dev/router";
+import { Form, type ActionStore } from "@qwik.dev/router";
 
 interface ParticipantSelfAssignmentProps {
   meetingId: string;
   currentUserId: string;
   currentUserDisplayName: string;
   isAssigned: boolean;
-  bulkAssignAction: unknown;
+  bulkAssignAction: ActionStore<unknown, never, false>;
   isAssigning: boolean;
 }
 
@@ -49,7 +49,7 @@ export const ParticipantSelfAssignment =
               Вы уже в составе
             </span>
           ) : (
-            <Form action={bulkAssignAction as never} class="shrink-0">
+            <Form action={bulkAssignAction} class="shrink-0">
               <input type="hidden" name="meetingId" value={meetingId} />
               <input
                 type="hidden"

@@ -11,21 +11,18 @@ import {
   AppDialog,
   formatDateTimeLocalInput,
 } from "~/lib/shared";
-import type { Meeting, MeetingErrorPayload } from "../types";
+import type {
+  CreateMeetingRequest,
+  Meeting,
+  MeetingErrorPayload,
+  UpdateMeetingRequest,
+} from "../types";
 import { getMeetingTypeOptions } from "../meeting-type-presentation";
 import {
   buildMeetingFormSubmission,
-  type MeetingFormSubmissionPayload,
 } from "./meeting-form-state";
 
-export interface MeetingFormAction {
-  submit: QRL<
-    (payload: MeetingFormSubmissionPayload) => Promise<unknown>
-  >;
-}
-
-interface MeetingFormProps {
-  meeting?: Meeting;
+type MeetingFormProps = {
   roomId: string;
   isLoading: boolean;
   error?: MeetingErrorPayload;
@@ -34,8 +31,20 @@ interface MeetingFormProps {
     formErrors: string[];
   };
   isOpen: Signal<boolean>;
-  action: MeetingFormAction;
-}
+} & (
+  | {
+      meeting?: undefined;
+      onSubmit$: QRL<
+        (payload: CreateMeetingRequest & { roomId: string }) => Promise<unknown>
+      >;
+    }
+  | {
+      meeting: Meeting;
+      onSubmit$: QRL<
+        (payload: UpdateMeetingRequest & { meetingId: string }) => Promise<unknown>
+      >;
+    }
+);
 
 function toDateTimeLocal(isoValue: string | undefined): string {
   return formatDateTimeLocalInput(isoValue);
@@ -56,7 +65,7 @@ export const MeetingForm = component$<MeetingFormProps>(
     error,
     validationFeedback,
     isOpen,
-    action,
+    onSubmit$,
   }) => {
     const isEdit = !!meeting;
     const formId = isEdit ? "meeting-edit-form" : "meeting-create-form";
@@ -69,7 +78,6 @@ export const MeetingForm = component$<MeetingFormProps>(
     const recordingEnabledValue = useSignal(meeting?.recordingEnabled ?? false);
     const validationErrors = useSignal<Record<string, string>>({});
     const submissionErrors = useSignal<string[]>([]);
-    const submitAction = action.submit;
 
     const clearFieldError$ = $((field: string) => {
       const nextErrors = { ...validationErrors.value };
@@ -89,10 +97,7 @@ export const MeetingForm = component$<MeetingFormProps>(
           allowGuests: allowGuestsValue.value,
           recordingEnabled: recordingEnabledValue.value,
         },
-        {
-          roomId,
-          meetingId: meeting?.meetingId,
-        },
+        isEdit,
       );
 
       if (!submission.success) {
@@ -103,7 +108,14 @@ export const MeetingForm = component$<MeetingFormProps>(
 
       validationErrors.value = {};
       submissionErrors.value = [];
-      await submitAction(submission.payload);
+      if (meeting) {
+        await onSubmit$({
+          ...submission.payload,
+          meetingId: meeting.meetingId,
+        });
+      } else {
+        await onSubmit$({ ...submission.payload, roomId });
+      }
     });
 
     const meetingTypeOptions = getMeetingTypeOptions(meetingTypeValue.value);

@@ -3,6 +3,8 @@ import { Form } from "@qwik.dev/router";
 import type { Invite, InviteErrorPayload } from "~/lib/domains/invites";
 import type { Meeting, MeetingErrorPayload } from "~/lib/domains/meetings";
 import { ApiErrorAlert, AppDialog } from "~/lib/shared";
+import type { useCancelMeeting } from "../meeting-actions";
+import type { useRevokeInvite } from "../invite-actions";
 
 interface MeetingConfirmationDialogsProps {
   confirmingCancel: Signal<Meeting | null>;
@@ -10,8 +12,8 @@ interface MeetingConfirmationDialogsProps {
   selectedInviteMeeting: Meeting | null;
   showCancelDialog: Signal<boolean>;
   showRevokeInviteDialog: Signal<boolean>;
-  cancelAction: unknown;
-  revokeInviteAction: unknown;
+  cancelAction: ReturnType<typeof useCancelMeeting>;
+  revokeInviteAction: ReturnType<typeof useRevokeInvite>;
   cancelRunning: boolean;
   revokeRunning: boolean;
   cancelError?: MeetingErrorPayload;
@@ -77,7 +79,7 @@ export const MeetingConfirmationDialogs =
             </div>
           )}
 
-          <Form q:slot="actions" action={cancelAction as never}>
+          <Form q:slot="actions" action={cancelAction}>
             <input
               type="hidden"
               name="meetingId"
@@ -113,7 +115,7 @@ export const MeetingConfirmationDialogs =
               </div>
             )}
 
-            <Form q:slot="actions" action={revokeInviteAction as never}>
+            <Form q:slot="actions" action={revokeInviteAction}>
               <input
                 type="hidden"
                 name="meetingId"

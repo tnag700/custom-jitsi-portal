@@ -3,7 +3,7 @@ import {
   type QRL,
   type Signal,
 } from "@qwik.dev/core";
-import { Form } from "@qwik.dev/router";
+import { Form, type ActionStore } from "@qwik.dev/router";
 import type { ParticipantAssignment, UserProfileSummary } from "../types";
 import {
   toggleSelectedParticipant,
@@ -22,7 +22,7 @@ interface ParticipantDirectoryProps {
   organizationFilter: Signal<string>;
   sortMode: Signal<ParticipantSortMode>;
   bulkRole: Signal<ParticipantAssignment["role"]>;
-  bulkAssignAction: unknown;
+  bulkAssignAction: ActionStore<unknown, never, false>;
   isAssigning: boolean;
   onApplyFilters$: QRL<() => void>;
   onResetFilters$: QRL<() => void>;
@@ -258,7 +258,7 @@ export const ParticipantDirectory = component$<ParticipantDirectoryProps>(
         </div>
 
         <Form
-          action={bulkAssignAction as never}
+          action={bulkAssignAction}
           class="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 sm:flex-row sm:items-end sm:justify-between"
         >
           <input type="hidden" name="meetingId" value={meetingId} />

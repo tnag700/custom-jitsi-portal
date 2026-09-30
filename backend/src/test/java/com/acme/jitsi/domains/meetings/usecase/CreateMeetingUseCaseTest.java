@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.acme.jitsi.domains.meetings.event.MeetingCreatedEvent;
@@ -49,6 +50,7 @@ class CreateMeetingUseCaseTest {
   @Test
   void executeCreatesMeetingAndPublishesEvent() {
     when(meetingRoomsPort.getRequiredRoomForUpdate("room-1")).thenReturn(activeRoom("room-1", "config-1"));
+    when(meetingRoomsPort.isConfigSetValid(activeRoom("room-1", "config-1"))).thenReturn(true);
     when(meetingRepository.save(any(Meeting.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     Meeting meeting = useCase.execute(new CreateMeetingCommand(
@@ -71,6 +73,7 @@ class CreateMeetingUseCaseTest {
   @Test
   void executeThrowsWhenRoomIsInactive() {
     when(meetingRoomsPort.getRequiredRoomForUpdate("room-1")).thenReturn(inactiveRoom("room-1", "config-1"));
+    when(meetingRoomsPort.isConfigSetValid(inactiveRoom("room-1", "config-1"))).thenReturn(true);
 
     assertThatThrownBy(() -> useCase.execute(new CreateMeetingCommand(
         "room-1", "Title", "Desc", "scheduled",
@@ -81,11 +84,12 @@ class CreateMeetingUseCaseTest {
 
   @Test
   void executeThrowsWhenConfigSetIsInvalid() {
-    when(meetingRoomsPort.getRequiredRoomForUpdate("room-1")).thenReturn(invalidConfigRoom("room-1", "config-1"));
+    when(meetingRoomsPort.getRequiredRoomForUpdate("room-1")).thenReturn(activeRoom("room-1", "config-1"));
+    when(meetingRoomsPort.isConfigSetValid(activeRoom("room-1", "config-1"))).thenReturn(false);
 
     assertThatThrownBy(() -> useCase.execute(new CreateMeetingCommand(
         "room-1", "Title", "Desc", "scheduled",
-        Instant.parse("2026-02-17T10:00:00Z"), Instant.parse("2026-02-17T11:00:00Z"),
+        Instant.EPOCH, Instant.EPOCH,
         true, false, "actor-1", "trace-1")))
         .isInstanceOf(MeetingConfigSetInvalidException.class);
   }
@@ -93,6 +97,7 @@ class CreateMeetingUseCaseTest {
   @Test
   void executeThrowsWhenScheduleIsInvalid() {
     when(meetingRoomsPort.getRequiredRoomForUpdate("room-1")).thenReturn(activeRoom("room-1", "config-1"));
+    when(meetingRoomsPort.isConfigSetValid(activeRoom("room-1", "config-1"))).thenReturn(true);
 
     assertThatThrownBy(() -> useCase.execute(new CreateMeetingCommand(
         "room-1", "Title", "Desc", "scheduled",
@@ -102,15 +107,38 @@ class CreateMeetingUseCaseTest {
         .isInstanceOf(InvalidMeetingScheduleException.class);
   }
 
+  @Test
+  void inactiveRoomPrecedesInvalidConfigurationAndSchedule() {
+    var room = inactiveRoom("room-1", "config-1");
+    when(meetingRoomsPort.getRequiredRoomForUpdate("room-1")).thenReturn(room);
+    when(meetingRoomsPort.isConfigSetValid(room)).thenReturn(false);
+
+    assertThatThrownBy(() -> useCase.execute(new CreateMeetingCommand(
+        "room-1", "Title", "Desc", "scheduled", Instant.EPOCH, Instant.EPOCH,
+        true, false, "actor-1", "trace-1")))
+        .isInstanceOf(MeetingRoomInactiveException.class);
+    verifyNoInteractions(meetingRepository, eventPublisher);
+  }
+
+  @Test
+  void configurationStorageFailurePrecedesRoomAndScheduleRejection() {
+    var room = inactiveRoom("room-1", "config-1");
+    IllegalStateException failure = new IllegalStateException("Configuration storage unavailable");
+    when(meetingRoomsPort.getRequiredRoomForUpdate("room-1")).thenReturn(room);
+    when(meetingRoomsPort.isConfigSetValid(room)).thenThrow(failure);
+
+    assertThatThrownBy(() -> useCase.execute(new CreateMeetingCommand(
+        "room-1", "Title", "Desc", "scheduled", Instant.EPOCH, Instant.EPOCH,
+        true, false, "actor-1", "trace-1")))
+        .isSameAs(failure);
+    verifyNoInteractions(meetingRepository, eventPublisher);
+  }
+
   private MeetingRoomSnapshot activeRoom(String roomId, String configSetId) {
-    return new MeetingRoomSnapshot(roomId, "Room", "tenant-1", configSetId, true, true);
+    return new MeetingRoomSnapshot(roomId, "Room", "tenant-1", configSetId, true);
   }
 
   private MeetingRoomSnapshot inactiveRoom(String roomId, String configSetId) {
-    return new MeetingRoomSnapshot(roomId, "Room", "tenant-1", configSetId, false, true);
-  }
-
-  private MeetingRoomSnapshot invalidConfigRoom(String roomId, String configSetId) {
-    return new MeetingRoomSnapshot(roomId, "Room", "tenant-1", configSetId, true, false);
+    return new MeetingRoomSnapshot(roomId, "Room", "tenant-1", configSetId, false);
   }
 }

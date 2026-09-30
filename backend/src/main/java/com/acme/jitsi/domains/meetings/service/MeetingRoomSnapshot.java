@@ -5,6 +5,5 @@ public record MeetingRoomSnapshot(
     String name,
     String tenantId,
     String configSetId,
-    boolean active,
-    boolean configSetValid) {
+    boolean active) {
 }

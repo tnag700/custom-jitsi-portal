@@ -22,7 +22,7 @@
     "lint:architecture": "eslint \"src/routes/**/*.ts*\"",
     "lint:architecture:strict": "eslint \"src/routes/**/*.ts*\" --max-warnings=0",
     "lint:layers:strict": "eslint \"src/lib/**/*.ts*\" --max-warnings=0",
-    "verify:architecture": "npm run lint:architecture:strict && npm run lint:layers:strict",
+    "verify:architecture": "npm run lint:architecture:strict && npm run lint:layers:strict && vitest run src/__tests__/architecture-import-guard.test.ts",
     "preview": "npm run build && vite preview --open",
     "start": "node server/entry.express.mjs",
     "test": "vitest run",

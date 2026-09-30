@@ -3,13 +3,13 @@ import { Link } from "@qwik.dev/router";
 import type {
   Meeting,
   MeetingErrorPayload,
-  MeetingFormAction,
 } from "~/lib/domains/meetings";
 import { MeetingForm, MeetingList } from "~/lib/domains/meetings";
 import type { Room } from "~/lib/domains/rooms";
 import { formatDateTime } from "~/lib/shared";
 import { PageNavigation } from "~/lib/shared/components/PageNavigation";
 import type { RoomManagementRequest } from "../../rooms/components/RoomManagement";
+import type { useCreateMeeting, useUpdateMeeting } from "../meeting-actions";
 import {
   type ActionValidationFeedback,
   buildMeetingsHref,
@@ -33,8 +33,8 @@ interface MeetingsOverviewProps {
   editingMeeting: Signal<Meeting | null>;
   showCreateForm: Signal<boolean>;
   showEditForm: Signal<boolean>;
-  createAction: unknown;
-  updateAction: unknown;
+  createAction: ReturnType<typeof useCreateMeeting>;
+  updateAction: ReturnType<typeof useUpdateMeeting>;
   createRunning: boolean;
   updateRunning: boolean;
   createError?: MeetingErrorPayload;
@@ -326,7 +326,7 @@ export const MeetingsOverview = component$<MeetingsOverviewProps>((props) => {
 
       {createRoomId && showCreateForm.value && (
         <MeetingForm
-          action={createAction as MeetingFormAction}
+          onSubmit$={createAction.submit}
           roomId={createRoomId}
           isLoading={createRunning}
           error={createError}
@@ -336,7 +336,7 @@ export const MeetingsOverview = component$<MeetingsOverviewProps>((props) => {
       )}
       {showEditForm.value && editingMeeting.value && (
         <MeetingForm
-          action={updateAction as MeetingFormAction}
+          onSubmit$={updateAction.submit}
           roomId={editingMeeting.value.roomId}
           meeting={editingMeeting.value}
           isLoading={updateRunning}

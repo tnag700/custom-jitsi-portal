@@ -91,6 +91,12 @@ class BackendArchitectureTest {
       .should().dependOnClassesThat()
       .resideInAnyPackage("..domains.rooms..");
 
+  static final ArchRule shared_and_security_do_not_depend_on_domains = noClasses()
+      .that().resideInAnyPackage("com.acme.jitsi.shared..", "com.acme.jitsi.security..")
+      .should().dependOnClassesThat()
+      .resideInAPackage("com.acme.jitsi.domains..")
+      .because("domain policies and aggregate metrics belong to their owning modules");
+
   static final ArchRule domains_are_free_of_cycles = slices()
       .matching("com.acme.jitsi.domains.(*)..")
       .should().beFreeOfCycles()
@@ -164,6 +170,11 @@ class BackendArchitectureTest {
     @Test
     void configsetsDoNotDependOnRooms() {
         configsets_do_not_depend_on_rooms.check(importedClasses);
+    }
+
+    @Test
+    void sharedAndSecurityDoNotDependOnDomains() {
+        shared_and_security_do_not_depend_on_domains.check(importedClasses);
     }
 
     @Test

@@ -1,13 +1,17 @@
-import { fetchWithTimeout } from "../../shared/api";
+import {
+  fetchWithTimeout,
+  participantAssignmentResponseSchema,
+  userProfileSummaryResponseSchema,
+} from "../../shared/api";
 import {
   adaptMeetingProblemDetails,
   MeetingServiceError,
+  parseOrThrow,
 } from "./meetings.service";
 import type {
   MutationRequestContext,
   ServerRequestContext,
 } from "../../shared/routes/server-handlers";
-import { asMutationRequestContext, asServerRequestContext } from "../../shared/routes/server-handlers";
 import type {
   AssignParticipantRequest,
   BulkAssignParticipantsRequest,
@@ -16,27 +20,11 @@ import type {
   UserProfileSummary,
 } from "./types";
 
-export function fetchParticipants(
+export async function fetchParticipants(
   context: ServerRequestContext,
   meetingId: string,
-): Promise<ParticipantAssignment[]>;
-export function fetchParticipants(
-  sessionCookie: string,
-  apiUrl: string,
-  meetingId: string,
-): Promise<ParticipantAssignment[]>;
-export async function fetchParticipants(
-  contextOrSessionCookie: ServerRequestContext | string,
-  apiUrlOrMeetingId: string,
-  meetingId?: string,
 ): Promise<ParticipantAssignment[]> {
-  const context = asServerRequestContext(
-    contextOrSessionCookie,
-    typeof contextOrSessionCookie === "string" ? apiUrlOrMeetingId : undefined,
-  );
-  const resolvedMeetingId = typeof contextOrSessionCookie === "string" ? meetingId! : apiUrlOrMeetingId;
-
-  const response = await fetchWithTimeout(`${context.apiUrl}/meetings/${encodeURIComponent(resolvedMeetingId)}/participants`, {
+  const response = await fetchWithTimeout(`${context.apiUrl}/meetings/${encodeURIComponent(meetingId)}/participants`, {
     method: "GET",
     headers: context.headers,
   });
@@ -45,133 +33,69 @@ export async function fetchParticipants(
     throw new MeetingServiceError(await adaptMeetingProblemDetails(response));
   }
 
-  return (await response.json()) as ParticipantAssignment[];
+  return parseOrThrow(
+    (data) => participantAssignmentResponseSchema.array().parse(data),
+    await response.json(),
+    "GET /api/v1/meetings/{meetingId}/participants",
+  );
 }
 
-export function assignParticipant(
-  context: MutationRequestContext,
-  meetingId: string,
-  request: AssignParticipantRequest,
-): Promise<ParticipantAssignment>;
-export function assignParticipant(
-  sessionCookie: string,
-  apiUrl: string,
-  csrfToken: string,
-  idempotencyKey: string,
-  meetingId: string,
-  request: AssignParticipantRequest,
-): Promise<ParticipantAssignment>;
 export async function assignParticipant(
-  contextOrSessionCookie: MutationRequestContext | string,
-  apiUrlOrMeetingId: string,
-  csrfTokenOrRequest?: string | AssignParticipantRequest,
-  idempotencyKey?: string,
-  meetingId?: string,
-  request?: AssignParticipantRequest,
+  context: MutationRequestContext,
+  meetingId: string,
+  request: AssignParticipantRequest,
 ): Promise<ParticipantAssignment> {
-  const context = asMutationRequestContext(
-    contextOrSessionCookie,
-    typeof contextOrSessionCookie === "string" ? apiUrlOrMeetingId : undefined,
-    typeof csrfTokenOrRequest === "string" ? csrfTokenOrRequest : undefined,
-    idempotencyKey,
-  );
-  const resolvedMeetingId = typeof contextOrSessionCookie === "string" ? meetingId! : apiUrlOrMeetingId;
-  const resolvedRequest = typeof contextOrSessionCookie === "string" ? request! : (csrfTokenOrRequest as AssignParticipantRequest);
-
-  const response = await fetchWithTimeout(`${context.apiUrl}/meetings/${encodeURIComponent(resolvedMeetingId)}/participants`, {
+  const response = await fetchWithTimeout(`${context.apiUrl}/meetings/${encodeURIComponent(meetingId)}/participants`, {
     method: "POST",
     headers: context.headers,
-    body: JSON.stringify(resolvedRequest),
+    body: JSON.stringify(request),
   });
 
   if (!response.ok) {
     throw new MeetingServiceError(await adaptMeetingProblemDetails(response));
   }
 
-  return (await response.json()) as ParticipantAssignment;
+  return parseOrThrow(
+    (data) => participantAssignmentResponseSchema.parse(data),
+    await response.json(),
+    "POST /api/v1/meetings/{meetingId}/participants",
+  );
 }
 
-export function bulkAssignParticipants(
+export async function bulkAssignParticipants(
   context: MutationRequestContext,
   meetingId: string,
   request: BulkAssignParticipantsRequest,
-): Promise<ParticipantAssignment[]>;
-export function bulkAssignParticipants(
-  sessionCookie: string,
-  apiUrl: string,
-  csrfToken: string,
-  idempotencyKey: string,
-  meetingId: string,
-  request: BulkAssignParticipantsRequest,
-): Promise<ParticipantAssignment[]>;
-export async function bulkAssignParticipants(
-  contextOrSessionCookie: MutationRequestContext | string,
-  apiUrlOrMeetingId: string,
-  csrfTokenOrRequest?: string | BulkAssignParticipantsRequest,
-  idempotencyKey?: string,
-  meetingId?: string,
-  request?: BulkAssignParticipantsRequest,
 ): Promise<ParticipantAssignment[]> {
-  const context = asMutationRequestContext(
-    contextOrSessionCookie,
-    typeof contextOrSessionCookie === "string" ? apiUrlOrMeetingId : undefined,
-    typeof csrfTokenOrRequest === "string" ? csrfTokenOrRequest : undefined,
-    idempotencyKey,
-  );
-  const resolvedMeetingId = typeof contextOrSessionCookie === "string" ? meetingId! : apiUrlOrMeetingId;
-  const resolvedRequest =
-    typeof contextOrSessionCookie === "string"
-      ? request!
-      : (csrfTokenOrRequest as BulkAssignParticipantsRequest);
-
-  const response = await fetchWithTimeout(`${context.apiUrl}/meetings/${encodeURIComponent(resolvedMeetingId)}/participants/bulk`, {
+  const response = await fetchWithTimeout(`${context.apiUrl}/meetings/${encodeURIComponent(meetingId)}/participants/bulk`, {
     method: "POST",
     headers: context.headers,
-    body: JSON.stringify(resolvedRequest),
+    body: JSON.stringify(request),
   });
 
   if (!response.ok) {
     throw new MeetingServiceError(await adaptMeetingProblemDetails(response));
   }
 
-  return (await response.json()) as ParticipantAssignment[];
+  return parseOrThrow(
+    (data) => participantAssignmentResponseSchema.array().parse(data),
+    await response.json(),
+    "POST /api/v1/meetings/{meetingId}/participants/bulk",
+  );
 }
 
-export function searchUsers(
+export async function searchUsers(
   context: ServerRequestContext,
   tenantId: string,
   query?: string,
   organization?: string,
-): Promise<UserProfileSummary[]>;
-export function searchUsers(
-  sessionCookie: string,
-  apiUrl: string,
-  tenantId: string,
-  query?: string,
-  organization?: string,
-): Promise<UserProfileSummary[]>;
-export async function searchUsers(
-  contextOrSessionCookie: ServerRequestContext | string,
-  apiUrlOrTenantId: string,
-  tenantIdOrQuery?: string,
-  query?: string,
-  organization?: string,
 ): Promise<UserProfileSummary[]> {
-  const context = asServerRequestContext(
-    contextOrSessionCookie,
-    typeof contextOrSessionCookie === "string" ? apiUrlOrTenantId : undefined,
-  );
-
-  const tenantId = typeof contextOrSessionCookie === "string" ? tenantIdOrQuery! : apiUrlOrTenantId;
-  const resolvedQuery = typeof contextOrSessionCookie === "string" ? query : tenantIdOrQuery;
-  const resolvedOrganization = typeof contextOrSessionCookie === "string" ? organization : query;
-
   const params = new URLSearchParams({ tenant_id: tenantId });
-  if (resolvedQuery && resolvedQuery.trim().length > 0) {
-    params.set("q", resolvedQuery.trim());
+  if (query && query.trim().length > 0) {
+    params.set("q", query.trim());
   }
-  if (resolvedOrganization && resolvedOrganization.trim().length > 0) {
-    params.set("organization", resolvedOrganization.trim());
+  if (organization && organization.trim().length > 0) {
+    params.set("organization", organization.trim());
   }
 
   const response = await fetchWithTimeout(`${context.apiUrl}/users/search?${params.toString()}`, {
@@ -183,46 +107,25 @@ export async function searchUsers(
     throw new MeetingServiceError(await adaptMeetingProblemDetails(response));
   }
 
-  return (await response.json()) as UserProfileSummary[];
+  return parseOrThrow(
+    (data) => userProfileSummaryResponseSchema.array().parse(data),
+    await response.json(),
+    "GET /api/v1/users/search",
+  );
 }
 
-export function updateParticipantRole(
+export async function updateParticipantRole(
   context: MutationRequestContext,
   meetingId: string,
   subjectId: string,
   request: UpdateParticipantRoleRequest,
-): Promise<ParticipantAssignment>;
-export function updateParticipantRole(
-  sessionCookie: string,
-  apiUrl: string,
-  csrfToken: string,
-  meetingId: string,
-  subjectId: string,
-  request: UpdateParticipantRoleRequest,
-): Promise<ParticipantAssignment>;
-export async function updateParticipantRole(
-  contextOrSessionCookie: MutationRequestContext | string,
-  apiUrlOrMeetingId: string,
-  csrfTokenOrSubjectId?: string,
-  meetingIdOrRequest?: string | UpdateParticipantRoleRequest,
-  subjectId?: string,
-  request?: UpdateParticipantRoleRequest,
 ): Promise<ParticipantAssignment> {
-  const context = asMutationRequestContext(
-    contextOrSessionCookie,
-    typeof contextOrSessionCookie === "string" ? apiUrlOrMeetingId : undefined,
-    typeof csrfTokenOrSubjectId === "string" ? csrfTokenOrSubjectId : undefined,
-  );
-  const resolvedMeetingId = typeof contextOrSessionCookie === "string" ? (meetingIdOrRequest as string) : apiUrlOrMeetingId;
-  const resolvedSubjectId = typeof contextOrSessionCookie === "string" ? subjectId! : (csrfTokenOrSubjectId as string);
-  const resolvedRequest = typeof contextOrSessionCookie === "string" ? request! : (meetingIdOrRequest as UpdateParticipantRoleRequest);
-
   const response = await fetchWithTimeout(
-    `${context.apiUrl}/meetings/${encodeURIComponent(resolvedMeetingId)}/participants/${encodeURIComponent(resolvedSubjectId)}`,
+    `${context.apiUrl}/meetings/${encodeURIComponent(meetingId)}/participants/${encodeURIComponent(subjectId)}`,
     {
       method: "PUT",
       headers: context.headers,
-      body: JSON.stringify(resolvedRequest),
+      body: JSON.stringify(request),
     },
   );
 
@@ -230,38 +133,20 @@ export async function updateParticipantRole(
     throw new MeetingServiceError(await adaptMeetingProblemDetails(response));
   }
 
-  return (await response.json()) as ParticipantAssignment;
+  return parseOrThrow(
+    (data) => participantAssignmentResponseSchema.parse(data),
+    await response.json(),
+    "PUT /api/v1/meetings/{meetingId}/participants/{subjectId}",
+  );
 }
 
-export function unassignParticipant(
+export async function unassignParticipant(
   context: MutationRequestContext,
   meetingId: string,
   subjectId: string,
-): Promise<void>;
-export function unassignParticipant(
-  sessionCookie: string,
-  apiUrl: string,
-  csrfToken: string,
-  meetingId: string,
-  subjectId: string,
-): Promise<void>;
-export async function unassignParticipant(
-  contextOrSessionCookie: MutationRequestContext | string,
-  apiUrlOrMeetingId: string,
-  csrfTokenOrSubjectId?: string,
-  meetingId?: string,
-  subjectId?: string,
 ): Promise<void> {
-  const context = asMutationRequestContext(
-    contextOrSessionCookie,
-    typeof contextOrSessionCookie === "string" ? apiUrlOrMeetingId : undefined,
-    typeof csrfTokenOrSubjectId === "string" ? csrfTokenOrSubjectId : undefined,
-  );
-  const resolvedMeetingId = typeof contextOrSessionCookie === "string" ? meetingId! : apiUrlOrMeetingId;
-  const resolvedSubjectId = typeof contextOrSessionCookie === "string" ? subjectId! : (csrfTokenOrSubjectId as string);
-
   const response = await fetchWithTimeout(
-    `${context.apiUrl}/meetings/${encodeURIComponent(resolvedMeetingId)}/participants/${encodeURIComponent(resolvedSubjectId)}`,
+    `${context.apiUrl}/meetings/${encodeURIComponent(meetingId)}/participants/${encodeURIComponent(subjectId)}`,
     {
       method: "DELETE",
       headers: context.headers,

@@ -1,11 +1,10 @@
-package com.acme.jitsi.security;
+package com.acme.jitsi.domains.configsets.service;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
-import com.acme.jitsi.domains.configsets.service.ConfigSetCompatibilityCheck;
-import com.acme.jitsi.domains.configsets.service.ConfigSetCompatibilityStateService;
+import com.acme.jitsi.security.TokenIssuancePolicyException;
 import com.acme.jitsi.shared.ErrorCode;
 import java.time.Instant;
 import java.util.Optional;

@@ -68,11 +68,9 @@ describe("Meetings Guard: components (AC: 1-6)", () => {
     expect(tsx).toContain("ApiErrorAlert");
   });
 
-  it("MeetingForm.tsx should validate before manually submitting its route action", () => {
+  it("MeetingForm.tsx should offer manual submission and meeting type controls", () => {
     const tsx = readSrc("lib/domains/meetings/components/MeetingForm.tsx");
     expect(tsx).toContain("preventdefault:submit");
-    expect(tsx).toContain("submitAction(submission.payload)");
-    expect(tsx).toContain("submission.payload");
     expect(tsx).toContain('type="radio"');
     expect(tsx).toContain("Формат встречи");
   });

@@ -37,7 +37,7 @@ class UpdateMeetingUseCaseTest {
   @BeforeEach
   void setUp() {
     when(meetingRoomsPort.getRequiredRoomForUpdate("room-1")).thenReturn(
-        new com.acme.jitsi.domains.meetings.service.MeetingRoomSnapshot("room-1", "Room", "tenant-1", "config-1", true, true));
+        new com.acme.jitsi.domains.meetings.service.MeetingRoomSnapshot("room-1", "Room", "tenant-1", "config-1", true));
     useCase = new UpdateMeetingUseCase(
         meetingRepository,
         meetingRoomsPort,

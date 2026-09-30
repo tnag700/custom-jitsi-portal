@@ -316,7 +316,7 @@ class InviteValidationPortContractTest {
     InviteUsageStoreRouter router = new InviteUsageStoreRouter(
         new InviteUsageStoreResolver(properties, new InMemoryInviteUsageStore(), new RedisInviteUsageStore(provider), new com.acme.jitsi.domains.store.StoreSelectionStrategyFactory()));
 
-    InviteValidationPort port = new InviteValidationService(properties, router, createValidationChain());
+    InviteValidationPort port = new InviteValidationService(properties, router, mock(InviteMeetingStatePort.class));
     String token = invite == null ? "missing-token" : invite.token();
     return new PortFixture("properties-mode", token, port, () -> {
     });
@@ -386,17 +386,6 @@ class InviteValidationPortContractTest {
     InviteValidationPort port = context.getBean(InviteValidationPort.class);
     String token = invite == null ? "missing-token" : invite.token();
     return new PortFixture("database-mode", token, port, context::close);
-  }
-
-  private InviteValidationChain createValidationChain() {
-    return new InviteValidationChain(List.of(
-        new InviteTokenBlankValidator(),
-        new InviteTokenExistsValidator(),
-        new InviteRevokedValidator(),
-        new InviteExpirationValidator(),
-        new InviteMeetingKnownValidator(),
-          new InviteMeetingStateValidator(mock(InviteMeetingStatePort.class)),
-        new InviteUsageLimitValidator()));
   }
 
   private InviteExchangeProperties.Invite invite(String token, int usageLimit, int usedCount, boolean revoked) {

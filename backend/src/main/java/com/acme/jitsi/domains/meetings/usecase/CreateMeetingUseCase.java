@@ -45,8 +45,9 @@ public class CreateMeetingUseCase implements UseCase<CreateMeetingCommand, Meeti
   @Transactional
   public Meeting execute(CreateMeetingCommand command) {
     MeetingRoomSnapshot room = meetingRoomsPort.getRequiredRoomForUpdate(command.roomId());
+    boolean configSetValid = meetingRoomsPort.isConfigSetValid(room);
     validateRoomIsActive(room);
-    validateRoomConfigSet(room);
+    validateRoomConfigSet(room, configSetValid);
     validateSchedule(command.startsAt(), command.endsAt());
 
     Instant now = Instant.now(clock);
@@ -89,8 +90,8 @@ public class CreateMeetingUseCase implements UseCase<CreateMeetingCommand, Meeti
     }
   }
 
-  private void validateRoomConfigSet(MeetingRoomSnapshot room) {
-    if (!room.configSetValid()) {
+  private void validateRoomConfigSet(MeetingRoomSnapshot room, boolean configSetValid) {
+    if (!configSetValid) {
       throw new MeetingConfigSetInvalidException(room.configSetId());
     }
   }

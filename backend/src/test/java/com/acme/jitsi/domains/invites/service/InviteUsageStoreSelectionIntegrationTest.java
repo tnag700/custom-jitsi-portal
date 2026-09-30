@@ -71,17 +71,6 @@ class InviteUsageStoreSelectionIntegrationTest {
         new InviteUsageStoreResolver(properties, inMemoryStore, redisStore, new StoreSelectionStrategyFactory());
     InviteUsageStoreRouter storeRouter = new InviteUsageStoreRouter(resolver);
 
-    return new InviteValidationService(properties, storeRouter, createValidationChain());
-  }
-
-  private InviteValidationChain createValidationChain() {
-    return new InviteValidationChain(List.of(
-        new InviteTokenBlankValidator(),
-        new InviteTokenExistsValidator(),
-        new InviteRevokedValidator(),
-        new InviteExpirationValidator(),
-        new InviteMeetingKnownValidator(),
-        new InviteMeetingStateValidator(mock(InviteMeetingStatePort.class)),
-        new InviteUsageLimitValidator()));
+    return new InviteValidationService(properties, storeRouter, mock(InviteMeetingStatePort.class));
   }
 }

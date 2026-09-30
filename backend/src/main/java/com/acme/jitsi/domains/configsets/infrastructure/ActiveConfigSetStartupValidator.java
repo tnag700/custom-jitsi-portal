@@ -1,4 +1,4 @@
-package com.acme.jitsi.security;
+package com.acme.jitsi.domains.configsets.infrastructure;
 
 import com.acme.jitsi.domains.configsets.service.ConfigCompatibilityCheckResult;
 import com.acme.jitsi.domains.configsets.service.ConfigCompatibilityMismatch;
@@ -8,6 +8,8 @@ import com.acme.jitsi.domains.configsets.service.ConfigSetCompatibilityStateServ
 import com.acme.jitsi.domains.configsets.service.ConfigSetDryRunValidator;
 import com.acme.jitsi.domains.configsets.service.ConfigSetRepository;
 import com.acme.jitsi.domains.configsets.service.ConfigSetStatus;
+import com.acme.jitsi.security.JwtStartupValidationErrorCode;
+import com.acme.jitsi.security.JwtStartupValidationException;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;

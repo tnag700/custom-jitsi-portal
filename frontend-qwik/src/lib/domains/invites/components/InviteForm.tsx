@@ -1,5 +1,5 @@
 import { $, component$, useSignal, useTask$, type QRL } from "@qwik.dev/core";
-import { Form } from "@qwik.dev/router";
+import { Form, type ActionStore } from "@qwik.dev/router";
 import { ApiErrorAlert } from "~/lib/shared";
 import type { InviteErrorPayload } from "../types";
 
@@ -8,7 +8,7 @@ interface InviteFormProps {
   isLoading: boolean;
   error?: InviteErrorPayload;
   onCancel$: QRL<() => void>;
-  action: unknown;
+  action: ActionStore<unknown, never, false>;
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -86,7 +86,7 @@ export const InviteForm = component$<InviteFormProps>(({ meetingId, isLoading, e
           </div>
         )}
 
-        <Form action={action as never}>
+        <Form action={action}>
           <input type="hidden" name="meetingId" value={meetingId} />
           <input type="hidden" name="role" value="participant" />
 
