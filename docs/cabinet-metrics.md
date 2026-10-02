@@ -42,6 +42,9 @@ connect до 1 с, полное чтение до 2 с и выдачу snapshot 
 
 Свежесть определяется timestamp исходного sample, а не временем вычисления
 Prometheus. Sample старше 90 с или down-target не изображается исправным.
+Для показателя из нескольких семейств сначала вычисляется timestamp каждого
+семейства, затем выбирается самый старый: `timestamp` удаляет имя метрики,
+а преобразование labels до него подменяет время sample временем запроса.
 Свежий `up` не заменяет исчезнувшее измерение: проверяются реальные исходные
 series и наличие всех нужных семейств, для rate также отсутствие пропавших рядов
 в пятиминутной истории. Предупреждения значений, timestamp, traffic и истории
@@ -101,8 +104,11 @@ Release должен включать backend, frontend, V26 и monitoring overl
 вместо текущего rollback-кандидата.
 
 Локальные gates: `npm run verify`, `npm run frontend:verify:ssr`,
-`gradlew.bat testContainer --tests '*MetricDashboardPostgresIntegrationTest'`.
-Последний тест при недоступном Docker будет skipped, что не доказывает JSONB/CAS.
+`gradlew.bat testContainer --tests '*MetricDashboardPostgresIntegrationTest'`
+и `gradlew.bat testContainer --tests '*MetricCatalogPrometheusIntegrationTest'`.
+Container-тесты при недоступном Docker будут skipped, что не доказывает JSONB/CAS
+или выполнение запросов настоящим Prometheus. Последний проверяет старейший
+sample разных семейств, исчезнувшее семейство и down-target на закреплённом engine.
 Браузерные fixtures проверяют frontend, но не заменяют реальные роли OIDC и БД.
 
 Локальная проверка 2026-10-02: полный `npm run verify` прошёл, включая 657

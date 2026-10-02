@@ -6,9 +6,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class MetricCatalog {
   record Definition(ServerMetricsService.MetricDescriptor descriptor, String query,
-                    String samples, String samplePresence, String job, String traffic) {
+                    List<String> samples, String samplePresence, String job, String traffic) {
     String freshnessQuery() {
-      String timestamp = "min(timestamp(" + samples + "))" + samplePresence;
+      // timestamp drops metric names; preserve each family's numeric sample time before merging.
+      String timestamp = samples.size() == 1 ? "min(timestamp(" + samples.getFirst() + "))"
+          : "min(" + java.util.stream.IntStream.range(0, samples.size())
+              .mapToObj(i -> "label_replace(min(timestamp(" + samples.get(i)
+                  + ")), \"__jitsi_metric\", \"" + i + "\", \"\", \"\")")
+              .collect(java.util.stream.Collectors.joining(" or ")) + ")";
+      timestamp += samplePresence;
       return descriptor.id().equals("backend.available") ? timestamp
           : timestamp + " and on() (min(up{job=\"" + job + "\"}) == 1)"
               + " and on() (count(up{job=\"" + job + "\"}) == 1)";
@@ -44,14 +50,16 @@ public class MetricCatalog {
       case "jwt.latency-p95" -> ",result=\"success\"";
       default -> "";
     };
-    String presence = java.util.Arrays.stream(sampleNames.split("\\|"))
+    List<String> samples = java.util.Arrays.stream(sampleNames.split("\\|"))
         .map(name -> "{__name__=\"" + name + "\",job=\"" + job + "\"" + filters + "}")
+        .toList();
+    String presence = samples.stream()
         .map(selector -> " and on() (count(" + selector + ") > 0)"
             + (query.contains("rate(") ? " and on() ((count(rate(" + selector + "[5m]) unless " + selector + ") or vector(0)) == 0)" : ""))
         .collect(java.util.stream.Collectors.joining());
     return new Definition(new ServerMetricsService.MetricDescriptor(id, title, description, unit,
         "SYSTEM", List.of("card", "line")), query,
-        "{__name__=~\"" + sampleNames + "\",job=\"" + job + "\"" + filters + "}", presence, job, traffic);
+        samples, presence, job, traffic);
   }
 
   public List<ServerMetricsService.MetricDescriptor> descriptors() {
