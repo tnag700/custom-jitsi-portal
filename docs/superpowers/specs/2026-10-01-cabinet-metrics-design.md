@@ -1,7 +1,7 @@
 # Метрики в личных кабинетах и административный дашборд
 
 Дата: 2026-10-01. Основа: `main`, `6e4b1e9`.
-Статус: проект для рассмотрения; функциональность ещё не реализована.
+Статус: согласован пользователем 2026-10-02; функциональность ещё не реализована.
 
 ## Цель и принятые требования
 
@@ -131,16 +131,18 @@ backend, готовность выдачи токена, число запрос
 | Endpoint | Доступ | Ответ / действие |
 | --- | --- | --- |
 | `GET /api/v1/system/statistics` | Любая действующая пользовательская сессия | Только фиксированная безопасная сводка |
-| `GET /api/v1/admin/metrics/catalog` | Только `ROLE_ADMIN` | Безопасные определения доступных виджетов |
-| `GET /api/v1/admin/metrics?ids=…&period=…` | Только `ROLE_ADMIN` | Ограниченные текущие значения и временные ряды |
-| `GET /api/v1/admin/metrics/dashboard` | Только `ROLE_ADMIN` | Личный набор виджетов и ревизия |
-| `PUT /api/v1/admin/metrics/dashboard` | Только `ROLE_ADMIN`, действующий CSRF | Сохранение набора с проверкой ревизии |
+| `GET /api/v1/admin/metrics/catalog` | Только `admin` (`ROLE_admin`) | Безопасные определения доступных виджетов |
+| `GET /api/v1/admin/metrics?ids=…&period=…` | Только `admin` (`ROLE_admin`) | Ограниченные текущие значения и временные ряды |
+| `GET /api/v1/admin/metrics/dashboard` | Только `admin` (`ROLE_admin`) | Личный набор виджетов и ревизия |
+| `PUT /api/v1/admin/metrics/dashboard` | Только `admin` (`ROLE_admin`), действующий CSRF | Сохранение набора с проверкой ревизии |
 
 Строгий matcher `/api/v1/admin/metrics/**` ставится перед существующим широким
 GET matcher `/api/v1/admin/**`; также защищается сам `/api/v1/admin/metrics`.
 Проверка в меню не заменяет проверку backend. Все ответы имеют
 `Cache-Control: private, no-store`. Подробный ответ не загружается в кабинеты
 других ролей и не попадает в их SSR HTML, Qwik-состояние или ошибки.
+Точное имя authority соответствует существующему `PortalRole`: `ROLE_admin`;
+matcher использует `hasRole(PortalRole.ADMIN.claimValue())`, без новой нормализации.
 
 Личные настройки хранятся одной строкой JSONB в PostgreSQL на пару
 `tenant_id + subject_id`, полученную из действующего principal. Тело запроса
