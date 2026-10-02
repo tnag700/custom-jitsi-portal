@@ -73,6 +73,9 @@ npm run stack:up
 
 Для backend перейдите в каталог `backend` и выполните `.\gradlew.bat test` в Windows или `./gradlew test` в Linux/macOS. Тесты на Testcontainers требуют работающий Docker.
 
+Профили `unit / slice / non-container integration / container` запускаются
+задачами `testUnit`, `testSlice`, `testIntegration`, `testContainer` соответственно.
+
 ## Production
 
 Развёртывание описано в [production-инструкции](docs/deployment-production.md). Подготовьте DNS, доверенные TLS-сертификаты, NAT/firewall, секреты и резервные копии с проверяемым откатом. Dev-конфигурацию, тестовых пользователей и локальные секреты в production не используйте; секреты и приватные ключи храните вне Git.

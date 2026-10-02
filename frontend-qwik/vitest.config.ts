@@ -6,6 +6,7 @@ export default defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [qwikRouter(), qwikVite()],
   test: {
+    maxWorkers: 4,
     include: ["src/**/*.test.ts"],
     coverage: {
       provider: "v8",
