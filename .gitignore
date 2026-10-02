@@ -100,6 +100,7 @@ openapi-generate-run-2.log
 tmp-keycloak-*
 
 # Local tooling caches / generated folders
+/.worktrees/
 /.gradle-copilot-dashboard/
 /backend/.gradle-user-home-copilot*/
 /backend/.gradle-user-home-codex*/
