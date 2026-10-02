@@ -81,7 +81,7 @@ public class AdminMetricsService {
       validate(dashboard);
       return dashboard;
     } catch (tools.jackson.core.JacksonException malformed) {
-      throw new IllegalArgumentException("Invalid dashboard JSON");
+      throw new IllegalArgumentException("Invalid dashboard JSON", malformed);
     }
   }
 

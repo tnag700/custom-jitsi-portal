@@ -2,6 +2,10 @@
 
 ## Cabinet resource metrics
 
+The cabinet/dashboard contract, catalog extension rules and candidate/rollback
+checks are described in [cabinet-metrics.md](cabinet-metrics.md). This implementation
+is a release candidate; production rollout requires the existing deployment process.
+
 The monitoring overlay includes private node_exporter 1.12.1, pinned to
 `sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0`.
 Only CPU, meminfo and the root filesystem are collected; port 9100 stays inside

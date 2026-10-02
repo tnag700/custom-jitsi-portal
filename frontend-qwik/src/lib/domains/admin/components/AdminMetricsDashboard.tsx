@@ -74,7 +74,7 @@ export const AdminMetricsDashboard = component$<{
     <div><h1 class="text-2xl font-semibold">Метрики сервера</h1><p class="mt-1 text-sm text-muted">Системные показатели текущего развёртывания. Выдача JWT не подтверждает качество видеосвязи.</p></div>
     <div class="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface p-4">
       <label class="text-sm">Период<select disabled={saving.value || stopped.value} class="mt-1 block rounded border border-border bg-bg p-2" value={layout.period} onChange$={(_, el) => { layout.period = metricPeriodSchema.parse(el.value); void change(); }}>
-        {[["15m", "15 минут"], ["1h", "1 час"], ["6h", "6 часов"], ["24h", "24 часа"], ["7d", "7 дней"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        {[["15m", "15 минут"], ["1h", "1 час"], ["6h", "6 часов"], ["24h", "24 часа"], ["7d", "7 дней"]].map(([value, label]) => <option key={value} value={value} selected={value === layout.period}>{label}</option>)}
       </select></label>
       <button type="button" class="rounded border border-border px-3 py-2 disabled:opacity-50" disabled={busy.value || stopped.value} onClick$={() => refresh()}>Обновить показатели</button>
       <button type="button" class="rounded bg-primary px-3 py-2 text-white disabled:opacity-50" disabled={!dirty.value || saving.value || conflict.value || stopped.value} onClick$={save}>Сохранить дашборд</button>
@@ -83,8 +83,8 @@ export const AdminMetricsDashboard = component$<{
     </div>
     <fieldset class="flex flex-wrap items-end gap-3 rounded-xl border border-border p-4" disabled={saving.value || stopped.value}>
       <legend class="px-1 font-medium">Добавить показатель ({layout.widgets.length}/12)</legend>
-      <label class="text-sm">Поиск<input type="search" class="mt-1 block w-full rounded border border-border bg-bg p-2" value={search.value} onInput$={(_, el) => { search.value = el.value; }} /></label>
-      <label class="min-w-0 flex-1 text-sm">Каталог<select class="mt-1 block w-full rounded border border-border bg-bg p-2" value={selected.value} onChange$={(_, el) => { selected.value = el.value; }}><option value="">Выберите показатель</option>{available.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}</select></label>
+      <label class="w-full text-sm sm:w-auto">Поиск<input type="search" class="mt-1 block w-full rounded border border-border bg-bg p-2" value={search.value} onInput$={(_, el) => { search.value = el.value; }} /></label>
+      <label class="min-w-0 w-full text-sm sm:flex-1">Каталог<select class="mt-1 block w-full rounded border border-border bg-bg p-2" value={selected.value} onChange$={(_, el) => { selected.value = el.value; }}><option value="">Выберите показатель</option>{available.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}</select></label>
       <button type="button" class="rounded border border-border px-3 py-2 disabled:opacity-50" disabled={!selected.value || layout.widgets.length >= 12} onClick$={add}>Добавить</button>
     </fieldset>
     {failed.value && <p role="status" class="text-sm text-muted">Обновление недоступно. Предыдущие показания могут быть устаревшими.</p>}
@@ -102,7 +102,7 @@ export const AdminMetricsDashboard = component$<{
         {widget.view === "line" && <MetricChart title={descriptor.title} unit={descriptor.unit} series={reading?.series ?? []} />}
         {reading?.measuredAt && <p class="mt-2 text-xs text-muted">Измерено: <time dateTime={reading.measuredAt}>{new Date(reading.measuredAt).toLocaleString("ru-RU")}</time></p>}
         <div class="mt-4 flex flex-wrap gap-2">
-          <select disabled={saving.value || stopped.value} aria-label={`Вид: ${descriptor.title}`} class="rounded border border-border bg-bg p-1 text-sm" value={widget.view} onChange$={(_, el) => { layout.widgets[index].view = el.value === "line" ? "line" : "card"; dirty.value = true; }}>{descriptor.views.map(view => <option key={view} value={view}>{view === "card" ? "Карточка" : "График"}</option>)}</select>
+          <select disabled={saving.value || stopped.value} aria-label={`Вид: ${descriptor.title}`} class="rounded border border-border bg-bg p-1 text-sm" value={widget.view} onChange$={(_, el) => { layout.widgets[index].view = el.value === "line" ? "line" : "card"; dirty.value = true; }}>{descriptor.views.map(view => <option key={view} value={view} selected={view === widget.view}>{view === "card" ? "Карточка" : "График"}</option>)}</select>
           <button type="button" class="rounded border border-border px-2 disabled:opacity-50" aria-label={`Поднять: ${descriptor.title}`} disabled={index === 0 || saving.value} onClick$={() => reorder(index, -1)}>↑</button>
           <button type="button" class="rounded border border-border px-2 disabled:opacity-50" aria-label={`Опустить: ${descriptor.title}`} disabled={index === layout.widgets.length - 1 || saving.value} onClick$={() => reorder(index, 1)}>↓</button>
           <button type="button" class="rounded border border-border px-2 text-sm" disabled={saving.value} onClick$={() => { layout.widgets = layout.widgets.filter((_, i) => i !== index); dirty.value = true; }}>Удалить</button>

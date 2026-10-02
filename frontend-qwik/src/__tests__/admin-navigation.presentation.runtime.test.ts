@@ -57,7 +57,8 @@ describe("admin navigation presentation", () => {
 
     expect(navigation).toHaveLength(1);
     expect(navigation[0].props["aria-label"]).toBe("Разделы администрирования");
-    expect(links).toHaveLength(8);
+    expect(links).toHaveLength(9);
+    expect(links.some((node) => String(node.props.href).startsWith("/admin/metrics"))).toBe(true);
     expect(active).toHaveLength(1);
     expect(active[0].props.href).toBe("/admin/incidents?environment=prod");
     expect(textContent(active[0])).toContain("Ошибки входа и их разбор");
@@ -83,6 +84,7 @@ describe("admin navigation presentation", () => {
     expect(
       links.some((node) => String(node.props.href).startsWith("/admin/jitsi")),
     ).toBe(false);
+    expect(links.some((node) => String(node.props.href).startsWith("/admin/metrics"))).toBe(false);
     expect(
       links.find((node) => node.props["aria-current"] === "page")?.props.href,
     ).toBe("/admin");

@@ -1052,6 +1052,24 @@
         },
         "type" : "object"
       },
+      "Dashboard" : {
+        "properties" : {
+          "period" : {
+            "type" : "string"
+          },
+          "revision" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "widgets" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Widget"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "DegradationSummary" : {
         "properties" : {
           "actionLabel" : {
@@ -1457,6 +1475,99 @@
           "updatedAt" : {
             "format" : "date-time",
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "MetricDescriptor" : {
+        "properties" : {
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "unit" : {
+            "type" : "string"
+          },
+          "views" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "MetricPoint" : {
+        "properties" : {
+          "time" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "value" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "MetricReading" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "measuredAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "series" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MetricSeries"
+            },
+            "type" : "array"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "value" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "MetricSeries" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "points" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MetricPoint"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "MetricsSnapshot" : {
+        "properties" : {
+          "generatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "metrics" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MetricReading"
+            },
+            "type" : "array"
           }
         },
         "type" : "object"
@@ -1960,6 +2071,35 @@
         },
         "type" : "object"
       },
+      "Summary" : {
+        "properties" : {
+          "backendState" : {
+            "type" : "string"
+          },
+          "cpuPercent" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "diskState" : {
+            "type" : "string"
+          },
+          "measuredAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "memoryPercent" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "monitoringConfigured" : {
+            "type" : "boolean"
+          },
+          "stale" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
       "SummaryBar" : {
         "properties" : {
           "affectedScope" : {
@@ -2231,6 +2371,17 @@
             "type" : "string"
           },
           "subjectId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "Widget" : {
+        "properties" : {
+          "metricId" : {
+            "type" : "string"
+          },
+          "view" : {
             "type" : "string"
           }
         },
@@ -2690,6 +2841,129 @@
           }
         },
         "tags" : [ "admin-incidents-controller" ]
+      }
+    },
+    "/api/v1/admin/metrics" : {
+      "get" : {
+        "operationId" : "catalog",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/MetricDescriptor"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-metrics-controller" ]
+      }
+    },
+    "/api/v1/admin/metrics/catalog" : {
+      "get" : {
+        "operationId" : "catalog_1",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/MetricDescriptor"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-metrics-controller" ]
+      }
+    },
+    "/api/v1/admin/metrics/dashboard" : {
+      "get" : {
+        "operationId" : "dashboard",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Dashboard"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-metrics-controller" ]
+      },
+      "put" : {
+        "operationId" : "save",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Dashboard"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Dashboard"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-metrics-controller" ]
+      }
+    },
+    "/api/v1/admin/metrics/query" : {
+      "get" : {
+        "operationId" : "query",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "ids",
+          "required" : true,
+          "schema" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        }, {
+          "in" : "query",
+          "name" : "period",
+          "required" : false,
+          "schema" : {
+            "default" : "1h",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MetricsSnapshot"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-metrics-controller" ]
       }
     },
     "/api/v1/admin/role-history" : {
@@ -4307,6 +4581,24 @@
           }
         },
         "tags" : [ "meetings-controller" ]
+      }
+    },
+    "/api/v1/system/statistics" : {
+      "get" : {
+        "operationId" : "summary",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Summary"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "system-statistics-controller" ]
       }
     },
     "/api/v1/test/idempotent" : {

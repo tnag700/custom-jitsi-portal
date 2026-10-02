@@ -148,6 +148,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["catalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/metrics/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["catalog_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/metrics/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["dashboard"];
+        put: operations["save"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/metrics/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["query"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/role-history": {
         parameters: {
             query?: never;
@@ -756,6 +820,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/test/idempotent": {
         parameters: {
             query?: never;
@@ -1142,6 +1222,12 @@ export interface components {
             parameterName?: string;
             token?: string;
         };
+        Dashboard: {
+            period?: string;
+            /** Format: int64 */
+            revision?: number;
+            widgets?: components["schemas"]["Widget"][];
+        };
         DegradationSummary: {
             actionLabel?: string;
             handoff?: components["schemas"]["HandoffContext"];
@@ -1287,6 +1373,38 @@ export interface components {
             title?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        MetricDescriptor: {
+            description?: string;
+            id?: string;
+            scope?: string;
+            title?: string;
+            unit?: string;
+            views?: string[];
+        };
+        MetricPoint: {
+            /** Format: date-time */
+            time?: string;
+            /** Format: double */
+            value?: number;
+        };
+        MetricReading: {
+            id?: string;
+            /** Format: date-time */
+            measuredAt?: string;
+            series?: components["schemas"]["MetricSeries"][];
+            state?: string;
+            /** Format: double */
+            value?: number;
+        };
+        MetricSeries: {
+            name?: string;
+            points?: components["schemas"]["MetricPoint"][];
+        };
+        MetricsSnapshot: {
+            /** Format: date-time */
+            generatedAt?: string;
+            metrics?: components["schemas"]["MetricReading"][];
         };
         NextAction: {
             detail?: string;
@@ -1468,6 +1586,18 @@ export interface components {
             label?: string;
             status?: string;
         };
+        Summary: {
+            backendState?: string;
+            /** Format: int32 */
+            cpuPercent?: number;
+            diskState?: string;
+            /** Format: date-time */
+            measuredAt?: string;
+            /** Format: int32 */
+            memoryPercent?: number;
+            monitoringConfigured?: boolean;
+            stale?: boolean;
+        };
         SummaryBar: {
             affectedScope?: string;
             environment?: string;
@@ -1559,6 +1689,10 @@ export interface components {
             organization?: string;
             position?: string;
             subjectId?: string;
+        };
+        Widget: {
+            metricId?: string;
+            view?: string;
         };
     };
     responses: never;
@@ -1796,6 +1930,113 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AdminIncidentTicketResponse"];
+                };
+            };
+        };
+    };
+    catalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MetricDescriptor"][];
+                };
+            };
+        };
+    };
+    catalog_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MetricDescriptor"][];
+                };
+            };
+        };
+    };
+    dashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Dashboard"];
+                };
+            };
+        };
+    };
+    save: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Dashboard"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Dashboard"];
+                };
+            };
+        };
+    };
+    query: {
+        parameters: {
+            query: {
+                ids: string[];
+                period?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MetricsSnapshot"];
                 };
             };
         };
@@ -2965,6 +3206,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["MeetingResponse"];
+                };
+            };
+        };
+    };
+    summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Summary"];
                 };
             };
         };

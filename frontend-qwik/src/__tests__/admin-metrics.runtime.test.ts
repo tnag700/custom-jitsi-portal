@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { eventHandler, findNode, findNodes, renderNode, textContent, type RenderedNode } from "./support/jsx-tree";
 import type { Dashboard, MetricDescriptor } from "../lib/domains/admin/admin-metrics.types";
 import type * as QwikCore from "@qwik.dev/core";
@@ -23,6 +23,7 @@ vi.mock("@qwik.dev/router", async (original) => ({ ...await original<object>(), 
 vi.mock("~/lib/domains/admin", () => ({ fetchMetricsCatalog: mocks.catalog, fetchMetricDashboard: mocks.dashboard, fetchMetrics: mocks.metrics, saveMetricDashboard: mocks.save, AdminMetricsDashboard: () => null }));
 
 beforeEach(() => { vi.clearAllMocks(); state.stores.length = 0; state.signals.length = 0; });
+beforeAll(async () => { await import("../routes/admin/metrics/index"); await import("../lib/domains/admin/components/AdminMetricsDashboard"); });
 describe("admin metrics loader", () => {
   it("rejects every non-admin before fetching or serializing detailed data", async () => {
     const { useMetricsDashboard } = await import("../routes/admin/metrics/index");
@@ -55,6 +56,7 @@ describe("admin metrics loader", () => {
       snapshot: { generatedAt: "2026-10-02T09:00:00Z", metrics: [] }, onSave$: qwik.inlinedQrl(save, "metrics-save-test"),
     }));
     const option = findNodes(tree, n => n.type === "option").find(n => n.props.value === "new");
+    expect(findNodes(tree, n => n.type === "option").find(n => n.props.value === "1h")?.props.selected).toBe(true);
     expect(textContent(option)).toBe("new");
     const selector = findNodes(tree, n => n.type === "select").find(n => textContent(n).includes("Выберите показатель"));
     await fire(selector, "change", undefined, { value: "new" });

@@ -73,10 +73,7 @@ public class ServerMetricsService {
   }
 
   public MetricsSnapshot query(List<String> ids, MetricPeriod period) {
-    if (ids == null || period == null || ids.size() > 12 || new HashSet<>(ids).size() != ids.size()) {
-      throw new IllegalArgumentException("Invalid metric selection");
-    }
-    ids.forEach(catalog::require);
+    validateSelection(ids, period);
     long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
     var snapshot = current(deadline);
     var result = new ArrayList<MetricReading>();
@@ -94,23 +91,11 @@ public class ServerMetricsService {
       for (String id : batch) {
         var cached = cachedHistory(id, period);
         if (cached == null && pending.containsKey(id)) {
-          JsonNode response = await(pending.get(id), deadline);
-          if (valid(response, "matrix") && response.path("data").path("result").size() == 1) {
-            var samples = response.path("data").path("result").get(0).path("values");
-            if (samples.isArray() && samples.size() <= 300) {
-              var values = new LinkedHashMap<Long, Double>();
-              for (var sample : samples) {
-                if (sample.isArray() && sample.size() == 2) values.put(sample.get(0).asLong(), finite(sample.get(1)));
-              }
-              var points = new ArrayList<MetricPoint>();
-              for (long time = start.getEpochSecond(); time <= end.getEpochSecond(); time += step) {
-                points.add(new MetricPoint(Instant.ofEpochSecond(time), bounded(catalog.require(id), values.get(time))));
-              }
-              cached = new History(end, List.of(new MetricSeries("Значение", List.copyOf(points))));
-              synchronized (history) {
-                if (history.size() >= 60) history.remove(history.keySet().iterator().next());
-                history.put(id + "/" + period.value, cached);
-              }
+          cached = parseHistory(await(pending.get(id), deadline), catalog.require(id), start, end, step);
+          if (cached != null) {
+            synchronized (history) {
+              if (history.size() >= 60) history.remove(history.keySet().iterator().next());
+              history.put(id + "/" + period.value, cached);
             }
           }
         }
@@ -120,6 +105,29 @@ public class ServerMetricsService {
       }
     }
     return new MetricsSnapshot(clock.instant(), List.copyOf(result));
+  }
+
+  private void validateSelection(List<String> ids, MetricPeriod period) {
+    if (ids == null || period == null || ids.size() > 12 || new HashSet<>(ids).size() != ids.size()) {
+      throw new IllegalArgumentException("Invalid metric selection");
+    }
+    ids.forEach(catalog::require);
+  }
+
+  private static History parseHistory(JsonNode response, MetricCatalog.Definition definition,
+                                      Instant start, Instant end, long step) {
+    if (!valid(response, "matrix") || response.path("data").path("result").size() != 1) return null;
+    var samples = response.path("data").path("result").get(0).path("values");
+    if (!samples.isArray() || samples.size() > 300) return null;
+    var values = new LinkedHashMap<Long, Double>();
+    for (var sample : samples) {
+      if (sample.isArray() && sample.size() == 2) values.put(sample.get(0).asLong(), finite(sample.get(1)));
+    }
+    var points = new ArrayList<MetricPoint>();
+    for (long time = start.getEpochSecond(); time <= end.getEpochSecond(); time += step) {
+      points.add(new MetricPoint(Instant.ofEpochSecond(time), bounded(definition, values.get(time))));
+    }
+    return new History(end, List.of(new MetricSeries("Значение", List.copyOf(points))));
   }
 
   private History cachedHistory(String id, MetricPeriod period) {
@@ -151,24 +159,8 @@ public class ServerMetricsService {
           }
         }
         for (var descriptor : batch) {
-          String id = descriptor.id();
-          var definition = catalog.require(id);
-          JsonNode raw = await(values.get(id), deadline);
-          Double value = bounded(definition, scalar(raw));
-          Double sampleTime = scalar(await(fresh.get(id), deadline));
-          Instant measured = sampleTime == null || sampleTime < 0 || sampleTime > now.plusSeconds(5).getEpochSecond()
-              ? null : Instant.ofEpochSecond(sampleTime.longValue());
-          String state = measured == null ? "unavailable" : measured.isBefore(now.minusSeconds(90))
-              || measured.isAfter(now.plusSeconds(5)) ? "stale" : value == null ? "no_data" : "ok";
-          if (definition.traffic() != null && System.nanoTime() < deadline) {
-            Double traffic = scalar(await(client.queryInstant(definition.traffic(), now), deadline));
-            if ("ok".equals(state) || "no_data".equals(state)) {
-              if (traffic != null && traffic == 0) { state = "no_traffic"; value = null; }
-            }
-          }
-          if ("ok".equals(state) && raw != null && raw.path("warnings").size() > 0) state = "partial";
-          if (!"ok".equals(state) && !"partial".equals(state)) value = null;
-          readings.add(new MetricReading(id, value, state, measured, List.of()));
+          readings.add(currentReading(catalog.require(descriptor.id()), values.get(descriptor.id()),
+              fresh.get(descriptor.id()), now, deadline));
         }
       }
       current = new MetricsSnapshot(now, List.copyOf(readings));
@@ -179,6 +171,30 @@ public class ServerMetricsService {
     } finally {
       if (locked) refreshLock.unlock();
     }
+  }
+
+  private MetricReading currentReading(MetricCatalog.Definition definition, CompletableFuture<JsonNode> valueResponse,
+                                       CompletableFuture<JsonNode> freshnessResponse, Instant now, long deadline) {
+    JsonNode raw = await(valueResponse, deadline);
+    Double value = bounded(definition, scalar(raw));
+    Double sampleTime = scalar(await(freshnessResponse, deadline));
+    Instant measured = sampleTime == null || sampleTime < 0 || sampleTime > now.plusSeconds(5).getEpochSecond()
+        ? null : Instant.ofEpochSecond(sampleTime.longValue());
+    String state = readingState(definition, value, measured, raw, now, deadline);
+    if (!"ok".equals(state) && !"partial".equals(state)) value = null;
+    return new MetricReading(definition.descriptor().id(), value, state, measured, List.of());
+  }
+
+  private String readingState(MetricCatalog.Definition definition, Double value, Instant measured,
+                              JsonNode raw, Instant now, long deadline) {
+    if (measured == null) return "unavailable";
+    if (measured.isBefore(now.minusSeconds(90))) return "stale";
+    if (definition.traffic() != null && System.nanoTime() < deadline) {
+      Double traffic = scalar(await(client.queryInstant(definition.traffic(), now), deadline));
+      if (traffic != null && traffic == 0) return "no_traffic";
+    }
+    if (value == null) return "no_data";
+    return raw != null && raw.path("warnings").size() > 0 ? "partial" : "ok";
   }
 
   private MetricReading reading(MetricsSnapshot snapshot, String id) {
