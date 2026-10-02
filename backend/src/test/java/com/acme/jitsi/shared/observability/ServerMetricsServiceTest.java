@@ -25,6 +25,91 @@ class ServerMetricsServiceTest {
   private final Instant now = Instant.parse("2026-10-02T09:00:00Z");
 
   @Test
+  void freshUpCannotReplaceMissingRateSamplesOrRequiredFamilies() {
+    var client = source(new AtomicInteger(), 0, false);
+    when(client.queryInstant(anyString(), any())).thenAnswer(invocation -> {
+      String query = invocation.getArgument(0);
+      // Prometheus can still calculate a rate after stale markers remove its instant samples.
+      if (query.contains("timestamp(")) {
+        boolean requiresSamples = !query.contains("|up") && query.contains("count({__name__=");
+        return CompletableFuture.completedFuture(requiresSamples ? emptyVector() : vector(now.getEpochSecond()));
+      }
+      return CompletableFuture.completedFuture(vector(20));
+    });
+    var service = new ServerMetricsService(client, new MetricCatalog(), Clock.fixed(now, ZoneOffset.UTC));
+    var result = service.query(List.of("host.cpu", "jwt.error-ratio", "jwt.latency-p95"), ServerMetricsService.MetricPeriod.HOUR);
+    assertThat(result.metrics()).allMatch(reading -> reading.value() == null && "unavailable".equals(reading.state()));
+    assertThat(new MetricCatalog().require("host.cpu").freshnessQuery()).contains("mode=\"idle\"");
+    assertThat(new MetricCatalog().require("jwt.latency-p95").freshnessQuery()).contains("result=\"success\"");
+  }
+
+  @Test
+  void freshnessAndCachedHistoryWarningsMarkOnlySafePartialData() {
+    var client = source(new AtomicInteger(), 0, false);
+    when(client.queryInstant(anyString(), any())).thenAnswer(invocation -> {
+      String query = invocation.getArgument(0);
+      return CompletableFuture.completedFuture(query.contains("timestamp(") ? warned(vector(now.getEpochSecond())) : vector(20));
+    });
+    var service = new ServerMetricsService(client, new MetricCatalog(), Clock.fixed(now, ZoneOffset.UTC));
+    assertThat(service.query(List.of("host.cpu"), ServerMetricsService.MetricPeriod.HOUR).metrics().getFirst().state()).isEqualTo("partial");
+    assertThat(service.summary().cpuPercent()).isNull();
+    var cleanClient = source(new AtomicInteger(), 0, false);
+    when(cleanClient.queryRange(anyString(), any(), any(), anyLong())).thenReturn(CompletableFuture.completedFuture(warned(matrix())));
+    var historyService = new ServerMetricsService(cleanClient, new MetricCatalog(), Clock.fixed(now, ZoneOffset.UTC));
+    for (int i = 0; i < 2; i++) {
+      var result = historyService.query(List.of("host.cpu"), ServerMetricsService.MetricPeriod.HOUR);
+      assertThat(result.metrics().getFirst().state()).isEqualTo("partial");
+      assertThat(mapper.writeValueAsString(result)).doesNotContain("private source warning");
+    }
+    verify(cleanClient, org.mockito.Mockito.times(1)).queryRange(anyString(), any(), any(), anyLong());
+  }
+
+  @Test
+  void concurrentHistoryConsumersShareOneRequestAndInterruptDoesNotCancelIt() throws Exception {
+    var client = source(new AtomicInteger(), 0, false);
+    var requested = new java.util.concurrent.CountDownLatch(1);
+    var response = new CompletableFuture<JsonNode>();
+    when(client.queryRange(anyString(), any(), any(), anyLong())).thenAnswer(invocation -> { requested.countDown(); return response; });
+    var service = new ServerMetricsService(client, new MetricCatalog(), Clock.fixed(now, ZoneOffset.UTC));
+    service.summary();
+    try (var workers = Executors.newVirtualThreadPerTaskExecutor()) {
+      var first = workers.submit(() -> service.query(List.of("host.cpu"), ServerMetricsService.MetricPeriod.HOUR));
+      assertThat(requested.await(1, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+      first.cancel(true);
+      var results = java.util.stream.IntStream.range(0, 8).mapToObj(i -> workers.submit(() -> service.query(List.of("host.cpu"), ServerMetricsService.MetricPeriod.HOUR))).toList();
+      response.complete(matrix());
+      for (var result : results) assertThat(result.get().metrics().getFirst().series()).hasSize(1);
+    }
+    assertThat(response).isNotCancelled();
+    verify(client, org.mockito.Mockito.times(1)).queryRange(anyString(), any(), any(), anyLong());
+  }
+
+  @Test
+  void oneStaleMeasurementPreservesHealthySummarySiblings() {
+    var client = source(new AtomicInteger(), 0, false);
+    when(client.queryInstant(anyString(), any())).thenAnswer(invocation -> {
+      String query = invocation.getArgument(0);
+      double value = query.contains("timestamp(") ? (query.contains("node_cpu") ? now.minusSeconds(91) : now).getEpochSecond()
+          : query.contains("node_memory") ? 42.2 : query.contains("node_filesystem") ? 90 : 1;
+      return CompletableFuture.completedFuture(vector(value));
+    });
+    var summary = new ServerMetricsService(client, new MetricCatalog(), Clock.fixed(now, ZoneOffset.UTC)).summary();
+    assertThat(summary.cpuPercent()).isNull();
+    assertThat(summary.memoryPercent()).isEqualTo(40);
+    assertThat(summary.backendState()).isEqualTo("working");
+    assertThat(summary.diskState()).isEqualTo("low");
+    assertThat(summary.stale()).isTrue();
+    assertThat(summary.measuredAt()).isEqualTo(now);
+  }
+
+  private JsonNode emptyVector() { return mapper.readTree("{\"status\":\"success\",\"data\":{\"resultType\":\"vector\",\"result\":[]}}"); }
+  private JsonNode matrix() { return mapper.readTree("{\"status\":\"success\",\"data\":{\"resultType\":\"matrix\",\"result\":[{\"values\":[[" + now.minusSeconds(3600).getEpochSecond() + ",\"20\"]]}]}}"); }
+  private JsonNode warned(JsonNode response) {
+    ((tools.jackson.databind.node.ObjectNode) response).putArray("warnings").add("private source warning");
+    return response;
+  }
+
+  @Test
   void summaryIsExplicitRoundedProjectionAndConcurrentRefreshIsShared() throws Exception {
     var calls = new AtomicInteger();
     var client = source(calls, 0, false);

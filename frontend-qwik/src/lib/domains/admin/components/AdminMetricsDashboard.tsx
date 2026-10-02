@@ -47,6 +47,13 @@ export const AdminMetricsDashboard = component$<{
     [widgets[index], widgets[next]] = [widgets[next], widgets[index]];
     layout.widgets = widgets; dirty.value = true;
   });
+  const reset = $(() => {
+    layout.period = "1h";
+    layout.widgets = ["host.cpu", "host.memory", "host.disk", "jvm.heap", "jdbc.pool", "jwt.latency-p95"]
+      .filter(id => catalog.some(d => d.id === id && d.views.includes("card")))
+      .map(metricId => ({ metricId, view: "card" as const }));
+    dirty.value = true; data.value = null; message.value = "Начальный набор восстановлен. Сохраните изменения.";
+  });
   const save = $(async () => {
     if (saving.value || conflict.value || stopped.value) return;
     saving.value = true;
@@ -78,6 +85,7 @@ export const AdminMetricsDashboard = component$<{
       </select></label>
       <button type="button" class="rounded border border-border px-3 py-2 disabled:opacity-50" disabled={busy.value || stopped.value} onClick$={() => refresh()}>Обновить показатели</button>
       <button type="button" class="rounded bg-primary px-3 py-2 text-white disabled:opacity-50" disabled={!dirty.value || saving.value || conflict.value || stopped.value} onClick$={save}>Сохранить дашборд</button>
+      <button type="button" class="rounded border border-border px-3 py-2 disabled:opacity-50" disabled={saving.value || conflict.value || stopped.value} onClick$={reset}>Сбросить к начальному набору</button>
       {conflict.value && <button type="button" class="rounded border border-border px-3 py-2" onClick$={reload}>Загрузить сохранённые настройки</button>}
       <p class="text-sm text-muted" role="status">{message.value || (dirty.value ? "Есть несохранённые изменения" : "Личные настройки")}</p>
     </div>

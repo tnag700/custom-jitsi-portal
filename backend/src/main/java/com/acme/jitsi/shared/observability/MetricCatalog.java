@@ -6,9 +6,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class MetricCatalog {
   record Definition(ServerMetricsService.MetricDescriptor descriptor, String query,
-                    String samples, String job, String traffic) {
+                    String samples, String samplePresence, String job, String traffic) {
     String freshnessQuery() {
-      String timestamp = "min(timestamp(" + samples + "))";
+      String timestamp = "min(timestamp(" + samples + "))" + samplePresence;
       return descriptor.id().equals("backend.available") ? timestamp
           : timestamp + " and on() (min(up{job=\"" + job + "\"}) == 1)"
               + " and on() (count(up{job=\"" + job + "\"}) == 1)";
@@ -37,9 +37,21 @@ public class MetricCatalog {
 
   private static Definition metric(String id, String title, String description, String unit,
                                    String job, String query, String sampleNames, String traffic) {
+    String filters = switch (id) {
+      case "host.cpu" -> ",mode=\"idle\"";
+      case "host.disk" -> ",mountpoint=\"/\"";
+      case "jvm.heap" -> ",area=\"heap\"";
+      case "jwt.latency-p95" -> ",result=\"success\"";
+      default -> "";
+    };
+    String presence = java.util.Arrays.stream(sampleNames.split("\\|"))
+        .map(name -> "{__name__=\"" + name + "\",job=\"" + job + "\"" + filters + "}")
+        .map(selector -> " and on() (count(" + selector + ") > 0)"
+            + (query.contains("rate(") ? " and on() ((count(rate(" + selector + "[5m]) unless " + selector + ") or vector(0)) == 0)" : ""))
+        .collect(java.util.stream.Collectors.joining());
     return new Definition(new ServerMetricsService.MetricDescriptor(id, title, description, unit,
         "SYSTEM", List.of("card", "line")), query,
-        "{__name__=~\"" + sampleNames + "|up\",job=\"" + job + "\"}", job, traffic);
+        "{__name__=~\"" + sampleNames + "\",job=\"" + job + "\"" + filters + "}", presence, job, traffic);
   }
 
   public List<ServerMetricsService.MetricDescriptor> descriptors() {

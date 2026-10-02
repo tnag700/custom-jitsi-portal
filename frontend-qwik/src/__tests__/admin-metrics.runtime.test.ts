@@ -25,6 +25,23 @@ vi.mock("~/lib/domains/admin", () => ({ fetchMetricsCatalog: mocks.catalog, fetc
 beforeEach(() => { vi.clearAllMocks(); state.stores.length = 0; state.signals.length = 0; });
 beforeAll(async () => { await import("../routes/admin/metrics/index"); await import("../lib/domains/admin/components/AdminMetricsDashboard"); });
 describe("admin metrics loader", () => {
+  it("resets the draft to the initial selection without changing its revision", async () => {
+    const { AdminMetricsDashboard } = await import("../lib/domains/admin/components/AdminMetricsDashboard");
+    const ids = ["host.cpu", "host.memory", "host.disk", "jvm.heap", "jdbc.pool", "jwt.latency-p95"];
+    const catalog: MetricDescriptor[] = ids.map(id => ({ id, title: id, description: "Показатель", unit: "percent", scope: "SYSTEM", views: ["card", "line"] }));
+    const save = vi.fn().mockResolvedValue({ status: 200 });
+    const qwik = await vi.importActual<typeof QwikCore>("@qwik.dev/core");
+    const tree = await renderNode((AdminMetricsDashboard as unknown as (props: unknown) => unknown)({
+      catalog, dashboard: { revision: 7, period: "7d", widgets: [] }, snapshot: { generatedAt: "2026-10-02T09:00:00Z", metrics: [] }, onSave$: qwik.inlinedQrl(save, "metrics-reset-test"),
+    }));
+    const reset = findNode(tree, n => n.type === "button" && textContent(n) === "Сбросить к начальному набору");
+    expect(reset).toBeDefined();
+    await fire(reset, "click");
+    expect(state.stores[0]).toEqual({ revision: 7, period: "1h", widgets: ids.map(metricId => ({ metricId, view: "card" })) });
+    expect(save).not.toHaveBeenCalled();
+    await fire(findNode(tree, n => n.type === "button" && textContent(n) === "Сохранить дашборд"), "click");
+    expect(save).toHaveBeenCalledWith(state.stores[0]);
+  });
   it("rejects every non-admin before fetching or serializing detailed data", async () => {
     const { useMetricsDashboard } = await import("../routes/admin/metrics/index");
     for (const role of ["participant", "system-admin", "security-admin", "support-engineer"]) {

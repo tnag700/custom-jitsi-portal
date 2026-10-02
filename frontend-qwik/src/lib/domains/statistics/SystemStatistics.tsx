@@ -28,7 +28,7 @@ export const SystemStatistics = component$<{ initial: Summary | null; isAdmin: b
   useVisibleTask$(({ cleanup }) => {
     cleanup(startVisiblePolling((signal) => refresh(signal)));
   });
-  const stale = failed.value || data.value?.stale || (!!data.value?.measuredAt && Date.now() - Date.parse(data.value.measuredAt) > 90_000);
+  const stale = failed.value || (!!data.value?.measuredAt && Date.now() - Date.parse(data.value.measuredAt) > 90_000);
   const percent = (value: number | null | undefined) => value == null || stale ? "Нет данных" : `≈ ${value}%`;
   return <section aria-label="Статистика сервера" class="mb-5 rounded-xl border border-border bg-surface p-4">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -44,6 +44,6 @@ export const SystemStatistics = component$<{ initial: Summary | null; isAdmin: b
       <div><dt class="text-sm text-muted">Память</dt><dd>{percent(data.value?.memoryPercent)}</dd></div>
       <div><dt class="text-sm text-muted">Диск</dt><dd>{stale ? "Нет данных" : data.value?.diskState === "sufficient" ? "Места достаточно" : data.value?.diskState === "low" ? "Мало свободного места" : "Нет данных"}</dd></div>
     </dl>
-    <p class="mt-3 text-xs text-muted" aria-live="polite">{stopped.value ? "Сессия завершена. Войдите снова." : stale ? "Данные устарели или обновление недоступно." : data.value?.monitoringConfigured === false ? "Мониторинг пока не подключён." : data.value?.measuredAt ? <>Измерено: <time dateTime={data.value.measuredAt}>{new Date(data.value.measuredAt).toLocaleString("ru-RU")}</time></> : "Нет данных мониторинга."}</p>
+    <p class="mt-3 text-xs text-muted" aria-live="polite">{stopped.value ? "Сессия завершена. Войдите снова." : stale ? "Данные устарели или обновление недоступно." : data.value?.stale ? "Часть показаний устарела; доступные значения показаны отдельно." : data.value?.monitoringConfigured === false ? "Мониторинг пока не подключён." : data.value?.measuredAt ? <>Измерено: <time dateTime={data.value.measuredAt}>{new Date(data.value.measuredAt).toLocaleString("ru-RU")}</time></> : "Нет данных мониторинга."}</p>
   </section>;
 });

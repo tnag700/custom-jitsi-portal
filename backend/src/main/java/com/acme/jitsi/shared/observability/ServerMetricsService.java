@@ -35,14 +35,14 @@ public class ServerMetricsService {
   public record MetricsSnapshot(Instant generatedAt, List<MetricReading> metrics) {}
   public record Summary(String backendState, Integer cpuPercent, Integer memoryPercent, String diskState,
                         Instant measuredAt, boolean stale, boolean monitoringConfigured) {}
-  private record History(Instant cachedAt, List<MetricSeries> series) {}
+  private record History(Instant cachedAt, List<MetricSeries> series, boolean partial) {}
   private final PrometheusMetricsClient client;
   private final MetricCatalog catalog;
   private final Clock clock;
   private final ReentrantLock refreshLock = new ReentrantLock();
   // ponytail: caches belong to one backend; use a shared cache only when multiple replicas need it.
   private volatile MetricsSnapshot current = new MetricsSnapshot(Instant.EPOCH, List.of());
-  private final Map<String, History> history = new LinkedHashMap<>();
+  private final Map<String, CompletableFuture<History>> history = new LinkedHashMap<>();
 
   @Autowired
   public ServerMetricsService(PrometheusMetricsClient client, MetricCatalog catalog) {
@@ -65,7 +65,7 @@ public class ServerMetricsService {
     var memory = reading(snapshot, "host.memory");
     var disk = reading(snapshot, "host.disk");
     boolean stale = List.of(backend, cpu, memory, disk).stream().anyMatch(r -> "stale".equals(r.state()));
-    Instant measured = List.of(backend, cpu, memory, disk).stream().map(MetricReading::measuredAt)
+    Instant measured = List.of(backend, cpu, memory, disk).stream().filter(ServerMetricsService::usable).map(MetricReading::measuredAt)
         .filter(java.util.Objects::nonNull).min(Instant::compareTo).orElse(null);
     return new Summary(usable(backend) ? backend.value() == 1 ? "working" : "problem" : "unknown",
         rounded(cpu), rounded(memory), usable(disk) ? disk.value() >= 90 ? "low" : "sufficient" : "unknown",
@@ -79,28 +79,19 @@ public class ServerMetricsService {
     var result = new ArrayList<MetricReading>();
     for (int offset = 0; offset < ids.size(); offset += 4) {
       var batch = ids.subList(offset, Math.min(offset + 4, ids.size()));
-      var pending = new LinkedHashMap<String, CompletableFuture<JsonNode>>();
+      var pending = new LinkedHashMap<String, CompletableFuture<History>>();
       Instant end = clock.instant();
       long step = Math.max(15, (period.seconds + 298) / 299);
       Instant start = end.minusSeconds(period.seconds);
       for (String id : batch) {
-        if (cachedHistory(id, period) == null && client.configured() && System.nanoTime() < deadline) {
-          pending.put(id, client.queryRange(catalog.require(id).rangeQuery(), start, end, step));
-        }
+        pending.put(id, historyFor(id, period, start, end, step, deadline));
       }
       for (String id : batch) {
-        var cached = cachedHistory(id, period);
-        if (cached == null && pending.containsKey(id)) {
-          cached = parseHistory(await(pending.get(id), deadline), catalog.require(id), start, end, step);
-          if (cached != null) {
-            synchronized (history) {
-              if (history.size() >= 60) history.remove(history.keySet().iterator().next());
-              history.put(id + "/" + period.value, cached);
-            }
-          }
-        }
+        var cached = awaitHistory(pending.get(id), deadline);
         var reading = reading(snapshot, id);
-        result.add(new MetricReading(id, reading.value(), reading.state(), reading.measuredAt(),
+        String state = cached != null && cached.partial() && !"stale".equals(reading.state()) && !"unavailable".equals(reading.state())
+            ? "partial" : reading.state();
+        result.add(new MetricReading(id, reading.value(), state, reading.measuredAt(),
             cached == null ? List.of() : cached.series()));
       }
     }
@@ -127,14 +118,32 @@ public class ServerMetricsService {
     for (long time = start.getEpochSecond(); time <= end.getEpochSecond(); time += step) {
       points.add(new MetricPoint(Instant.ofEpochSecond(time), bounded(definition, values.get(time))));
     }
-    return new History(end, List.of(new MetricSeries("Значение", List.copyOf(points))));
+    return new History(end, List.of(new MetricSeries("Значение", List.copyOf(points))), warned(response));
   }
 
-  private History cachedHistory(String id, MetricPeriod period) {
+  private CompletableFuture<History> historyFor(String id, MetricPeriod period, Instant start, Instant end, long step, long deadline) {
     synchronized (history) {
-      var entry = history.get(id + "/" + period.value);
-      return entry != null && Duration.between(entry.cachedAt(), clock.instant()).getSeconds() < 60 ? entry : null;
+      String key = id + "/" + period.value;
+      var entry = history.get(key);
+      if (entry != null && (!entry.isDone() || (entry.getNow(null) != null
+          && Duration.between(entry.getNow(null).cachedAt(), clock.instant()).getSeconds() < 60))) return entry;
+      if (!client.configured() || System.nanoTime() >= deadline) return CompletableFuture.completedFuture(null);
+      var pending = client.queryRange(catalog.require(id).rangeQuery(), start, end, step)
+          .handle((response, failure) -> failure == null ? parseHistory(response, catalog.require(id), start, end, step) : null);
+      if (history.size() >= 60) history.remove(history.keySet().iterator().next());
+      history.put(key, pending);
+      pending.whenComplete((response, failure) -> {
+        if (response == null || failure != null) synchronized (history) { history.remove(key, pending); }
+      });
+      return pending;
     }
+  }
+
+  private static History awaitHistory(CompletableFuture<History> pending, long deadline) {
+    try { return pending.get(Math.max(1, deadline - System.nanoTime()), TimeUnit.NANOSECONDS); }
+    catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); return null; }
+    // A consumer must not cancel the source request shared by other cabinets; its client timeout still bounds it.
+    catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException failure) { return null; }
   }
 
   private MetricsSnapshot current(long deadline) {
@@ -177,25 +186,30 @@ public class ServerMetricsService {
                                        CompletableFuture<JsonNode> freshnessResponse, Instant now, long deadline) {
     JsonNode raw = await(valueResponse, deadline);
     Double value = bounded(definition, scalar(raw));
-    Double sampleTime = scalar(await(freshnessResponse, deadline));
+    JsonNode fresh = await(freshnessResponse, deadline);
+    Double sampleTime = scalar(fresh);
     Instant measured = sampleTime == null || sampleTime < 0 || sampleTime > now.plusSeconds(5).getEpochSecond()
         ? null : Instant.ofEpochSecond(sampleTime.longValue());
-    String state = readingState(definition, value, measured, raw, now, deadline);
+    String state = readingState(definition, value, measured, warned(raw) || warned(fresh), now, deadline);
     if (!"ok".equals(state) && !"partial".equals(state)) value = null;
     return new MetricReading(definition.descriptor().id(), value, state, measured, List.of());
   }
 
   private String readingState(MetricCatalog.Definition definition, Double value, Instant measured,
-                              JsonNode raw, Instant now, long deadline) {
+                              boolean partial, Instant now, long deadline) {
     if (measured == null) return "unavailable";
     if (measured.isBefore(now.minusSeconds(90))) return "stale";
     if (definition.traffic() != null && System.nanoTime() < deadline) {
-      Double traffic = scalar(await(client.queryInstant(definition.traffic(), now), deadline));
-      if (traffic != null && traffic == 0) return "no_traffic";
+      JsonNode trafficResponse = await(client.queryInstant(definition.traffic(), now), deadline);
+      Double traffic = scalar(trafficResponse);
+      partial |= warned(trafficResponse);
+      if (traffic != null && traffic == 0) return partial ? "partial" : "no_traffic";
     }
-    if (value == null) return "no_data";
-    return raw != null && raw.path("warnings").size() > 0 ? "partial" : "ok";
+    if (value == null) return partial ? "partial" : "no_data";
+    return partial ? "partial" : "ok";
   }
+
+  private static boolean warned(JsonNode response) { return response != null && response.path("warnings").size() > 0; }
 
   private MetricReading reading(MetricsSnapshot snapshot, String id) {
     var reading = snapshot.metrics().stream().filter(r -> r.id().equals(id)).findFirst()

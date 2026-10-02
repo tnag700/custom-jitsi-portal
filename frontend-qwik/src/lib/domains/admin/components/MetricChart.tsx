@@ -11,7 +11,7 @@ export function formatMetric(value: number | null | undefined, unit: string): st
 export function chartGeometry(samples: MetricPoint[]) {
   const valid = samples.filter(p => p.value != null && Number.isFinite(p.value) && Number.isFinite(Date.parse(p.time)));
   if (!valid.length) return { paths: [] as string[], points: [] as { x: number; y: number; sample: MetricPoint }[] };
-  const times = valid.map(p => Date.parse(p.time));
+  const times = samples.map(p => Date.parse(p.time)).filter(Number.isFinite);
   const start = Math.min(...times), duration = Math.max(1, Math.max(...times) - start);
   const minimum = Math.min(0, ...valid.map(p => p.value!));
   const range = Math.max(1, Math.max(...valid.map(p => p.value!)) - minimum);

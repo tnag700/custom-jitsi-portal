@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { chartGeometry } from "../lib/domains/admin/components/MetricChart";
 
 describe("metric SVG geometry", () => {
+  it("keeps leading and trailing outages on the time axis", () => {
+    const points = [null, null, 20, 40, null].map((value, i) => ({ time: new Date(i * 60_000).toISOString(), value }));
+    expect(chartGeometry(points).points.map(point => point.x)).toEqual([50, 75]);
+  });
   it("breaks the line at gaps and renders a single or constant sample without NaN", () => {
     const points = [1, 1, null, 1].map((value, i) => ({ time: new Date(i * 15_000).toISOString(), value }));
     const result = chartGeometry(points);

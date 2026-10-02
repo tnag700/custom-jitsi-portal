@@ -132,7 +132,7 @@ backend, готовность выдачи токена, число запрос
 | --- | --- | --- |
 | `GET /api/v1/system/statistics` | Любая действующая пользовательская сессия | Только фиксированная безопасная сводка |
 | `GET /api/v1/admin/metrics/catalog` | Только `admin` (`ROLE_admin`) | Безопасные определения доступных виджетов |
-| `GET /api/v1/admin/metrics?ids=…&period=…` | Только `admin` (`ROLE_admin`) | Ограниченные текущие значения и временные ряды |
+| `GET /api/v1/admin/metrics/query?ids=…&period=…` | Только `admin` (`ROLE_admin`) | Ограниченные текущие значения и временные ряды |
 | `GET /api/v1/admin/metrics/dashboard` | Только `admin` (`ROLE_admin`) | Личный набор виджетов и ревизия |
 | `PUT /api/v1/admin/metrics/dashboard` | Только `admin` (`ROLE_admin`), действующий CSRF | Сохранение набора с проверкой ревизии |
 

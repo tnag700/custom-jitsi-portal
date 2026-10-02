@@ -1,11 +1,25 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fetchSystemStatistics } from "../lib/domains/statistics/statistics.service";
 import { startVisiblePolling } from "../lib/shared/api/visible-polling";
+import { SystemStatistics } from "../lib/domains/statistics/SystemStatistics";
+import { renderNode, textContent } from "./support/jsx-tree";
+
+vi.mock("@qwik.dev/core", async (original) => ({ ...await original<object>(), component$: (fn: unknown) => fn, componentQrl: (fn: unknown) => fn,
+  useSignal: (value: unknown) => ({ value }), useVisibleTask$: () => undefined, useVisibleTaskQrl: () => undefined,
+}));
 
 const summary = { backendState: "working", cpuPercent: 65, memoryPercent: 40, diskState: "low", measuredAt: "2026-10-02T09:00:00Z", stale: false, monitoringConfigured: true };
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("safe system statistics", () => {
+  it("keeps healthy siblings visible when one measurement is stale", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(summary.measuredAt));
+    const tree = await renderNode((SystemStatistics as unknown as (props: unknown) => unknown)({ initial: { ...summary, cpuPercent: null, stale: true }, isAdmin: false }));
+    expect(textContent(tree)).toContain("Работает");
+    expect(textContent(tree)).toContain("≈ 40%");
+    expect(textContent(tree)).toContain("Мало свободного места");
+  });
   it("uses credentials in the browser and rejects detailed fields", async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(summary)));
     vi.stubGlobal("fetch", fetch);
