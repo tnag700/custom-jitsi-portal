@@ -77,45 +77,71 @@ export const AdminMetricsDashboard = component$<{
   });
   const available = catalog.filter(d => !layout.widgets.some(w => w.metricId === d.id) && `${d.title} ${d.description}`.toLocaleLowerCase("ru-RU").includes(search.value.toLocaleLowerCase("ru-RU")));
   const labels = { ok: "Актуальные данные", no_data: "Нет данных", no_traffic: "Нет запросов", stale: "Данные устарели", unavailable: "Источник недоступен", partial: "Неполные данные" };
+  const widgets = layout.widgets.flatMap((widget, index) => {
+    const descriptor = catalog.find(d => d.id === widget.metricId);
+    if (!descriptor) return [];
+    const reading = data.value?.metrics.find(m => m.id === widget.metricId);
+    const stale = failed.value || (!!reading?.measuredAt && Date.now() - Date.parse(reading.measuredAt) > 90_000);
+    const value = !stale && (reading?.state === "ok" || reading?.state === "partial") ? reading.value : null;
+    const state = stale ? labels.stale : labels[reading?.state ?? "no_data"];
+    const valueText = !stale && reading?.state === "no_traffic" ? "Нет запросов" : formatMetric(value, descriptor.unit);
+    return [{ widget, index, descriptor, reading, value, valueText, state }];
+  });
+  const charts = widgets.filter(item => item.widget.view === "line");
   return <section class="space-y-4" aria-label="Дашборд метрик">
-    <div><h1 class="text-2xl font-semibold">Метрики сервера</h1><p class="mt-1 text-sm text-muted">Системные показатели текущего развёртывания. Выдача JWT не подтверждает качество видеосвязи.</p></div>
-    <div class="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface p-4">
-      <label class="text-sm">Период<select disabled={saving.value || stopped.value} class="mt-1 block rounded border border-border bg-bg p-2" value={layout.period} onChange$={(_, el) => { layout.period = metricPeriodSchema.parse(el.value); void change(); }}>
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div><h1 class="text-2xl font-semibold">Метрики сервера</h1><p class="mt-1 text-sm text-muted">Системные показатели текущего развёртывания: значения и история.</p></div>
+      <div class="flex flex-wrap items-center gap-2">
+      <label class="flex items-center gap-2 text-sm">Период<select disabled={saving.value || stopped.value} class="rounded-lg border border-border bg-surface p-2" value={layout.period} onChange$={(_, el) => { layout.period = metricPeriodSchema.parse(el.value); void change(); }}>
         {[["15m", "15 минут"], ["1h", "1 час"], ["6h", "6 часов"], ["24h", "24 часа"], ["7d", "7 дней"]].map(([value, label]) => <option key={value} value={value} selected={value === layout.period}>{label}</option>)}
       </select></label>
-      <button type="button" class="rounded border border-border px-3 py-2 disabled:opacity-50" disabled={busy.value || stopped.value} onClick$={() => refresh()}>Обновить показатели</button>
-      <button type="button" class="rounded bg-primary px-3 py-2 text-white disabled:opacity-50" disabled={!dirty.value || saving.value || conflict.value || stopped.value} onClick$={save}>Сохранить дашборд</button>
-      <button type="button" class="rounded border border-border px-3 py-2 disabled:opacity-50" disabled={saving.value || conflict.value || stopped.value} onClick$={reset}>Сбросить к начальному набору</button>
-      {conflict.value && <button type="button" class="rounded border border-border px-3 py-2" onClick$={reload}>Загрузить сохранённые настройки</button>}
-      <p class="text-sm text-muted" role="status">{message.value || (dirty.value ? "Есть несохранённые изменения" : "Личные настройки")}</p>
+      <button type="button" class="rounded-lg border border-border bg-surface px-3 py-2 disabled:opacity-50" disabled={busy.value || stopped.value} onClick$={() => refresh()}>{busy.value ? "Обновление…" : "Обновить показатели"}</button>
+      <button type="button" class="rounded-lg bg-primary px-3 py-2 text-white disabled:opacity-50" disabled={!dirty.value || saving.value || conflict.value || stopped.value} onClick$={save}>Сохранить дашборд</button>
+      </div>
     </div>
-    <fieldset class="flex flex-wrap items-end gap-3 rounded-xl border border-border p-4" disabled={saving.value || stopped.value}>
+    {(message.value || dirty.value) && <p class="text-sm text-muted" role="status">{message.value || "Есть несохранённые изменения"}</p>}
+      {conflict.value && <button type="button" class="rounded border border-border px-3 py-2" onClick$={reload}>Загрузить сохранённые настройки</button>}
+    <details class="rounded-xl border border-border bg-surface">
+      <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-primary">Настроить дашборд · {layout.widgets.length}/12 показателей</summary>
+      <div class="space-y-4 border-t border-border p-4">
+    <fieldset class="flex flex-wrap items-end gap-3" disabled={saving.value || stopped.value}>
       <legend class="px-1 font-medium">Добавить показатель ({layout.widgets.length}/12)</legend>
       <label class="w-full text-sm sm:w-auto">Поиск<input type="search" class="mt-1 block w-full rounded border border-border bg-bg p-2" value={search.value} onInput$={(_, el) => { search.value = el.value; }} /></label>
       <label class="min-w-0 w-full text-sm sm:flex-1">Каталог<select class="mt-1 block w-full rounded border border-border bg-bg p-2" value={selected.value} onChange$={(_, el) => { selected.value = el.value; }}><option value="">Выберите показатель</option>{available.map(d => <option key={d.id} value={d.id}>{d.title}</option>)}</select></label>
       <button type="button" class="rounded border border-border px-3 py-2 disabled:opacity-50" disabled={!selected.value || layout.widgets.length >= 12} onClick$={add}>Добавить</button>
     </fieldset>
+      <ul class="divide-y divide-border">{widgets.map(({ descriptor, widget, index }) => <li key={widget.metricId} class="flex flex-wrap items-center justify-between gap-3 py-3">
+        <div class="min-w-0"><p class="font-medium">{descriptor.title}</p><p class="mt-1 text-xs text-muted">{descriptor.description}</p></div>
+        <div class="flex flex-wrap items-center gap-2">
+          <select disabled={saving.value || stopped.value} aria-label={`Вид: ${descriptor.title}`} class="rounded-lg border border-border bg-bg p-2 text-sm" value={widget.view} onChange$={(_, el) => { layout.widgets[index].view = el.value === "line" ? "line" : "card"; dirty.value = true; }}>{descriptor.views.map(view => <option key={view} value={view} selected={view === widget.view}>{view === "card" ? "Только значение" : "Значение и график"}</option>)}</select>
+          <button type="button" class="rounded-lg border border-border px-3 py-2 disabled:opacity-50" aria-label={`Поднять: ${descriptor.title}`} disabled={index === 0 || saving.value} onClick$={() => reorder(index, -1)}>↑</button>
+          <button type="button" class="rounded-lg border border-border px-3 py-2 disabled:opacity-50" aria-label={`Опустить: ${descriptor.title}`} disabled={index === layout.widgets.length - 1 || saving.value} onClick$={() => reorder(index, 1)}>↓</button>
+          <button type="button" class="rounded-lg border border-border px-3 py-2 text-sm" disabled={saving.value} onClick$={() => { layout.widgets = layout.widgets.filter((_, i) => i !== index); dirty.value = true; }}>Удалить</button>
+        </div>
+      </li>)}</ul>
+      <button type="button" class="rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-50" disabled={saving.value || conflict.value || stopped.value} onClick$={reset}>Сбросить к начальному набору</button>
+      </div>
+    </details>
     {failed.value && <p role="status" class="text-sm text-muted">Обновление недоступно. Предыдущие показания могут быть устаревшими.</p>}
     {layout.widgets.length === 0 && <p class="rounded-xl border border-border p-6 text-muted">Дашборд пуст. Добавьте показатели из каталога.</p>}
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">{layout.widgets.map((widget, index) => {
-      const descriptor = catalog.find(d => d.id === widget.metricId);
-      if (!descriptor) return null;
-      const reading = data.value?.metrics.find(m => m.id === widget.metricId);
-      const stale = failed.value || (!!reading?.measuredAt && Date.now() - Date.parse(reading.measuredAt) > 90_000);
-      const value = !stale && (reading?.state === "ok" || reading?.state === "partial") ? reading.value : null;
-      return <article key={widget.metricId} class="min-w-0 rounded-xl border border-border bg-surface p-4">
-        <h2 class="font-semibold">{descriptor.title}</h2><p class="mt-1 text-xs text-muted">{descriptor.description}</p>
-        <p class="mt-3 text-2xl font-semibold">{formatMetric(value, descriptor.unit)}</p>
-        <p class="mt-1 text-sm text-muted">{stale ? labels.stale : labels[reading?.state ?? "no_data"]}{descriptor.id === "host.disk" && value != null && value >= 90 ? value >= 95 ? " · Критически мало места" : " · Мало свободного места" : ""}</p>
-        {widget.view === "line" && <MetricChart title={descriptor.title} unit={descriptor.unit} series={reading?.series ?? []} />}
-        {reading?.measuredAt && <p class="mt-2 text-xs text-muted">Измерено: <time dateTime={reading.measuredAt}>{new Date(reading.measuredAt).toLocaleString("ru-RU")}</time></p>}
-        <div class="mt-4 flex flex-wrap gap-2">
-          <select disabled={saving.value || stopped.value} aria-label={`Вид: ${descriptor.title}`} class="rounded border border-border bg-bg p-1 text-sm" value={widget.view} onChange$={(_, el) => { layout.widgets[index].view = el.value === "line" ? "line" : "card"; dirty.value = true; }}>{descriptor.views.map(view => <option key={view} value={view} selected={view === widget.view}>{view === "card" ? "Карточка" : "График"}</option>)}</select>
-          <button type="button" class="rounded border border-border px-2 disabled:opacity-50" aria-label={`Поднять: ${descriptor.title}`} disabled={index === 0 || saving.value} onClick$={() => reorder(index, -1)}>↑</button>
-          <button type="button" class="rounded border border-border px-2 disabled:opacity-50" aria-label={`Опустить: ${descriptor.title}`} disabled={index === layout.widgets.length - 1 || saving.value} onClick$={() => reorder(index, 1)}>↓</button>
-          <button type="button" class="rounded border border-border px-2 text-sm" disabled={saving.value} onClick$={() => { layout.widgets = layout.widgets.filter((_, i) => i !== index); dirty.value = true; }}>Удалить</button>
-        </div>
-      </article>;
-    })}</div>
+    <section aria-label="Текущие значения" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      {widgets.map(({ widget, descriptor, reading, value, valueText, state }) => <article key={widget.metricId} class="min-w-0 rounded-xl border border-border bg-surface p-4">
+        <h2 class="text-sm font-medium">{descriptor.title}</h2>
+        <p class="mt-2 text-2xl font-semibold tabular-nums">{valueText}</p>
+        <p class="mt-1 text-xs text-muted">{state}{descriptor.id === "host.disk" && value != null && value >= 90 ? value >= 95 ? " · Критически мало места" : " · Мало свободного места" : ""}</p>
+        {reading?.measuredAt && <p class="mt-2 text-xs text-muted"><time dateTime={reading.measuredAt}>{new Date(reading.measuredAt).toLocaleTimeString("ru-RU")}</time></p>}
+      </article>)}
+    </section>
+    {widgets.length > 0 && <section aria-label="История показателей" class="space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-2"><h2 class="text-lg font-semibold">История показателей</h2><span class="text-xs text-muted">Обновление раз в минуту</span></div>
+      {charts.length === 0 ? <p class="rounded-xl border border-dashed border-border p-4 text-sm text-muted">В настройках дашборда выберите «Значение и график» у нужного показателя.</p> : <div class={["grid grid-cols-1 gap-4", charts.length > 1 && "xl:grid-cols-2"]}>
+        {charts.map(({ widget, descriptor, reading, valueText, state }) => <article key={widget.metricId} class="min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-5">
+          <div class="flex flex-wrap items-baseline justify-between gap-2"><h3 class="font-semibold">{descriptor.title}</h3><strong class="text-xl tabular-nums">{valueText}</strong></div>
+          <p class="mt-1 text-xs text-muted">{descriptor.description} · {state}</p>
+          <MetricChart title={descriptor.title} unit={descriptor.unit} series={reading?.series ?? []} />
+        </article>)}
+      </div>}
+      <p class="text-xs text-muted">Затенённые участки обозначают отсутствие измерений. Выдача JWT не подтверждает качество видеосвязи.</p>
+    </section>}
   </section>;
 });

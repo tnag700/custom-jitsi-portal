@@ -74,10 +74,10 @@ export default component$(() => {
           <span class="text-muted">/ {currentSection.label}</span>
         ) : null}
       </header>
-      <div class="grid items-start gap-5 xl:grid-cols-[14rem_minmax(0,1fr)]">
+      <div class="space-y-4 md:space-y-5">
         <nav
           aria-label="Разделы администрирования"
-          class="grid gap-4 rounded-2xl border border-border bg-surface p-3 md:grid-cols-3 xl:sticky xl:top-0 xl:block xl:space-y-5"
+          class="relative flex min-w-0 gap-1 overflow-x-auto border-b border-border pb-3 md:flex-wrap"
         >
           <a
             href="#admin-content"
@@ -86,23 +86,24 @@ export default component$(() => {
             Перейти к содержимому раздела
           </a>
           {navGroups.map((group) => (
-            <section key={group.label}>
-              <h2 class="mb-2 px-2 text-xs font-semibold text-muted">
+            <section key={group.label} class="contents">
+              <h2 class="sr-only">
                 {group.label}
               </h2>
-              <ul class="grid grid-cols-2 gap-1 md:grid-cols-1">
+              <ul class="contents">
                 {group.items.map((item) => {
                   const active = isActiveAdminNavItem(
                     location.url.pathname,
                     item.match,
                   );
                   return (
-                    <li key={item.match}>
+                    <li key={item.match} class="shrink-0">
                       <a
                         href={item.href}
                         aria-current={active ? "page" : undefined}
+                        title={item.description}
                         class={[
-                          "block h-full rounded-xl border px-3 py-2.5 transition-colors focus-visible:outline focus-visible:outline-3 focus-visible:outline-primary focus-visible:outline-offset-2",
+                          "block h-full rounded-lg border px-3 py-2 transition-colors focus-visible:outline focus-visible:outline-3 focus-visible:outline-primary focus-visible:outline-offset-2",
                           active
                             ? "border-primary/30 bg-primary/10 text-primary"
                             : "border-transparent text-text hover:border-border hover:bg-surface-alt",
@@ -111,7 +112,7 @@ export default component$(() => {
                         <span class="block text-sm font-semibold">
                           {item.label}
                         </span>
-                        <span class="mt-1 hidden text-xs leading-4 text-muted sm:block">
+                        <span class="sr-only">
                           {item.description}
                         </span>
                       </a>

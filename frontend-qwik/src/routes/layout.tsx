@@ -11,6 +11,7 @@ import {
 import {
   routeAction$,
   routeLoader$,
+  useLocation,
   type DocumentHead,
   type RequestHandler,
 } from "@qwik.dev/router";
@@ -255,6 +256,8 @@ export const useLogout = routeAction$(
 );
 
 export default component$(() => {
+  const location = useLocation();
+  const adminWorkspace = location.url.pathname === "/admin" || location.url.pathname.startsWith("/admin/");
   const themeData = useTheme();
   const authData = useAuth();
   const statistics = useSystemStatistics();
@@ -339,8 +342,8 @@ export default component$(() => {
               onToggleSidebar$={toggleMobileSidebar$}
             />
             <main class="flex-1 overflow-y-auto p-4 sm:p-6">
-              <div class="mx-auto max-w-6xl">
-                <SystemStatistics initial={statistics.value} isAdmin={hasPlatformAdminAccess(authStore.profile?.claims ?? [])} />
+              <div class={["mx-auto", adminWorkspace ? "w-full" : "max-w-6xl"]}>
+                <SystemStatistics initial={statistics.value} isAdmin={hasPlatformAdminAccess(authStore.profile?.claims ?? [])} compact={adminWorkspace} />
                 <Slot />
               </div>
             </main>

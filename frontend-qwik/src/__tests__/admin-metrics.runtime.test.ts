@@ -25,6 +25,36 @@ vi.mock("~/lib/domains/admin", () => ({ fetchMetricsCatalog: mocks.catalog, fetc
 beforeEach(() => { vi.clearAllMocks(); state.stores.length = 0; state.signals.length = 0; });
 beforeAll(async () => { await import("../routes/admin/metrics/index"); await import("../lib/domains/admin/components/AdminMetricsDashboard"); });
 describe("admin metrics loader", () => {
+  it.each([[0, "Нет запросов"], [120_000, "Нет данных"]])("only treats fresh no_traffic readings as no requests (%i ms)", async (age, expected) => {
+    const { AdminMetricsDashboard } = await import("../lib/domains/admin/components/AdminMetricsDashboard");
+    const qwik = await vi.importActual<typeof QwikCore>("@qwik.dev/core");
+    const tree = await renderNode((AdminMetricsDashboard as unknown as (props: unknown) => unknown)({
+      catalog: [{ id: "latency", title: "Latency", description: "Показатель", unit: "milliseconds", scope: "SYSTEM", views: ["card", "line"] }],
+      dashboard: { revision: 0, period: "1h", widgets: [{ metricId: "latency", view: "line" }] },
+      snapshot: { generatedAt: new Date().toISOString(), metrics: [{ id: "latency", value: null, state: "no_traffic", measuredAt: new Date(Date.now() - age).toISOString(), series: [] }] },
+      onSave$: qwik.inlinedQrl(vi.fn(), "metrics-no-traffic-test"),
+    }));
+    const values = findNode(tree, n => n.props["aria-label"] === "Текущие значения");
+    expect(textContent(findNodes(values!, n => n.type === "p")[0])).toBe(expected);
+    const histories = findNode(tree, n => n.props["aria-label"] === "История показателей");
+    expect(textContent(findNode(histories!, n => n.type === "strong"))).toBe(expected);
+  });
+  it("keeps every selected current value above a separate history area without changing saved order", async () => {
+    const { AdminMetricsDashboard } = await import("../lib/domains/admin/components/AdminMetricsDashboard");
+    const catalog: MetricDescriptor[] = ["cpu", "memory"].map(id => ({ id, title: id, description: "Показатель", unit: "percent", scope: "SYSTEM", views: ["card", "line"] }));
+    const dashboard: Dashboard = { revision: 4, period: "1h", widgets: [{ metricId: "cpu", view: "line" }, { metricId: "memory", view: "card" }] };
+    const qwik = await vi.importActual<typeof QwikCore>("@qwik.dev/core");
+    const tree = await renderNode((AdminMetricsDashboard as unknown as (props: unknown) => unknown)({
+      catalog, dashboard, snapshot: { generatedAt: new Date().toISOString(), metrics: [] }, onSave$: qwik.inlinedQrl(vi.fn(), "metrics-layout-test"),
+    }));
+    const values = findNode(tree, n => n.props["aria-label"] === "Текущие значения");
+    const histories = findNode(tree, n => n.props["aria-label"] === "История показателей");
+    expect(values).toBeDefined();
+    expect(histories).toBeDefined();
+    expect(findNodes(values!, n => n.type === "h2").map(textContent)).toEqual(["cpu", "memory"]);
+    expect(findNodes(histories!, n => n.type === "h3").map(textContent)).toEqual(["cpu"]);
+    expect(state.stores[0]).toEqual(dashboard);
+  });
   it("resets the draft to the initial selection without changing its revision", async () => {
     const { AdminMetricsDashboard } = await import("../lib/domains/admin/components/AdminMetricsDashboard");
     const ids = ["host.cpu", "host.memory", "host.disk", "jvm.heap", "jdbc.pool", "jwt.latency-p95"];
