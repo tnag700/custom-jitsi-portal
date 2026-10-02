@@ -55,8 +55,8 @@ public class PrometheusMetricsClient implements AutoCloseable {
           .timeout(Duration.ofSeconds(2)).GET().build();
       var network = http.sendAsync(request,
           HttpResponse.BodyHandlers.limiting(HttpResponse.BodyHandlers.ofByteArray(), 1_048_576));
-      network.whenComplete((response, error) -> permits.release());
-      var result = network.copy().orTimeout(2, TimeUnit.SECONDS).whenComplete((response, error) -> {
+      var released = network.whenComplete((response, error) -> permits.release());
+      var result = released.copy().orTimeout(2, TimeUnit.SECONDS).whenComplete((response, error) -> {
         if (error != null) network.cancel(true);
       }).thenApply(response -> {
         if (response.statusCode() != 200) throw new IllegalStateException("Monitoring unavailable");

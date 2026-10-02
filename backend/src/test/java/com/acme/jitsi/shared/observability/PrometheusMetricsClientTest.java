@@ -6,6 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -13,6 +16,51 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
 class PrometheusMetricsClientTest {
+  @Test
+  void releasesCapacityBeforeCompletedConsumersImmediatelySubmitTheirNextRequest() throws Exception {
+    var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    var executor = Executors.newVirtualThreadPerTaskExecutor();
+    server.setExecutor(executor);
+    var arrived = new CountDownLatch(4);
+    var nextRequest = new CountDownLatch(1);
+    server.createContext("/api/v1/query", exchange -> {
+      try (exchange) {
+        String query = exchange.getRequestURI().getRawQuery();
+        if (query.startsWith("query=up-")) {
+          arrived.countDown();
+          if (!arrived.await(1, TimeUnit.SECONDS)) throw new java.io.IOException("Initial requests did not arrive");
+          // Hold three slots until the first consumer can submit its next request.
+          if (!query.startsWith("query=up-0&") && !nextRequest.await(1, TimeUnit.SECONDS)) {
+            throw new java.io.IOException("Next request did not arrive");
+          }
+        } else {
+          nextRequest.countDown();
+        }
+        byte[] bytes = "{\"status\":\"success\",\"data\":{\"resultType\":\"vector\",\"result\":[]}}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        exchange.sendResponseHeaders(200, bytes.length);
+        exchange.getResponseBody().write(bytes);
+      } catch (Exception ignored) {
+        // Closing/cancelling requests is expected if an assertion fails.
+      }
+    });
+    server.start();
+    try (var client = new PrometheusMetricsClient("http://127.0.0.1:" + server.getAddress().getPort(), JsonMapper.builder().build())) {
+      var requests = new ArrayList<CompletableFuture<tools.jackson.databind.JsonNode>>();
+      for (int i = 0; i < 4; i++) {
+        int index = i;
+        requests.add(client.queryInstant("up-" + index, Instant.now())
+            .thenCompose(value -> client.queryInstant("next-" + index, Instant.now())));
+      }
+      for (var request : requests) {
+        assertThat(request.get(3, TimeUnit.SECONDS).path("status").asString()).isEqualTo("success");
+      }
+    } finally {
+      nextRequest.countDown();
+      server.stop(0);
+      executor.close();
+    }
+  }
+
   @Test
   void refusesRedirectOversizeAndStalledBodyAndReleasesCapacity() throws Exception {
     var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
