@@ -37,6 +37,7 @@ assignment controls the role embedded in the Jitsi JWT.
 | Health, login, CSRF bootstrap | Allow | Allow | Allow | Allow |
 | Guest invite validate/exchange | Valid invite only | Valid invite only | Valid invite only | Valid invite only |
 | Profile and user directory | Deny | Own tenant | Own tenant | Own tenant |
+| Safe system statistics (`GET /api/v1/system/statistics`) | Deny | Allow | Allow | Allow |
 | Upcoming meetings | Deny | Assigned records only | Assigned records only | Assigned records only |
 | Meeting access token | Deny | Assigned meeting role only | Assigned meeting role only | Assigned meeting role only |
 | Admin dashboard, incidents and role history (`GET`) | Deny | Deny | Allow | Allow |

@@ -37,6 +37,8 @@ import {
   buildServerRequestContext,
 } from "~/lib/shared/routes/server-handlers";
 import { resolveCanonicalHref } from "~/lib/shared/security/canonical-url";
+import { SystemStatistics, fetchSystemStatistics } from "~/lib/domains/statistics";
+import { hasPlatformAdminAccess } from "~/lib/shared/security/access-claims";
 
 const THEME_COOKIE = "theme";
 const THEME_COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
@@ -118,6 +120,13 @@ export const useTheme = routeLoader$(({ sharedMap }) => {
 
 export const useAuth = routeLoader$(({ sharedMap }) => {
   return (sharedMap.get("user") as SafeUserProfile | null) ?? null;
+});
+
+export const useSystemStatistics = routeLoader$(async ({ sharedMap, cookie, url }) => {
+  if (!sharedMap.get("user") || isPublicAuthPath(url.pathname)) return null;
+  try {
+    return await fetchSystemStatistics(buildServerRequestContext({ sharedMap, cookie }), AbortSignal.timeout(1_000));
+  } catch { return null; }
 });
 
 function parseAllowedLogoutOrigins(
@@ -248,6 +257,7 @@ export const useLogout = routeAction$(
 export default component$(() => {
   const themeData = useTheme();
   const authData = useAuth();
+  const statistics = useSystemStatistics();
   const logoutAction = useLogout();
   const theme = useSignal<Theme>(themeData.value);
   const desktopSidebarExpanded = useSignal(true);
@@ -330,6 +340,7 @@ export default component$(() => {
             />
             <main class="flex-1 overflow-y-auto p-4 sm:p-6">
               <div class="mx-auto max-w-6xl">
+                <SystemStatistics initial={statistics.value} isAdmin={hasPlatformAdminAccess(authStore.profile?.claims ?? [])} />
                 <Slot />
               </div>
             </main>

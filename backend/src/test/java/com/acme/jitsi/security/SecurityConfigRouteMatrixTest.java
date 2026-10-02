@@ -92,6 +92,22 @@ class SecurityConfigRouteMatrixTest {
   }
 
   @Test
+  void statisticsRequireSessionAndReturnOnlySafeFieldsForEveryPortalRole() throws Exception {
+    mockMvc.perform(get("/api/v1/system/statistics")).andExpect(status().isUnauthorized());
+    for (String role : List.of("participant", "admin", "system-admin", "security-admin", "support-engineer")) {
+      mockMvc.perform(get("/api/v1/system/statistics").with(oauth2Login()
+          .authorities(new SimpleGrantedAuthority("ROLE_" + role))))
+          .andExpect(status().isOk())
+          .andExpect(header().string("Cache-Control", "private, no-store"))
+          .andExpect(jsonPath("$.backendState").value("unknown"))
+          .andExpect(jsonPath("$.monitoringConfigured").value(false))
+          .andExpect(jsonPath("$.instance").doesNotExist())
+          .andExpect(jsonPath("$.query").doesNotExist())
+          .andExpect(jsonPath("$.cpuPercent").isEmpty());
+    }
+  }
+
+  @Test
   void authEndpointsArePublic() throws Exception {
     mockMvc.perform(get("/api/v1/auth/login"))
       .andExpect(status().isFound())

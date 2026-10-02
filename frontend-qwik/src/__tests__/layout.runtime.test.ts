@@ -9,6 +9,12 @@ const mockResolveAuthRedirectPath = vi.fn();
 const mockResolveAuthRecoveryRedirectPath = vi.fn();
 const mockBuildMutationRequestContext = vi.fn();
 const mockBuildServerRequestContext = vi.fn();
+const mockFetchSystemStatistics = vi.fn();
+
+vi.mock("~/lib/domains/statistics", () => ({
+  SystemStatistics: () => null,
+  fetchSystemStatistics: mockFetchSystemStatistics,
+}));
 
 class MockAuthServiceError extends Error {
   payload: {
@@ -117,6 +123,24 @@ function createRequestCtx() {
     }),
   };
 }
+
+it("skips metrics on anonymous/auth paths and tolerates the one-second statistics deadline", async () => {
+  const { useSystemStatistics } = await import("../routes/layout");
+  const ctx = createRequestCtx();
+  expect(await useSystemStatistics(ctx)).toBeNull();
+  expect(mockFetchSystemStatistics).not.toHaveBeenCalled();
+  ctx.sharedMap.set("user", { claims: ["participant"] });
+  mockIsPublicAuthPath.mockReturnValue(true);
+  expect(await useSystemStatistics(ctx)).toBeNull();
+  expect(mockFetchSystemStatistics).not.toHaveBeenCalled();
+  mockIsPublicAuthPath.mockReturnValue(false);
+  mockFetchSystemStatistics.mockImplementation((_, signal) => new Promise((_, reject) => {
+    signal.addEventListener("abort", () => reject(new Error("deadline")), { once: true });
+  }));
+  const started = Date.now();
+  expect(await useSystemStatistics(ctx)).toBeNull();
+  expect(Date.now() - started).toBeLessThan(1_400);
+});
 
 function createActionCtx() {
   return {

@@ -11,3 +11,4 @@ export {
 export type { ApiErrorPayload } from "./helpers";
 
 export * from "./schemas";
+export { startVisiblePolling } from "./visible-polling";
