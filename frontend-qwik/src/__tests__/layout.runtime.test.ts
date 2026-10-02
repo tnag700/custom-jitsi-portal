@@ -126,19 +126,20 @@ function createRequestCtx() {
 
 it("skips metrics on anonymous/auth paths and tolerates the one-second statistics deadline", async () => {
   const { useSystemStatistics } = await import("../routes/layout");
+  const load = useSystemStatistics as unknown as (context: unknown) => Promise<unknown>;
   const ctx = createRequestCtx();
-  expect(await useSystemStatistics(ctx)).toBeNull();
+  expect(await load(ctx)).toBeNull();
   expect(mockFetchSystemStatistics).not.toHaveBeenCalled();
   ctx.sharedMap.set("user", { claims: ["participant"] });
   mockIsPublicAuthPath.mockReturnValue(true);
-  expect(await useSystemStatistics(ctx)).toBeNull();
+  expect(await load(ctx)).toBeNull();
   expect(mockFetchSystemStatistics).not.toHaveBeenCalled();
   mockIsPublicAuthPath.mockReturnValue(false);
   mockFetchSystemStatistics.mockImplementation((_, signal) => new Promise((_, reject) => {
     signal.addEventListener("abort", () => reject(new Error("deadline")), { once: true });
   }));
   const started = Date.now();
-  expect(await useSystemStatistics(ctx)).toBeNull();
+  expect(await load(ctx)).toBeNull();
   expect(Date.now() - started).toBeLessThan(1_400);
 });
 

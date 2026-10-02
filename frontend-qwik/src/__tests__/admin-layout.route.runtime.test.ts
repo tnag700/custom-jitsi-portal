@@ -22,7 +22,7 @@ describe("admin layout route helpers", () => {
     expect(
       groups.map((group) => group.items.map((item) => item.match)),
     ).toEqual([
-      ["/admin", "/admin/incidents"],
+      ["/admin", "/admin/incidents", "/admin/metrics"],
       ["/admin/users", "/admin/role-history"],
       ["/admin/jitsi", "/admin/config-sets", "/admin/framework-versions"],
     ]);

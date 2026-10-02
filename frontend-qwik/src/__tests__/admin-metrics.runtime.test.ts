@@ -1,0 +1,75 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { eventHandler, findNode, findNodes, renderNode, textContent, type RenderedNode } from "./support/jsx-tree";
+import type { Dashboard, MetricDescriptor } from "../lib/domains/admin/admin-metrics.types";
+import type * as QwikCore from "@qwik.dev/core";
+
+const mocks = vi.hoisted(() => ({ catalog: vi.fn(), dashboard: vi.fn(), metrics: vi.fn(), save: vi.fn() }));
+const state = vi.hoisted(() => ({ stores: [] as unknown[], signals: [] as { value: unknown }[] }));
+vi.mock("@qwik.dev/core", async (original) => {
+  const actual = await original<typeof QwikCore & { _captures: unknown }>();
+  const identity = (value: unknown) => value;
+  return { ...actual, component$: identity, componentQrl: identity, get _captures() { return actual._captures; },
+    useStore: (value: unknown) => { state.stores.push(value); return value; },
+    useSignal: (value: unknown) => { const signal = { value }; state.signals.push(signal); return signal; },
+    useVisibleTask$: () => undefined, useVisibleTaskQrl: () => undefined,
+  };
+});
+
+async function fire(node: RenderedNode | undefined, event: string, ...args: unknown[]) {
+  const handler = eventHandler(node, event) as ((...args: unknown[]) => unknown) | undefined;
+  return handler?.(...args);
+}
+vi.mock("@qwik.dev/router", async (original) => ({ ...await original<object>(), routeLoader$: (fn: unknown) => fn, routeLoaderQrl: (fn: unknown) => fn, routeAction$: (fn: unknown) => fn, routeActionQrl: (fn: unknown) => fn }));
+vi.mock("~/lib/domains/admin", () => ({ fetchMetricsCatalog: mocks.catalog, fetchMetricDashboard: mocks.dashboard, fetchMetrics: mocks.metrics, saveMetricDashboard: mocks.save, AdminMetricsDashboard: () => null }));
+
+beforeEach(() => { vi.clearAllMocks(); state.stores.length = 0; state.signals.length = 0; });
+describe("admin metrics loader", () => {
+  it("rejects every non-admin before fetching or serializing detailed data", async () => {
+    const { useMetricsDashboard } = await import("../routes/admin/metrics/index");
+    for (const role of ["participant", "system-admin", "security-admin", "support-engineer"]) {
+      const context = { sharedMap: new Map([["user", { claims: [role] }]]), redirect: (status: number, to: string) => ({ status, to }) };
+      await expect((useMetricsDashboard as unknown as (ctx: unknown) => Promise<unknown>)(context)).rejects.toEqual({ status: 302, to: "/" });
+    }
+    expect(mocks.catalog).not.toHaveBeenCalled();
+    expect(mocks.dashboard).not.toHaveBeenCalled();
+    expect(mocks.metrics).not.toHaveBeenCalled();
+  });
+
+  it("keeps a saved empty selection and avoids querying metrics", async () => {
+    const { useMetricsDashboard } = await import("../routes/admin/metrics/index");
+    mocks.catalog.mockResolvedValue([]);
+    mocks.dashboard.mockResolvedValue({ revision: 3, period: "7d", widgets: [] });
+    const context = { sharedMap: new Map<string, unknown>([["user", { claims: ["admin"] }], ["apiUrl", "http://backend/api/v1"]]), cookie: { get: () => undefined }, url: new URL("http://portal/admin/metrics") };
+    const result = await (useMetricsDashboard as unknown as (ctx: unknown) => Promise<{ dashboard?: { widgets: unknown[] } }>)(context);
+    expect(result.dashboard?.widgets).toEqual([]);
+    expect(mocks.metrics).not.toHaveBeenCalled();
+  });
+
+  it("renders new catalog entries generically, edits order and retains the draft on 409", async () => {
+    const { AdminMetricsDashboard } = await import("../lib/domains/admin/components/AdminMetricsDashboard");
+    const catalog: MetricDescriptor[] = ["cpu", "memory", "new"].map(id => ({ id, title: id, description: "Проверенный показатель", unit: "percent", scope: "SYSTEM", views: ["card", "line"] }));
+    const save = vi.fn().mockResolvedValue({ status: 409 });
+    const qwik = await vi.importActual<typeof QwikCore>("@qwik.dev/core");
+    const tree = await renderNode((AdminMetricsDashboard as unknown as (props: unknown) => unknown)({
+      catalog, dashboard: { revision: 2, period: "1h", widgets: [{ metricId: "cpu", view: "card" }, { metricId: "memory", view: "card" }] },
+      snapshot: { generatedAt: "2026-10-02T09:00:00Z", metrics: [] }, onSave$: qwik.inlinedQrl(save, "metrics-save-test"),
+    }));
+    const option = findNodes(tree, n => n.type === "option").find(n => n.props.value === "new");
+    expect(textContent(option)).toBe("new");
+    const selector = findNodes(tree, n => n.type === "select").find(n => textContent(n).includes("Выберите показатель"));
+    await fire(selector, "change", undefined, { value: "new" });
+    await fire(findNode(tree, n => n.type === "button" && textContent(n) === "Добавить"), "click");
+    const layout = state.stores[0] as Dashboard;
+    expect(layout.widgets.map(w => w.metricId)).toEqual(["cpu", "memory", "new"]);
+    await fire(findNode(tree, n => n.props["aria-label"] === "Опустить: cpu"), "click");
+    expect(layout.widgets.map(w => w.metricId)).toEqual(["memory", "cpu", "new"]);
+    const submit = findNode(tree, n => n.type === "button" && textContent(n) === "Сохранить дашборд");
+    await fire(submit, "click");
+    expect(save).toHaveBeenCalledWith({ revision: 2, period: "1h", widgets: layout.widgets });
+    expect(layout.revision).toBe(2);
+    expect(layout.widgets.map(w => w.metricId)).toEqual(["memory", "cpu", "new"]);
+    expect(state.signals.some(s => typeof s.value === "string" && s.value.includes("Ваши изменения сохранены на этой странице"))).toBe(true);
+    await fire(submit, "click");
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+});

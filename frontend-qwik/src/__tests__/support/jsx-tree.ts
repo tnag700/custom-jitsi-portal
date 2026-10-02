@@ -100,7 +100,11 @@ export function eventHandler(
   const normalizedEvent = eventName.toLowerCase();
   const legacyProp =
     `on${normalizedEvent[0]?.toUpperCase()}${normalizedEvent.slice(1)}$`;
-  return node.props[`q-e:${normalizedEvent}`] ?? node.props[legacyProp];
+  const handler = node.props[`q-e:${normalizedEvent}`] ?? node.props[legacyProp];
+  // Qwik moves inline event captures into q:p; the DOM binds them before dispatch.
+  const qrl = handler as { $hasMovedCaptures$?: boolean } | undefined;
+  return qrl?.$hasMovedCaptures$ ? (event: unknown, element: unknown) =>
+    (handler as (...args: unknown[]) => unknown)(event, element, node.props["q:p"]) : handler;
 }
 
 export function textContent(node: unknown): string {

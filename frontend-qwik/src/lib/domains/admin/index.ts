@@ -184,3 +184,6 @@ export {
   adminConfigOperationResultSchema,
   adminConfigSetFormSchema,
 } from "./admin-config.types";
+export { fetchMetricsCatalog, fetchMetricDashboard, fetchMetrics, saveMetricDashboard } from "./admin-metrics.service";
+export { AdminMetricsDashboard } from "./components/AdminMetricsDashboard";
+export type { Dashboard, MetricDescriptor, MetricsSnapshot } from "./admin-metrics.types";

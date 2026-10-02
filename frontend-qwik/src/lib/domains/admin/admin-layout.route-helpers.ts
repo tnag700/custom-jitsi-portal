@@ -54,6 +54,7 @@ export function buildAdminNavGroups(
       items: [
         { match: "/admin", label: "Состояние платформы", description: "Сервисы и сигналы сбоев" },
         { match: "/admin/incidents", label: "Инциденты", description: "Ошибки входа и их разбор" },
+        { match: "/admin/metrics", label: "Метрики", description: "Показатели сервера и личный дашборд" },
       ],
     },
     {
@@ -76,7 +77,7 @@ export function buildAdminNavGroups(
   return groups.map((group) => ({
     ...group,
     items: group.items
-      .filter((item) => includePlatformAdminTools || !["/admin/users", "/admin/jitsi"].includes(item.match))
+      .filter((item) => includePlatformAdminTools || !["/admin/users", "/admin/jitsi", "/admin/metrics"].includes(item.match))
       .map((item) => ({
         ...item,
         href: item.match === "/admin" || item.match === "/admin/incidents"
