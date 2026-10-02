@@ -24,7 +24,7 @@ public abstract class PostgresRedisContainerIntegrationTestSupport {
 
 	@Container
 	@SuppressWarnings("resource")
-	static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer(POSTGRES_IMAGE)
+	protected static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer(POSTGRES_IMAGE)
 			.withCreateContainerCmdModifier(cmd -> cmd.getHostConfig().withPortBindings(
 					new PortBinding(Ports.Binding.bindIp("127.0.0.1"), new ExposedPort(5432))))
 			.withDatabaseName("jitsi_test")

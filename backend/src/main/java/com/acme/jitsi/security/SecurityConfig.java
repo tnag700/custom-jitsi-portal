@@ -163,6 +163,11 @@ public class SecurityConfig {
       .contentSecurityPolicy(contentSecurityPolicy ->
         contentSecurityPolicy.policyDirectives(BASELINE_CSP))
       .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy", PERMISSIONS_POLICY)));
+    http.headers(headers -> headers.addHeaderWriter((request, response) -> {
+      String path = request.getRequestURI();
+      if (path.equals("/api/v1/system/statistics") || path.equals("/api/v1/admin/metrics")
+          || path.startsWith("/api/v1/admin/metrics/")) response.setHeader("Cache-Control", "private, no-store");
+    }));
     http.requestCache(cache -> cache.disable());
     List<String> publicEndpoints = new ArrayList<>(List.of(PUBLIC_ENDPOINTS));
     if (advancedMonitoring) {
@@ -172,6 +177,8 @@ public class SecurityConfig {
     http.authorizeHttpRequests(auth -> auth
         .requestMatchers(publicEndpoints.toArray(String[]::new)).permitAll()
         .requestMatchers(AUTHENTICATED_ENDPOINTS).authenticated()
+        .requestMatchers("/api/v1/admin/metrics", "/api/v1/admin/metrics/**")
+            .hasRole(PortalRole.ADMIN.claimValue())
         .requestMatchers(ADMIN_USER_ENDPOINTS)
             .hasRole(PortalRole.ADMIN.claimValue())
       .requestMatchers(HttpMethod.GET, ADMIN_CABINET_ENDPOINTS)

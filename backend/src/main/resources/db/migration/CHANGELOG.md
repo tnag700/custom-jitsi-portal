@@ -7,7 +7,7 @@
 - SQL-миграции: `backend/src/main/resources/db/migration/`
 - Java-миграции: `backend/src/main/java/db/migration/`
 
-## Список миграций V1–V25
+## Список миграций V1–V26
 
 | Version | File | Type | Summary |
 |---|---|---|---|
@@ -35,6 +35,7 @@
 | V22 | `V22__Serialize_config_set_mutations.sql` | SQL | Добавляет singleton-строку для сериализации редких административных изменений конфигураций. |
 | V24 | `V24__Track_refresh_token_families.sql` | SQL | Добавляет семейства refresh-токенов, отзывает исторические записи и повышает cutoff даже для ещё не зарегистрированных старых JWT. Требуется новая сессия через SSO. |
 | V25 | `V25__Transactional_idempotency.sql` | SQL | Хранит scoped idempotency markers в одной транзакции с изменением данных. |
+| V26 | `V26__Create_metric_dashboard_preferences.sql` | SQL | Личный JSONB-дашборд метрик по tenant + subject с ревизией. При откате приложения таблица сохраняется. |
 
 V23 не используется: повторная миграция индекса оказалась не нужна после проверки V14.
 Процедура перехода V24 и синхронизации cutoff описана в `docs/deployment-production.md`.

@@ -92,6 +92,48 @@ class SecurityConfigRouteMatrixTest {
   }
 
   @Test
+  void adminCanReadSafeCatalogAndDefaultPreferencesButInvalidWritesAreBounded() throws Exception {
+    var admin = oauth2Login().attributes(a -> { a.put("tenantId", "tenant-a"); a.put("sub", "admin-a"); })
+        .authorities(new SimpleGrantedAuthority("ROLE_admin"));
+    mockMvc.perform(get("/api/v1/admin/metrics/catalog").with(admin))
+        .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "private, no-store"))
+        .andExpect(jsonPath("$[0].scope").value("SYSTEM"))
+        .andExpect(jsonPath("$[0].query").doesNotExist()).andExpect(jsonPath("$[0].source").doesNotExist());
+    mockMvc.perform(get("/api/v1/admin/metrics/dashboard").with(admin))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.revision").value(0))
+        .andExpect(jsonPath("$.widgets.length()").value(6));
+    for (String body : List.of("{\"revision\":0,\"period\":\"1h\",\"widgets\":[],\"tenantId\":\"other\"}", "{}")) {
+      mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/admin/metrics/dashboard")
+          .with(admin).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
+          .andExpect(status().isBadRequest()).andExpect(header().string("Cache-Control", "private, no-store"));
+    }
+    mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/admin/metrics/dashboard")
+        .with(admin).with(csrf()).header("Transfer-Encoding", "chunked")
+        .contentType(MediaType.APPLICATION_JSON).content(new byte[16_385]))
+        .andExpect(status().isPayloadTooLarge());
+    mockMvc.perform(get("/api/v1/admin/metrics/catalog").with(oauth2Login()
+        .authorities(new SimpleGrantedAuthority("ROLE_admin"))))
+        .andExpect(status().isForbidden());
+    mockMvc.perform(get("/api/v1/admin/metrics/query").param("ids", "untrusted.query").with(admin))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void detailedMetricsAreDeniedBeforeTheBroadOperationalMatcher() throws Exception {
+    for (String path : List.of("/api/v1/admin/metrics", "/api/v1/admin/metrics/", "/api/v1/admin/metrics/catalog", "/api/v1/admin/metrics/dashboard")) {
+      mockMvc.perform(get(path)).andExpect(status().isUnauthorized());
+      for (String role : List.of("participant", "system-admin", "security-admin", "support-engineer")) {
+        mockMvc.perform(get(path).with(oauth2Login().authorities(new SimpleGrantedAuthority("ROLE_" + role))))
+            .andExpect(status().isForbidden());
+      }
+    }
+    mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/admin/metrics/dashboard")
+        .with(oauth2Login().authorities(new SimpleGrantedAuthority("ROLE_admin")))
+        .contentType(MediaType.APPLICATION_JSON).content("{\"revision\":0,\"period\":\"1h\",\"widgets\":[]}"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
   void statisticsRequireSessionAndReturnOnlySafeFieldsForEveryPortalRole() throws Exception {
     mockMvc.perform(get("/api/v1/system/statistics")).andExpect(status().isUnauthorized());
     for (String role : List.of("participant", "admin", "system-admin", "security-admin", "support-engineer")) {
