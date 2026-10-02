@@ -72,7 +72,7 @@ public final class OpenApiSpecGenerator {
       root.put("x-generated-from", GENERATED_MARKER);
       Files.writeString(
           outputPath,
-          JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root) + System.lineSeparator(),
+          JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root).replace("\r\n", "\n") + "\n",
           StandardCharsets.UTF_8);
       exitCode = SpringApplication.exit(context);
     }
