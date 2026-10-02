@@ -276,7 +276,7 @@ def main() -> None:
         "jitsi-jicofo",
         "jitsi-jvb",
     ]
-    least_privilege_overlay_services = ["prometheus", "alertmanager", "mock-alert-receiver", "grafana"]
+    least_privilege_overlay_services = ["prometheus", "alertmanager", "mock-alert-receiver", "grafana", "node-exporter"]
     read_only_services = {
         "nginx-cert-bootstrap": [],
         "nginx": ["/var/cache/nginx", "/var/run", "/etc/nginx/conf.d"],
@@ -293,6 +293,7 @@ def main() -> None:
         "jitsi-jicofo": ["/run", "/tmp"],
         "jitsi-jvb": ["/run", "/tmp"],
         "mock-alert-receiver": ["/tmp"],
+        "node-exporter": [],
     }
     writable_volume_targets = {
         "nginx-cert-bootstrap": ["/target"],

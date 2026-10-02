@@ -2,7 +2,38 @@ services:
   backend:
     environment:
       - APP_FEATURES_ADVANCED_MONITORING=true
+      - APP_METRICS_PROMETHEUS_BASE_URL=http://prometheus:9090
       - MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,prometheus
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:v1.12.1@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0
+    user: "65534:65534"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - --collector.disable-defaults
+      - --collector.cpu
+      - --collector.meminfo
+      - --collector.filesystem
+      - --collector.filesystem.mount-points-include=^/$
+      - --path.procfs=/host/proc
+      - --path.rootfs=/host/root
+    volumes:
+      - type: bind
+        source: /proc
+        target: /host/proc
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /etc/ssl/certs
+        target: /host/root
+        read_only: true
+        bind:
+          create_host_path: false
 
   prometheus:
     image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e

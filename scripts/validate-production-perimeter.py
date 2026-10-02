@@ -659,6 +659,7 @@ def main() -> None:
     alertmanager = get_service_block(monitoring_text, "alertmanager")
     mock_alert_receiver = get_service_block(monitoring_text, "mock-alert-receiver")
     grafana = get_service_block(monitoring_text, "grafana")
+    node_exporter = get_service_block(monitoring_text, "node-exporter")
 
     for service_name in get_service_names(monitoring_text):
         assert_no_published_ports(service_name, get_service_block(monitoring_text, service_name))
@@ -669,6 +670,9 @@ def main() -> None:
     assert_has_networks("alertmanager", alertmanager, ["ops_net"])
     assert_has_networks("mock-alert-receiver", mock_alert_receiver, ["ops_net"])
     assert_has_networks("grafana", grafana, ["ops_net"])
+    assert_has_networks("node-exporter", node_exporter, ["ops_net"])
+    for forbidden in ("docker.sock", "privileged:", "network_mode:", "pid:", "cap_add:"):
+        assert_not_contains(node_exporter, forbidden, "Host metrics collector must remain unprivileged and private.")
 
     print("validate-production-perimeter: OK")
     print("validate-production-perimeter: verified public exposure is limited to 80/tcp, 443/tcp, 443/udp and 10000/udp")

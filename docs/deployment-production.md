@@ -1,5 +1,19 @@
 # Production deployment
 
+## Cabinet resource metrics
+
+The monitoring overlay includes private node_exporter 1.12.1, pinned to
+`sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0`.
+Only CPU, meminfo and the root filesystem are collected; port 9100 stays inside
+`ops_net`. The collector runs as UID 65534 with no capabilities or Docker socket.
+Host `/proc` is read-only. For disk `statfs`, only `/etc/ssl/certs` is bound as
+the filesystem probe directory, avoiding access to the full host root.
+Before a Linux release, require `findmnt -T /etc/ssl/certs -n -o TARGET` to return
+`/`, and `findmnt -R /etc/ssl/certs -n -o TARGET` to return no child mounts.
+Compare exported memory/CPU and filesystem size with the VM itself. A Windows
+Docker Desktop check does not replace this Linux gate. Disabling the monitoring
+overlay leaves cabinets working with an explicit unavailable-statistics state.
+
 This guide prepares the portal for a hostname-based deployment on one Ubuntu 24
 host. The canonical public names are `jitsi-mgorka.top`,
 `auth.jitsi-mgorka.top`, and `meet.jitsi-mgorka.top`.
