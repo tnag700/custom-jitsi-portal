@@ -48,6 +48,8 @@ springdoc:
     - /api/**
 
 app:
+  metrics:
+    prometheus-base-url: ${APP_METRICS_PROMETHEUS_BASE_URL:}
   openapi:
     server-url: ${APP_OPENAPI_SERVER_URL:http://localhost:8080}
   security:
